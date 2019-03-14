@@ -89,7 +89,9 @@ unsigned char SubOptionInProgress = 0; // Is there a TELNET command suboption in
 unsigned char mode = 0; //connection mode, 0 is single, faster... 1 is multiple, well, for the future
 
 //For data receive parsing
-unsigned char rcvdata[200]; //No telnet CMD should be this long
+unsigned char rcvdata[1600]; 
+unsigned int rcvdataSize = 0;
+unsigned int rcvdataPointer = 0;
 
 // This will handle CMD negotiation...
 // Basically, the first time host send any command our client will tell 
@@ -351,6 +353,41 @@ unsigned int crc16(char *data, unsigned int size)
         return crc;
 }
 
+//Support for multiple connection mode - File Transfer
+unsigned char BufferRXData (void )
+{
+	if (rcvdataSize)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned char GetBufferData (void)
+{
+	unsigned char ret;
+	
+	if (!rcvdataSize)
+	{
+		//We can clear up to the size of our buffer
+		//That is as big as the MSX-SM FIFO 
+		rcvdataSize = sizeof (rcvdata);
+		ret = ReceiveData (rcvdata, &rcvdataSize, '0');
+		if ((ret == RET_WIFI_MSXSM_OK) && (rcvdataSize))
+		{
+			rcvdataPointer = 0;
+			rcvdataSize--;
+			return rcvdata[rcvdataPointer++];
+		}
+		else //simulate fifo false read
+			return 0xff;
+	}
+	else
+	{
+		rcvdataSize--;
+		return rcvdata[rcvdataPointer++];
+	}
+}
+
 // This already implement retries, so if it fails, consider it done deal
 //
 // File - Pointer to the open file to write data to, if -1 will just send the control character
@@ -383,14 +420,17 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 	static long FileSize;
 	static long ReceivedSize;
 	
-	if (mode != 0) //Single connection mode only for now
-		return 0;
-		
 	if (*File == -1)
 	{
-		ret = TxByte (Action);
+		if (mode == 0)
+			ret = TxByte (Action);
+		else
+			ret = SendData (&Action, 1, '0');
+		
 		if (ret == RET_WIFI_MSXSM_OK)
 			return 1;
+		else
+			return 0;
 	}		
 	
 	if (Action == 'C')
@@ -412,19 +452,33 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 		
 		PktStatus = 0;
 		
-		ret = TxByte (Action);
+		if (mode == 0)
+			ret = TxByte (Action);
+		else
+			ret = SendData (&Action, 1, '0');
 		
 		do
 		{
 			// Is there DATA in the UART FIFO?
-			if (UartRXData())
+			if ( ((mode == 0)&&(UartRXData())) || ((mode == 1)&&(BufferRXData())) )
 			{
-				RcvPkt[PktStatus] = GetUARTData();
+				if (mode == 0)
+					RcvPkt[PktStatus] = GetUARTData();
+				else
+					RcvPkt[PktStatus] = GetBufferData();
 				
 				if (RcvPkt[PktStatus] == 0xff) //telnet, FF will be doubled
 				{
-					while(!UartRXData());
-					GetUARTData(); //discard the second 0xFF
+					if (mode == 0)
+					{
+						while(!UartRXData());
+						GetUARTData(); //discard the second 0xFF
+					}
+					else
+					{
+						while(!BufferRXData());
+						GetBufferData(); //discard the second 0xFF
+					}
 				}
 				
 				if (PktStatus == 0)
