@@ -24,6 +24,10 @@ Example to set the time to GMT-3 (Brasilia):
 
 sntpsm -03:00
 
+*** IMPORTANT ***
+
+Remember to copy the files in fusion-c\lib and fusion-c\header to your
+fusion-c lib and header folders!
 
 Redistribution and use of this source code or any derivative works, are
 permitted provided that the following conditions are met:
