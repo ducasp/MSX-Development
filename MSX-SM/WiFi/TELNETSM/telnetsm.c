@@ -624,9 +624,15 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
 							if ((RcvPkt[myCrc]>='0')&&(RcvPkt[myCrc]<='9'))
 								FileSize = atol(&RcvPkt[myCrc]);
+
 							if (FileSize == 0)
+                            {
+                                printf("Receiving file: %s Unknown size.\r\n",&RcvPkt[3]);
 								FileSize = -1;
-							printf("Receiving file: %s Size: %d\r\n",&RcvPkt[3],FileSize);
+                            }
+                            else
+                                printf("Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[myCrc]);
+
 							*File = Open (&RcvPkt[3],O_CREAT);
 							if (*File != -1)
 							{
@@ -858,12 +864,14 @@ void WorkOnReceivedData (unsigned char Data)
 		{
 			rcvdata[0] = Data;
 			CmdInProgress = 1; // flag a command or sub is in progress
+			Print("CMD->");
 		}
 	}
 	else // a CMD or sub option is in progress
 	{
 		// Get the byte in the proper position
 		rcvdata[CmdInProgress] = Data;
+		printf("{%x}",rcvdata[CmdInProgress]);
 		// Is it the first byte after CMD? If yes and it is CMD again
 		if ( (CmdInProgress==1) && (rcvdata[CmdInProgress] == CMD))
 		{
@@ -891,6 +899,7 @@ void WorkOnReceivedData (unsigned char Data)
 			++CmdInProgress;
 			SubOptionInProgress = 0;
 			CmdInProgress = 0;
+			Print("<-\n");
 			//Negotiate the sub option
 			negotiate(rcvdata,CmdInProgress);
 		}
@@ -904,6 +913,7 @@ void WorkOnReceivedData (unsigned char Data)
 		//If not a sub option and is the third byte
 		if ((SubOptionInProgress == 0) && (CmdInProgress == 3))
 		{
+		    Print("<-\n");
 			//Commands are 3 bytes long, always
 			negotiate(rcvdata,3);
 			CmdInProgress = 0;
@@ -961,9 +971,9 @@ int main(char** argv, int argc)
 	ClearUartData();
 
 	if (!Ansi)
-		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.20<\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
+		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.50 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
 	else
-		Print("\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.20<\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\n");
+		Print("\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5cd tel0 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\n");
 
 	// At least server:port should be received
 	if (argc == 0)
