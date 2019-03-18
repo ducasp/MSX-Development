@@ -111,6 +111,12 @@ unsigned char cmd[200];
 unsigned char rsp[200];
 unsigned int rspsize = sizeof(rsp);
 
+//I/O made simple...
+__sfr __at 0x06 myPort6; //reading this is same as IN and writing same as out, without extra instructions
+                         //when using Inport and Outport from Fusion-C
+__sfr __at 0x07 myPort7; //reading this is same as IN and writing same as out, without extra instructions
+                         //when using Inport and Outport from Fusion-C
+
 unsigned int GetTickCount(void )
 {
 	return Peek(0xFC9E) + ((Peek(0xFC9F)<<8)&0xff00);
@@ -131,7 +137,7 @@ unsigned char TxByte(char chTxByte)
 
 	do
 	{
-		UartStatus = InPort(7)&2 ;
+		UartStatus = myPort7&2 ;
 		if (UartStatus)
 		{
 			if (Leaping)
@@ -152,7 +158,7 @@ unsigned char TxByte(char chTxByte)
 		}
 		else
 		{
-			OutPort (7, chTxByte);
+			myPort7 = chTxByte;
 			ret = RET_WIFI_MSXSM_OK;
 			break;
 		}
@@ -169,12 +175,12 @@ unsigned char TxByte(char chTxByte)
 
 void ClearUartData(void )
 {
-	OutPort (6, 20);
+	myPort6 = 20;
 }
 
 unsigned char UartTXInprogress(void )
 {
-	if (InPort(7) & 2)
+	if (myPort7 & 2)
 		return 1;
 	else
 		return 0;
@@ -182,7 +188,7 @@ unsigned char UartTXInprogress(void )
 
 unsigned char UartRXData(void )
 {
-	if (InPort(7) & 1)
+	if (myPort7 & 1)
 		return 1;
 	else
 		return 0;
@@ -190,7 +196,7 @@ unsigned char UartRXData(void )
 
 unsigned char GetUARTData (void)
 {
-	return InPort(6);
+	return myPort6;
 }
 
 unsigned char TxData(char * chData, unsigned char Size)
@@ -475,7 +481,7 @@ unsigned char FindBaudRateWiFi (void)
 	do
 	{
 		//Set Speed
-		OutPort (6, speed);
+		myPort6 = speed;
 		Halt();
 		ClearUartData();
 
@@ -539,7 +545,7 @@ unsigned char SetBaudRateWiFi (unsigned char speed)
 	Halt();
 	Halt();
 	//Set Speed
-	OutPort (6, speed);
+	myPort6 = speed;
 	Halt();
 	ClearUartData();
 
@@ -1186,9 +1192,9 @@ unsigned char CloseSingleConnection (void)
 
 		//Escape sequence, three consecutive +
 		while (UartTXInprogress());
-		OutPort (7, '+');
-		OutPort (7, '+');
-		OutPort (7, '+');
+		myPort7 = '+';
+		myPort7 = '+';
+		myPort7 = '+';
 
 		//Wait more than 2 seconds
 		Timer = 200 + GetTickCount();
