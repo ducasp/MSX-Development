@@ -16,12 +16,13 @@
 					<Add option="--no-std-crt0" />
 					<Add option="-mz80" />
 					<Add option="--opt-code-size" />
-					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196 --allow-unsafe-read" />
 					<Add directory="../fusion-c/header" />
 				</Compiler>
 				<Linker>
 					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
 					<Add library="../fusion-c/lib/fusion.lib" />
+					<Add library="../fusion-c/lib/asm.lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="cmd /c ren bin\Release\TelnetSM.exe TelnetSM.ihx" />
