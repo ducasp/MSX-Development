@@ -14,4 +14,5 @@ properly.
 I've added an ANSI.BAT file that will load MEMMAN, load jANSI and activate
 Kanji mode automatically.
 
-This is useful for the MSX-SM Telnet Client.
+**This is useful for the MSX-SM Telnet Client. I have no participation in MEMMAN
+and jANSI development, I've just included it here in distributable format.**
