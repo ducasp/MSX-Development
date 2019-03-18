@@ -100,6 +100,11 @@ unsigned char rcvdata[1600];
 unsigned int rcvdataSize = 0;
 unsigned int rcvdataPointer = 0;
 
+//I/O made simple...
+__sfr __at 0x07 UartStatus; //reading this is same as IN and writing same as out, without extra instructions
+                            //when using Inport and Outport from Fusion-C
+__at 0xD000 unsigned char MemMamMemory[1024]; //area to hold data sent to jANSI
+
 // This will handle CMD negotiation...
 // Basically, the first time host send any command our client will send it
 // is willing to send the following information:
@@ -1099,7 +1104,6 @@ int main(char** argv, int argc)
     //address do not overlap functions, variables, etc
     //MEMMAN and jANSI require memory information passed to it to be in the
     //upper memory segment, so we use this address to interface with it
-    unsigned char *MemMamMemory = (unsigned char *)0xD000; //area to hold data sent to jANSI
     Z80_registers regs; //auxiliary structure for asm function calling
 
 
@@ -1345,7 +1349,7 @@ int main(char** argv, int argc)
 				if (UartRXData())
 				{
 					//Check if FIFO Full occurred
-					if (InPort(7)&4)
+					if (UartStatus&4)
 					{
 						Print("FIFO Full, possible data loss!\n");
 					}
