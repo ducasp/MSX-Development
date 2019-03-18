@@ -2,7 +2,7 @@
 --
 -- WiFiMSXSM.c
 --   Functions that allow your program to access the WiFi module
---   of your MSX-SM. 
+--   of your MSX-SM.
 --   Revision 0.50
 --
 -- Requires SDCC and Fusion-C library to compile
@@ -118,9 +118,9 @@ unsigned int GetTickCount(void )
 
 unsigned char TxByte(char chTxByte)
 {
-	unsigned char ret = RET_WIFI_MSXSM_TX_TIMEOUT;	
+	unsigned char ret = RET_WIFI_MSXSM_TX_TIMEOUT;
 	unsigned char UartStatus;
-	unsigned char Leaping;		
+	unsigned char Leaping;
 	unsigned int Retries;
 
 	Retries = GetTickCount() + 3; //Wait up to 3 Interrupts
@@ -128,7 +128,7 @@ unsigned char TxByte(char chTxByte)
 		Leaping = 1;
 	else
 		Leaping = 0;
-	
+
 	do
 	{
 		UartStatus = InPort(7)&2 ;
@@ -152,7 +152,7 @@ unsigned char TxByte(char chTxByte)
 		}
 		else
 		{
-			OutPort (7, chTxByte);			
+			OutPort (7, chTxByte);
 			ret = RET_WIFI_MSXSM_OK;
 			break;
 		}
@@ -174,16 +174,16 @@ void ClearUartData(void )
 
 unsigned char UartTXInprogress(void )
 {
-	if (InPort(7) & 2) 
-		return 1; 
+	if (InPort(7) & 2)
+		return 1;
 	else
 		return 0;
 }
 
 unsigned char UartRXData(void )
 {
-	if (InPort(7) & 1) 
-		return 1; 
+	if (InPort(7) & 1)
+		return 1;
 	else
 		return 0;
 }
@@ -196,9 +196,9 @@ unsigned char GetUARTData (void)
 unsigned char TxData(char * chData, unsigned char Size)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
-	
+
 	unsigned char i;
-	
+
 	if(Size==0)
 	{
 		for (i = 0; (chData[i]!=0 && ret == RET_WIFI_MSXSM_OK); i++)
@@ -209,30 +209,30 @@ unsigned char TxData(char * chData, unsigned char Size)
 		for (i = 0; ( i < Size && ret == RET_WIFI_MSXSM_OK); i++)
 			ret	= TxByte(chData[i]);
 	}
-	
-	
+
+
 	return ret;
 }
 
 unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsigned char TimeOut)
 {
-	unsigned char ret = RET_WIFI_MSXSM_RX_TIMEOUT;	
+	unsigned char ret = RET_WIFI_MSXSM_RX_TIMEOUT;
 	unsigned char CompareIndex = 0;
 	unsigned char Tmp;
-	unsigned char Leaping;		
+	unsigned char Leaping;
 	unsigned int Timer;
-	
+
 	Timer = (60 * TimeOut) + GetTickCount();
 
 	if (Timer<GetTickCount()) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
-	
+
 	do
 	{
 		if (UartRXData())
-		{			
+		{
 			Tmp = GetUARTData();
 			if( Tmp == chResponse[CompareIndex] )
 			{
@@ -268,7 +268,7 @@ unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsign
 		}
 	}
 	while (1); //don't worry, will break per time-out  or response received
-	
+
 	return ret;
 }
 
@@ -279,18 +279,18 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 	unsigned char Tmp;
 	unsigned char State=0;
 	unsigned char StateCounter=0;
-	unsigned char Leaping;		
+	unsigned char Leaping;
 	unsigned int Timer;
-	
+
 	Timer = (60 * TimeOut) + GetTickCount();
 
 	if (Timer<GetTickCount()) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
-	
+
 	*ResponseSize = 0;
-	
+
 	do
 	{
 		if (UartRXData())
@@ -299,7 +299,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 			chResponse[*ResponseSize] = Tmp;
 			*ResponseSize = *ResponseSize + 1;
 			switch (State)
-			{				
+			{
 				case 0: //did not find ok or error characters
 					if( Tmp == RSPOkESP[0] )
 					{
@@ -327,8 +327,8 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 						StateCounter = 1;
 					}
 				break;
-				
-				case 1:					
+
+				case 1:
 					if( Tmp == RSPOkESP[StateCounter] )
 					{
 						State =255;
@@ -337,7 +337,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 					else
 						State = 0;
 				break;
-				
+
 				case 2:
 					if( Tmp == RSPErrorESP[StateCounter] )
 					{
@@ -349,7 +349,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 					else
 						State = 0;
 				break;
-								
+
 				case 3:
 					if( Tmp == RSPFailESP[StateCounter] )
 					{
@@ -361,7 +361,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 					else
 						State = 0;
 				break;
-				
+
 				case 4:
 					if( Tmp == RSPFailDNSESP[StateCounter] )
 					{
@@ -373,7 +373,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 					else
 						State = 0;
 				break;
-				
+
 				case 5:
 					if( Tmp == RSPAlreadyConn[StateCounter] )
 					{
@@ -385,18 +385,18 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 					else
 						State = 0;
 				break;
-				
+
 				default:
 					State = 0;
 				break;
-			}		
-			
+			}
+
 			if (*ResponseSize == MaxSize)
 			{
 				ret = RET_WIFI_MSXSM_RX_OVERFLOW;
 				break;
 			}
-			
+
 			if (State == 255) // found Ok
 			{
 				ret = RET_WIFI_MSXSM_OK;
@@ -417,7 +417,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 			{
 				ret = RET_WIFI_MSXSM_ALREADY_CONN;
 				break;
-			}			
+			}
 		}
 		else
 		{
@@ -439,7 +439,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 		}
 	}
 	while (1);
-		
+
 	return ret;
 }
 
@@ -448,7 +448,7 @@ unsigned char SendCommand (char *chCmd, unsigned int Size, char *chExpectedRespo
 	unsigned char ret;
 
 	ret = TxData(chCmd, Size);
-	
+
 	if ( (ret == RET_WIFI_MSXSM_OK) && (chExpectedResponse) && (ExpectedResponseSize) )
 		ret = WaitResponse( chExpectedResponse, ExpectedResponseSize, TimeOut);
 
@@ -459,7 +459,7 @@ unsigned char SendCommand2 (char *chCmd, char *chResponse, unsigned int * MaxRes
 {
 	unsigned char ret;
 	ret = TxData(chCmd, 0);
-	
+
 	if ( (ret == RET_WIFI_MSXSM_OK) && (chResponse) && (MaxResponseSize) && (*MaxResponseSize>0) )
 		ret = GetResponse( chResponse, MaxResponseSize, TimeOut);
 
@@ -470,15 +470,15 @@ unsigned char FindBaudRateWiFi (void)
 {
 	unsigned char ret = 0xff;
 	unsigned char ret2;
-	unsigned char speed = 0; 
-	
+	unsigned char speed = 0;
+
 	do
 	{
 		//Set Speed
-		OutPort (6, speed);	
+		OutPort (6, speed);
 		Halt();
 		ClearUartData();
-		
+
 		ret2 = SendCommand( echoOffESP, 0, RSPOkESP, sizeof(RSPOkESP)-1, 1);
 		if (ret2 == RET_WIFI_MSXSM_OK)
 		{
@@ -489,44 +489,44 @@ unsigned char FindBaudRateWiFi (void)
 			++speed;
 	}
 	while (speed < 8);
-	
+
 	return ret;
 }
 
 unsigned char SetBaudRateWiFi (unsigned char speed)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
-	
+
 	switch (speed)
 	{
 		case BAUD115200:
 			ret = SendCommand( setUART115200, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD57600:
 			ret = SendCommand( setUART57600, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD38400:
 			ret = SendCommand( setUART38400, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD31250:
 			ret = SendCommand( setUART31250, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD19200:
 			ret = SendCommand( setUART19200, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD9600:
 			ret = SendCommand( setUART9600, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD4800:
 			ret = SendCommand( setUART4800, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
-		
+
 		case BAUD2400:
 			ret = SendCommand( setUART2400, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		break;
@@ -535,29 +535,29 @@ unsigned char SetBaudRateWiFi (unsigned char speed)
 			return ret;
 		break;
 	}
-	
+
 	Halt();
 	Halt();
 	//Set Speed
-	OutPort (6, speed);	
+	OutPort (6, speed);
 	Halt();
 	ClearUartData();
-		
+
 	return ret;
 }
 
 unsigned char InitializeWiFi (unsigned char speed)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
-	unsigned char *charseek = NULL;	
-	
+	unsigned char *charseek = NULL;
+
 	//First, scan all possible baud rates to check if device is here
 	speed = FindBaudRateWiFi();
 	//Now we have the current speed, just set the one we want and go
 	ret = SetBaudRateWiFi(speed);
 	if (ret != RET_WIFI_MSXSM_OK)
-	{		
-#ifdef log_verbose	
+	{
+#ifdef log_verbose
 		printf ("Error setting baud\r\n");
 #endif
 		//If this fails, more likely means ESP not present
@@ -573,12 +573,12 @@ unsigned char InitializeWiFi (unsigned char speed)
 		//Wait up to 10s to give time to ESP to connect to known network
 		ret = WaitResponse(wifiGotIp,sizeof(wifiGotIp)-1,10);
 		ClearUartData();
-		
+
 		//Turn ECHO off
 		ret = SendCommand( echoOffESP, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		if (ret == RET_WIFI_MSXSM_OK)
 		{
-			//Set mode 
+			//Set mode
 			ret = SendCommand( setESPMode, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 			if (ret == RET_WIFI_MSXSM_OK)
 			{
@@ -591,9 +591,9 @@ unsigned char InitializeWiFi (unsigned char speed)
 					ret = SendCommand( setAPListMode, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 					if (ret == RET_WIFI_MSXSM_OK)
 					{
-						ClearUartData();		
+						ClearUartData();
 						//Check if it is already connected
-						ret = SendCommand2( getConnSts, rsp, &rspsize, 2);					
+						ret = SendCommand2( getConnSts, rsp, &rspsize, 2);
 						if (ret == RET_WIFI_MSXSM_OK)
 						{
 							// All commands ok, so init succes!
@@ -603,11 +603,11 @@ unsigned char InitializeWiFi (unsigned char speed)
 								rsp[rspsize]=0;
 								charseek = strstr (rsp,"S:");
 								if (charseek)
-								{			
+								{
 									if(charseek[2]!='2') //connected
 									{
 										ret = RET_WIFI_MSXSM_OK_DISCONNECTED;
-										rspsize = sizeof(rsp);										
+										rspsize = sizeof(rsp);
 									}
 									else
 									{
@@ -622,14 +622,14 @@ unsigned char InitializeWiFi (unsigned char speed)
 								else
 									ret = RET_WIFI_MSXSM_OK_DISCONNECTED;
 							}
-							
+
 						}
 					}
 				}
 			}
 		}
 	}
-	
+
 	return ret;
 }
 
@@ -641,7 +641,7 @@ unsigned char GetWiFiAPList (APList * stList)
 	unsigned char *charseek = NULL;
 	unsigned char *charseek2 = NULL;
 	unsigned int APListBufferSize,APListBufferSize2;
-	
+
 	if (isInitialized)
 	{
 		if ((stList) && (stList->numOfElements<11) && (stList->numOfElements>0))
@@ -649,8 +649,8 @@ unsigned char GetWiFiAPList (APList * stList)
 			MaxAPs  = stList->numOfElements;
 			ClearUartData();
 			APListBufferSize =  sizeof(chAPList);
-			APListBufferSize2 = APListBufferSize;		
-			
+			APListBufferSize2 = APListBufferSize;
+
 			ret = SendCommand2( getAPList, chAPList, &APListBufferSize, 20);
 			if ( ( ret == RET_WIFI_MSXSM_OK ) && (APListBufferSize) )
 			{
@@ -658,7 +658,7 @@ unsigned char GetWiFiAPList (APList * stList)
 				chAPList[APListBufferSize]=0; //guarantee strstr won't go beyond our memory
 				stList->numOfElements = 0;
 				charseek = chAPList;
-				
+
 				while ( (stList->numOfElements < MaxAPs) && (charseek < (chAPList + APListBufferSize) ) )
 				{
 					charseek = strstr (charseek,"+CWLAP:(");
@@ -669,7 +669,7 @@ unsigned char GetWiFiAPList (APList * stList)
 							stList->APst[stList->numOfElements].isEncrypted = 0;
 						else
 							stList->APst[stList->numOfElements].isEncrypted = 1;
-						
+
 						charseek+=3; //jump " and go to start of SSID name
 						charseek2 = strstr (charseek,"\"");
 						if (charseek2)
@@ -692,7 +692,7 @@ unsigned char GetWiFiAPList (APList * stList)
 	}
 	else
 		ret = RET_WIFI_MSXSM_NOT_INITIALIZED;
-	
+
 	return ret;
 }
 
@@ -712,16 +712,16 @@ unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password)
 			rspsize = sizeof(rsp);
 			strcpy (cmd, joinAPheader);
 			strcat (cmd, stAP->APName);
-			
+
 			if (stAP->isEncrypted)
 			{
-				strcat (cmd, "\",\"");				
+				strcat (cmd, "\",\"");
 				strcat (cmd, Password);
 				strcat (cmd, "\"\r\n");
 			}
 			else
 				strcat (cmd, "\",\"\"\r\n");
-			
+
 			ret = SendCommand2( cmd, rsp, &rspsize, 30);
 			if ( ret == RET_WIFI_MSXSM_OK )
 			{
@@ -734,8 +734,8 @@ unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password)
 	}
 	else
 		ret = RET_WIFI_MSXSM_NOT_INITIALIZED;
-	
-	return ret;			
+
+	return ret;
 }
 
 unsigned char OpenConnection (unsigned char Conn_type, unsigned char * Address, unsigned char * Port, unsigned char Number)
@@ -745,23 +745,23 @@ unsigned char OpenConnection (unsigned char Conn_type, unsigned char * Address, 
 	if ((isInitialized)&&(isSingleConnection==0))
 	{
 		if ( (Address) && (Conn_type <= CONNECTION_TYPE_SSL ) && ((Number >= '0') && (Number < '5')) )
-		{			
+		{
 			cmd[sizeof(cmd)-1] = 0;
 			rsp[sizeof(rsp)-1] = 0;
 			rspsize = sizeof(rsp);
 			strcpy (cmd, startConn);
-			cmd[sizeof(startConn)-3] = Number;			
-			
+			cmd[sizeof(startConn)-3] = Number;
+
 			switch (Conn_type)
 			{
 				case CONNECTION_TYPE_TCP:
 					strcat (cmd, ConnTCP);
 				break;
-				
+
 				case CONNECTION_TYPE_UDP:
 					strcat (cmd, ConnUDP);
 				break;
-				
+
 				case CONNECTION_TYPE_SSL:
 					strcat (cmd, ConnSSL);
 				break;
@@ -783,8 +783,8 @@ unsigned char OpenConnection (unsigned char Conn_type, unsigned char * Address, 
 		else
 			ret = RET_WIFI_MSXSM_WRONG_MODE;
 	}
-	
-	return ret;	
+
+	return ret;
 }
 
 unsigned char CloseConnection (unsigned char Number)
@@ -794,13 +794,13 @@ unsigned char CloseConnection (unsigned char Number)
 	if ((isInitialized)&&(isSingleConnection==0))
 	{
 		if ( ( Number >= '0') && (Number < '5') )
-		{	
+		{
 			cmd[sizeof(cmd)-1] = 0;
 			rsp[sizeof(rsp)-1] = 0;
 			rspsize = sizeof(rsp);
 			strcpy (cmd, endConn);
-			cmd[12] = Number;			
-			
+			cmd[12] = Number;
+
 			ret = SendCommand2( cmd, rsp, &rspsize, 30);
 		}
 		else
@@ -813,8 +813,8 @@ unsigned char CloseConnection (unsigned char Number)
 		else
 			ret = RET_WIFI_MSXSM_WRONG_MODE;
 	}
-	
-	return ret;	
+
+	return ret;
 }
 
 unsigned char SendData (unsigned char * Data, unsigned int DataSize, unsigned char Number)
@@ -831,13 +831,13 @@ unsigned char SendData (unsigned char * Data, unsigned int DataSize, unsigned ch
 			rsp[sizeof(rsp)-1] = 0;
 			rspsize = sizeof(rsp);
 			strcpy (cmd, sendData);
-			cmd[sizeof(sendData)-3] = Number;					
+			cmd[sizeof(sendData)-3] = Number;
 			sprintf(Size,"%u",DataSize);
 			strcat (cmd,Size);
 			strcat (cmd,ESPTerminator);
-			//First send the command, and wait the prompt indicating device is 
+			//First send the command, and wait the prompt indicating device is
 			//listening to receive the data
-			ret = SendCommand( cmd, 0, RSPPromptESP, sizeof(RSPPromptESP)-1, 10);	
+			ret = SendCommand( cmd, 0, RSPPromptESP, sizeof(RSPPromptESP)-1, 10);
 			if (ret == RET_WIFI_MSXSM_OK)
 			{
 				//Now send the data and then wait for the OK
@@ -854,8 +854,8 @@ unsigned char SendData (unsigned char * Data, unsigned int DataSize, unsigned ch
 		else
 			ret = RET_WIFI_MSXSM_WRONG_MODE;
 	}
-	
-	return ret;	
+
+	return ret;
 }
 
 unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsigned char Number)
@@ -866,17 +866,17 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 	unsigned char RcvSizeBytes=0;
 	unsigned int BytesToGet;
 	unsigned int i;
-	unsigned char Leaping;		
-	unsigned int Timer;		
-	
-	//Generaly we should be here after getting that UART has data, so 167ms is more than enough to wait for +IPD
-	Timer = 10 + GetTickCount();
+	unsigned char Leaping;
+	unsigned int Timer;
+
+	Timer = 120 + GetTickCount();
 
 	if (Timer<GetTickCount()) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
-	
+
+    *DataSize = 0;
 
 	if ((isInitialized)&&(isSingleConnection==0))
 	{
@@ -888,32 +888,32 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 				case '0':
 					ret = WaitResponse(rcvd0,sizeof(rcvd0)-1,1);
 				break;
-				
+
 				case '1':
 					ret = WaitResponse(rcvd1,sizeof(rcvd1)-1,1);
 				break;
-				
+
 				case '2':
 					ret = WaitResponse(rcvd2,sizeof(rcvd2)-1,1);
 				break;
-				
+
 				case '3':
 					ret = WaitResponse(rcvd3,sizeof(rcvd3)-1,1);
 				break;
-				
+
 				case '4':
 					ret = WaitResponse(rcvd4,sizeof(rcvd4)-1,1);
 				break;
 			}
-				
-			//Found +IPD?	
+
+			//Found +IPD?
 			if (ret == RET_WIFI_MSXSM_OK)
-			{									
+			{
 				do
 				{
 					//Now work to get rid of the extra chars and then get the data size
 					if (UartRXData())
-					{			
+					{
 						RcvSize[RcvSizeBytes] = GetUARTData();
 
 						if( ( RcvSize[RcvSizeBytes] == ':' ) || ( RcvSize[RcvSizeBytes] == '\n' ) )
@@ -957,14 +957,14 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 									break;
 					}
 				}
-				while (1);	
-				
+				while (1);
+
 				BytesToGet = 0;
-								
+
 				if ((ret == RET_WIFI_MSXSM_OK) && (RcvSizeBytes))
 				{
 					// Ok, no error so far and we have data to receive
-					
+
 					//Perhaps atoi is faster? Who knows... Just avoiding stacking and CALLs and RETs :-)
 					for (i=0; i<RcvSizeBytes;i++)
 					{
@@ -978,16 +978,16 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 							BytesToGet = BytesToGet + (unsigned int)(RcvSize[RcvSizeBytes-4] - '0')*1000;
 						else if(i==4)
 							BytesToGet = BytesToGet + (unsigned int)(RcvSize[RcvSizeBytes-5] - '0')*10000;
-					}			
-				
-					//Do we have enough space to store our data? 
+					}
+
+					//Do we have enough space to store our data?
 					//If we don't, that is a big issue... Tokens were already stripped and data won't be
 					//understood afterwards...
 					//
 					//Perhaps a future improvement is to copy whatever we can and then return
 					//Anyway, application should handle this OVERFLOW and get the data on their own
 					if(BytesToGet <= BufSize )
-					{						
+					{
 						*DataSize = 0;
 						//At 2400 BPS, it would take about 7s to empty our FIFO
 						//So 10s (60Hz) or 12s (50Hz) is more than enough time-out
@@ -996,11 +996,11 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 							Leaping = 1;
 						else
 							Leaping = 0;
-						
+
 						do
 						{
 							if (UartRXData())
-							{			
+							{
 								Data[*DataSize] = GetUARTData();
 								++*DataSize;
 								--BytesToGet;
@@ -1024,10 +1024,10 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 											break;
 							}
 						}
-						while ((BytesToGet));		
-						
+						while ((BytesToGet));
+
 						if (BytesToGet) // we could not get all bytes, timer expired
-							ret = RET_WIFI_MSXSM_RX_TIMEOUT;						
+							ret = RET_WIFI_MSXSM_RX_TIMEOUT;
 					}
 					else
 					{
@@ -1049,8 +1049,8 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 		else
 			ret = RET_WIFI_MSXSM_WRONG_MODE;
 	}
-		
-	return ret;	
+
+	return ret;
 }
 
 unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Address, unsigned char * Port)
@@ -1060,7 +1060,7 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 	if (isInitialized)
 	{
 		if ( (Address) && (Conn_type <= CONNECTION_TYPE_SSL ) )
-		{	
+		{
 			//First, set single connection
 			ret = SendCommand( setSingleConn, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 			if (ret == RET_WIFI_MSXSM_OK)
@@ -1078,17 +1078,17 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 					rsp[sizeof(rsp)-1] = 0;
 					rspsize = sizeof(rsp);
 					strcpy (cmd, startSingleConn);
-					
+
 					switch (Conn_type)
 					{
 						case CONNECTION_TYPE_TCP:
 							strcat (cmd, ConnTCP);
 						break;
-						
+
 						case CONNECTION_TYPE_UDP:
 							strcat (cmd, ConnUDP);
 						break;
-						
+
 						case CONNECTION_TYPE_SSL:
 							strcat (cmd, ConnSSL);
 						break;
@@ -1101,7 +1101,7 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 					// Now effectively open the connection
 					ret = SendCommand2( cmd, rsp, &rspsize, 30);
 					if (ret == RET_WIFI_MSXSM_OK)
-					{						
+					{
 						// If connection ok, start transparent mode, meaning, we are ready to
 						// send data
 						ret = SendCommand( startTransparent, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
@@ -1118,16 +1118,16 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 	}
 	else
 		ret = RET_WIFI_MSXSM_NOT_INITIALIZED;
-	
-	return ret;	
+
+	return ret;
 }
 
 unsigned char CloseSingleConnection (void)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
-	unsigned char Leaping;		
-	unsigned int Timer;				
-	
+	unsigned char Leaping;
+	unsigned int Timer;
+
 	if ((isInitialized)&&(isSingleConnection==1))
 	{
 		//First check if last byte transmission has been done 16~30ms is more than enough
@@ -1137,7 +1137,7 @@ unsigned char CloseSingleConnection (void)
 			Leaping = 1;
 		else
 			Leaping = 0;
-		
+
 		while (UartTXInprogress())
 		{
 			if (Leaping)
@@ -1154,9 +1154,9 @@ unsigned char CloseSingleConnection (void)
 			}
 			else
 				if (GetTickCount()>Timer)
-						break;	
-		}		
-		
+						break;
+		}
+
 		//Wait one second to make sure there is a time between our exit token and the last sent data
 		Timer = 60 + GetTickCount();
 
@@ -1181,15 +1181,15 @@ unsigned char CloseSingleConnection (void)
 			}
 			else
 				if (GetTickCount()>Timer)
-						break;	
+						break;
 		}
-		
+
 		//Escape sequence, three consecutive +
 		while (UartTXInprogress());
 		OutPort (7, '+');
 		OutPort (7, '+');
 		OutPort (7, '+');
-		
+
 		//Wait more than 2 seconds
 		Timer = 200 + GetTickCount();
 
@@ -1214,9 +1214,9 @@ unsigned char CloseSingleConnection (void)
 			}
 			else
 				if (GetTickCount()>Timer)
-						break;	
+						break;
 		}
-		
+
 		//Exit transparent mode
 		ret = SendCommand( setRegularConn, 0, RSPOkESP, sizeof(RSPOkESP)-1, 2);
 		if ( ret == RET_WIFI_MSXSM_OK)
@@ -1226,7 +1226,7 @@ unsigned char CloseSingleConnection (void)
 			rsp[sizeof(rsp)-1] = 0;
 			rspsize = sizeof(rsp);
 			strcpy (cmd, endSingleConn);
-			
+
 			ret = SendCommand2( cmd, rsp, &rspsize, 30);
 		}
 	}
@@ -1237,6 +1237,6 @@ unsigned char CloseSingleConnection (void)
 		else
 			ret = RET_WIFI_MSXSM_WRONG_MODE;
 	}
-	
-	return ret;	
+
+	return ret;
 }

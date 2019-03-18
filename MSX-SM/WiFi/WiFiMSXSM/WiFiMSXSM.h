@@ -2,7 +2,7 @@
 --
 -- WiFiMSXSM.h
 --   Functions that allow your program to access the WiFi module
---   of your MSX-SM. 
+--   of your MSX-SM.
 --   Revision 0.50
 --
 -- Requires SDCC and Fusion-C library to compile
@@ -42,7 +42,7 @@
 //Allow outputing some messages through Print or printf
 #define log_verbose
 //Allow outputing debug messages through Print or printf
-#define log_debug
+//#define log_debug
 
 #define	RET_WIFI_MSXSM_OK				0
 #define	RET_WIFI_MSXSM_TX_TIMEOUT		1
@@ -73,7 +73,7 @@
 #define BAUD2400						7
 
 typedef struct AP {
-   char APName[31]; //Per specs up to 30 characters 
+   char APName[31]; //Per specs up to 30 characters
    unsigned char isEncrypted; //0 if open, 1 if encrypted // pwd needed
 } AP;
 
@@ -85,7 +85,7 @@ typedef struct APList{
 /*
 -- Application general use functions
 -- Your program probably should only use those functions and not the ones
--- marked as internal use, but some developers might want to live on the 
+-- marked as internal use, but some developers might want to live on the
 -- wild side anyway...
 */
 
@@ -107,7 +107,7 @@ typedef struct APList{
 --
 -- ESP8266 communication to MSX-SM has no handshake, so, if MSX-SM FIFO is
 -- full, ESP won't know and will keep sending data, that WILL BE LOST!
--- The way to guarantee that data is not lost and that ESP will tell the 
+-- The way to guarantee that data is not lost and that ESP will tell the
 -- server to wait until sending more data is to keep a baud rate that you
 -- are sure your program can keep-up getting data from the FIFO before it
 -- is full. Once it is full, it is probably too late, the time between when
@@ -146,7 +146,7 @@ unsigned char InitializeWiFi ( unsigned char speed );
 --				  contain the number of elements filled in the structure.
 --				- APSt[?] will contain each AP that was found within
 --				  numOfElements constraint.
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER if APList is NULL, has no element
                                             or has more than 10 elements.
@@ -174,9 +174,9 @@ unsigned char GetWiFiAPList (APList * stList);
 --				- isEncrypted 0 if open, 1 if password needed
 --		 - Password - NULL for open networks or null terminated string with
 --                    password needed to join network
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
---          RET_WIFI_MSXSM_INVALIDPARAMETER if Password is NULL and network 
+--          RET_WIFI_MSXSM_INVALIDPARAMETER if Password is NULL and network
 --                                          requires a password
 --          RET_WIFI_MSXSM_NOT_INITIALIZED if InitializeWiFi was not successful
 --          RET_WIFI_MSXSM_TX_TIMEOUT if it could not send data
@@ -204,8 +204,8 @@ unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password);
 /*
 -- OpenConnection - If ESP8266 is connected, open a connection.
 --			- This function uses multiple connection mode, that is slower
---			- In this mode, to send data to ESP, you send a command, wait a 
---            prompt then send data, that is slow for sending little pieces 
+--			- In this mode, to send data to ESP, you send a command, wait a
+--            prompt then send data, that is slow for sending little pieces
 --            of data like keyboard typing.
 --
 -- Input - Conn_type - TCP/UDP or SSL
@@ -213,7 +213,7 @@ unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password);
 --					 by DNS
 --		 - Port - Port to open the connection
 --		 - Number - Number of connection pipe, up to 5 connections allowed, '0'-'4'
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER if Address is NULL, Conn_type > SSL or
 --											pipe number > '5'
@@ -230,14 +230,14 @@ unsigned char OpenConnection (unsigned char Conn_type, unsigned char * Address, 
 /*
 -- SendData - If ESP8266 is connected, try to send data over a connection.
 --			- This function uses multiple connection mode, that is slower
---			- In this mode, to send data to ESP, you send a command, wait a 
---            prompt then send data, that is slow for sending little pieces 
+--			- In this mode, to send data to ESP, you send a command, wait a
+--            prompt then send data, that is slow for sending little pieces
 --            of data like keyboard typing.
 --
 -- Input - Data - data to be sent
 --       - DataSize - size of Data
 --		 - Number - Number of connection pipe, up to 5 connections allowed, '0'-'4'
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER if Address is NULL, Conn_type > SSL or
 --											pipe number > '5'
@@ -262,7 +262,7 @@ unsigned char SendData (unsigned char * Data, unsigned int DataSize, unsigned ch
 -- Input - Data - data buffer to store data
 --       - DataSize - size of data buffer in entry and size of data received in exit
 --		 - Number - Number of connection pipe, up to 5 connections allowed, '0'-'4'
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER if Address is NULL, Conn_type > SSL or
 --											pipe number > '5'
@@ -272,7 +272,7 @@ unsigned char SendData (unsigned char * Data, unsigned int DataSize, unsigned ch
 --          RET_WIFI_MSXSM_CMD_ERROR if response receive as ERROR
 --			RET_WIFI_MSXSM_RX_OVERFLOW if buffer size can't hold the data
 --
--- Note: 
+-- Note:
 --
 --      In case of RET_WIFI_MSXSM_RX_OVERFLOW, FIFO will be left exactly at the start of
 --      data. So, we return the data size in FIFO in DataSize, so APP should be able to
@@ -284,12 +284,12 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 /*
 -- CloseConnection - Close an open a connection.
 --			- This function uses multiple connection mode, that is slower
---			- In this mode, to send data to ESP, you send a command, wait a 
---            prompt then send data, that is slow for sending little pieces 
+--			- In this mode, to send data to ESP, you send a command, wait a
+--            prompt then send data, that is slow for sending little pieces
 --            of data like keyboard typing.
 --
 -- Input - Number - Number of connection pipe, up to 5 connections allowed, '0'-'4'
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and disconnected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER pipe number > '5'
 --          RET_WIFI_MSXSM_NOT_INITIALIZED if InitializeWiFi was not successful
@@ -315,11 +315,11 @@ unsigned char CloseConnection (unsigned char Number);
 /*
 -- OpenSingleConnection - If ESP8266 is connected, open a connection.
 --
--- Note: For single connection we use transparent mode, where data put in the 
+-- Note: For single connection we use transparent mode, where data put in the
 -- ESP goes directly to the other end, and data sent by the other end is received
 -- directly. This reduces overhead, but, it is possible that there is a slight
 -- delay when we send data so ESP determine we are done, to avoid sending one
--- byte packages. 
+-- byte packages.
 --
 -- It will be faster for some scenarios, slower for others. If slower, you can
 -- just use multiple connections for your scenario.
@@ -328,7 +328,7 @@ unsigned char CloseConnection (unsigned char Number);
 --		 - Address - address of the connection, either IP or name to be resolved
 --					 by DNS
 --		 - Port - Port to open the connection
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and connected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER if Address is NULL, Conn_type > SSL or
 --											pipe number > '5'
@@ -346,7 +346,7 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 -- CloseSingleConnection - Close an open single connection.
 --
 -- Input - None
---				  
+--
 -- Return - RET_WIFI_MSXSM_OK if successful and disconnected
 --          RET_WIFI_MSXSM_INVALIDPARAMETER pipe number > '5'
 --          RET_WIFI_MSXSM_NOT_INITIALIZED if InitializeWiFi was not successful
@@ -363,7 +363,7 @@ unsigned char CloseSingleConnection (void);
 -- Your program can use those functions, but little to no safeguards are
 -- applied, so errors can crash the MSX-SM. If using transparent mode/Single
 -- connection you will have to use at least UartTXInprogress, TxByte, UartRXData
--- and GetUARTData. TxData could be nice to use to in transparent mode. Other 
+-- and GetUARTData. TxData could be nice to use to in transparent mode. Other
 -- functions shouldn't really be used outside WiFiMSXSM code
 */
 
@@ -372,7 +372,7 @@ unsigned char CloseSingleConnection (void);
 --
 -- Input - none
 -- Return - 0 if UART is not transmitting data
---          1 if UART is transmitting data 
+--          1 if UART is transmitting data
 */
 unsigned char UartTXInprogress(void );
 
@@ -386,14 +386,14 @@ unsigned char UartTXInprogress(void );
 -- This function will output the byte and leave if UART is not sending data
 -- If UART is sending data, it will block waiting UART to transmit byte for
 -- up to 3 VDP interrupts (this generally means up to 50ms in 60Hz or up to
--- 60ms in 50Hz). A TX transfer at 2400bps (slowest ESP speed) won't take 
+-- 60ms in 50Hz). A TX transfer at 2400bps (slowest ESP speed) won't take
 -- more than 5ms, so it should be safe.
 --
 -- If using this function, your application should use UartTXInprogress to
 -- check if a transmission is in progress, if it is, do another stuff and
 -- come back later. This way your application won't be blocked or have to
 -- wait until next interrupt.
--- 
+--
 */
 unsigned char TxByte(char chTxByte);
 
@@ -418,7 +418,7 @@ unsigned char TxData(char * chData, unsigned char Size);
 -- GetUARTData - Receive a byte from ESP8266
 --
 -- Input - none
--- Return - one byte from the FIFO 
+-- Return - one byte from the FIFO
 --
 -- This function should only be used after checking that there is data in
 -- the FIFO with UartRXData. Otherwise, you will get junk if the FIFO is
@@ -440,7 +440,7 @@ unsigned char UartRXData(void );
 -- ClearUARTData - will reset the FIFO buffer
 --
 -- Input - none
--- Return - none 
+-- Return - none
 --
 -- This function will reset the FIFO buffer, clearing any data still there.
 */
@@ -458,11 +458,11 @@ void ClearUartData(void );
 --          RET_WIFI_MSXSM_RX_TIMEOUT if response was not received
 --
 -- TimeOut is in seconds for 60Hz machines and 1.2*TimeOut seconds for 50 Hz
--- This function will block for the whole timeout period if no response is 
+-- This function will block for the whole timeout period if no response is
 -- received, or, it will block until response was received (whichever occur
--- first). 
+-- first).
 --
--- This is useful if you don't care about parsing response data and just 
+-- This is useful if you don't care about parsing response data and just
 -- expect an OK or ready (i.e.: ready after AT+RST)
 */
 unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsigned char TimeOut);
@@ -488,9 +488,9 @@ unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsign
 --                                     to store it)
 --
 -- TimeOut is in seconds for 60Hz machines and 1.2*TimeOut seconds for 50 Hz
--- This function will block for the whole timeout period if no response is 
+-- This function will block for the whole timeout period if no response is
 -- received, or, it will block until response was received (whichever occur
--- first). 
+-- first).
 -- If other devices interrupt the MSX, the timeout could occur faster than
 -- requested.
 */
@@ -498,7 +498,7 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 
 /*
 -- SendCommand - Send chCmd (NULL terminated) if Size is 0 or Size bytes, and
--- wait until the expected response is received or Timeout expires. This 
+-- wait until the expected response is received or Timeout expires. This
 -- function is good when you do not care about received data, just RESULT.
 --
 -- Input - chCmd - pointer to a zero terminated sequence to be transmitted
@@ -515,9 +515,9 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 --                                    timeout expired
 --
 -- TimeOut is in seconds for 60Hz machines and 1.2*TimeOut seconds for 50 Hz
--- This function will block for the whole timeout period if no response is 
+-- This function will block for the whole timeout period if no response is
 -- received, or, it will block until response was received (whichever occur
--- first). 
+-- first).
 */
 unsigned char SendCommand (char *chCmd, unsigned int Size, char *chExpectedResponse, unsigned char ExpectedResponseSize, unsigned char TimeOut);
 
@@ -546,14 +546,14 @@ unsigned char SendCommand (char *chCmd, unsigned int Size, char *chExpectedRespo
 --                                     to store it)
 --
 -- TimeOut is in seconds for 60Hz machines and 1.2*TimeOut seconds for 50 Hz
--- This function will block for the whole timeout period if no response is 
+-- This function will block for the whole timeout period if no response is
 -- received, or, it will block until response was received (whichever occur
--- first). 
+-- first).
 */
 unsigned char SendCommand2 (char *chCmd, char *chResponse, unsigned int * MaxResponseSize, unsigned char TimeOut);
 
 /*
--- GetTickCount - MSX BIOS will update a 16 bit unsigned integer every VDP 
+-- GetTickCount - MSX BIOS will update a 16 bit unsigned integer every VDP
 --                interrupt cycle (60Hz or 50Hz). Get this tick counter.
 --
 -- Input - none
