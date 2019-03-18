@@ -2,7 +2,7 @@
 --
 -- telnetsm.c
 --   Simple TELNET client using the WiFi module of your MSX-SM.
---   Revision 0.20
+--   Revision 0.60
 --
 -- Requires SDCC and Fusion-C library and WiFiMSXSM to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
@@ -43,6 +43,7 @@
 #include "WiFiMSXSM.h"
 
 //Defines for TELNET negotiations
+//Telnet Protocol Definitions
 #define DO 0xfd
 #define WONT 0xfc
 #define WILL 0xfb
@@ -52,6 +53,7 @@
 #define SE 0xf0
 #define IS 0
 #define SEND 1
+//Telnet Commands
 #define CMD_ECHO 1
 #define CMD_SUPPRESS_GO_AHEAD 3
 #define CMD_TTYPE 24
@@ -86,8 +88,8 @@ const char strUsage[] = "Usage: telnetsm <server:port> [/sSPEED] [/mMODE] [/r]\n
 
 //Our Flags
 unsigned char Echo = 1; //Echo On?
-unsigned char Ansi = 0; //Detected J-ANSI / Screen 7?
-unsigned char SentTTYPE; //Sent Terminal Type for negotiation?
+unsigned char Ansi = 0; //Detected J-ANSI?
+unsigned char SentTTYPE; //Sent what information we are willing for negotiation?
 unsigned char CmdInProgress = 0; //Is there a TELNET command in progress?
 unsigned char SubOptionInProgress = 0; // Is there a TELNET command sub option in progress?
 unsigned char mode = 0; //connection mode, 0 is single, faster... 1 is multiple, well, for the future
@@ -99,16 +101,28 @@ unsigned int rcvdataSize = 0;
 unsigned int rcvdataPointer = 0;
 
 // This will handle CMD negotiation...
-// Basically, the first time host send any command our client will tell
-// terminal type and if ANSI is available or not. Also, upon receiving a DO
-// CMD_WINDOW_SIZE, tell our Windows is 80x24. Upon receiving TTYPE requests,
-// respond accordingly whether dumb or ANSI. On ECHO, will act with ECHO as
-// requested by the host. If//send at the start everything we will do
+// Basically, the first time host send any command our client will send it
+// is willing to send the following information:
+// Terminal Type (xterm-16color if jANSI running or UNKNOWN if plain text)
+// Window Size (80x25 if jANSI running or 80x24 if plain text
+// Terminal Speed (UART Speed).
+//
+// Upon receiving a DO CMD_WINDOW_SIZE, respond with Window Size.
+// Upon receiving TTYPE SUB OPTION request, respond accordingly whether dumb
+// or ANSI (xterm-16color).
+// Upon receiving TSPEED SUB OPTION request, respond accordingly our current
+// UART Speed.
+// Upon receiving WILL ECHO, turn off our ECHO (as host will ECHO), otherwise
+// if receiving WONT ECHO or no ECHO negotiation, we will ECHO locally.
+//
+// Treat the DO for TTYPE and TSPEED with an WILL to tell that we are ready
+// to send the information when requested.
 //
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
-void negotiate(unsigned char *buf, int len) {
+void negotiate(unsigned char *buf, int len)
+{
     int i;
 	unsigned char *Speed;
 	unsigned int SpeedSize;
@@ -120,7 +134,7 @@ void negotiate(unsigned char *buf, int len) {
 	static unsigned char tmpWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
 	static unsigned char tmpEchoDont[3] = {IAC, DONT, CMD_ECHO};
 	static unsigned char tmpEchoDo[3] = {IAC, DO, CMD_ECHO};
-	static unsigned char tmpTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'A', 'N', 'S', 'I', IAC, SE}; //Terminal ANSI
+	static unsigned char tmpTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'x', 't', 'e', 'r', 'm', '-', '1', '6', 'c', 'o', 'l', 'o', 'r', IAC, SE}; //Terminal xterm-16color
 	static unsigned char tmpTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
 	static unsigned char tmpSpeed115[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '1', '5', '2', '0', '0', ',', '1', '1', '5', '2', '0', '0', IAC,SE}; //terminal speed response
 	static unsigned char tmpSpeed57[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '5', '7', '6', '0', '0', ',', '5', '7', '6', '0', '0', IAC,SE}; //terminal speed response
@@ -364,8 +378,10 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *Server, unsigned
 // status and start to lose data. Those functions work with that buffer in a
 // FIFO like manner as efficient as possible.
 
-// This function will Print a byte POPed out of RX Buffer
-void PPopBuffer (unsigned char * Data, unsigned int * Size )
+// This function will Pop (Size) bytes out of RX Buffer
+// If no byte in buffer, return 0 in Size
+// Otherwise return how many bytes we got in Size
+void BPopBuffer (unsigned char * Data, unsigned int * Size )
 {
     unsigned int j;
 
@@ -550,10 +566,13 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 		PktStatus = 0;
 
 		//Send the Action (could either be an ACK or NAK or C)
-		if (mode == 0)
-			ret = TxByte (Action);
-		else
-			ret = SendData (&Action, 1, '0');
+		if (Action)
+        {
+            if (mode == 0)
+                ret = TxByte (Action);
+            else
+                ret = SendData (&Action, 1, '0');
+        }
 
 		//This is the packet receiving loop, it will exit upon timeout
 		//or receiving the packet
@@ -611,11 +630,21 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 						++PktStatus;
 					else //error?
 					{
+					    //YMODEM
+					    //
+					    //First response to a C (start CRC session) won't be
+					    //a data packet, but a packet with number 0 containing
+					    //filename and possibly file size...
 						if ((isYmodem)&&(Action == 'C')&&(RcvPkt[PktStatus] == 0))
 							//Ok, receiving file name/size as response
 							++PktStatus;
 						else
 						{
+						    //Server might not like how much we are taking to reply
+						    //with ACK (MSX Disk I/O not really fast) and re-send
+						    //packets even before we send ACK/NAK. So, if that happens
+						    //we will get the same packet again. In this case we just
+						    //need to ignore it.
 							//is this a previous packet being retried?
 							if (RcvPkt[PktStatus] == PktNumber - 1)
 							{
@@ -625,6 +654,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 							else
 							{
 								ret = TxByte (NAK);
+								//set timeout as 1 to indicate error
 								TimeOut = 1;
 								break;
 							}
@@ -633,12 +663,19 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 				}
 				else if (PktStatus == 2)
 				{
+				    //If Ignoring, just go ahed
 					if (IgnorePkt)
 						++PktStatus;
 					else if (RcvPkt[PktStatus] == (0xFF - PktNumber) )
 						++PktStatus;
-					else //error
+					else //error?
 					{
+					    //YMODEM
+					    //
+					    //First response to a C (start CRC session) won't be
+					    //a data packet, but a packet with number 0 containing
+					    //filename and possibly file size... FF is the complement
+					    //of 0.
 						if ((isYmodem)&&(Action == 'C')&&(RcvPkt[PktStatus] == 0xFF))
 						{
 							//Ok, receiving file name/size as response
@@ -647,14 +684,20 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 							FileSize = -1; //Unknown at this point
 							ReceivedSize = 0;
 						}
-						else
+						else //otherwise it is just wrong
 						{
 							ret = TxByte (NAK);
+							//set timeout as 1 to indicate error
 							TimeOut = 1;
 							break;
 						}
 					}
 				}
+				//YMODEM
+                //
+                //Data of a (0) packet in response to C is the filename, if no
+                //filename, means that there are no more files (YMODEM is a
+                //batch operation, allowing multiple files)
 				else if ((isYmodem)&&(Action == 'C')&&(CreateFile)&&(PktStatus == 3))
 				{
 					//is NULL the filename?
@@ -662,6 +705,8 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 						NoFile = 1;
 					++PktStatus;
 				}
+				//128 bytes packet ends with two byte CRC as the 132nd and 133rd byte
+				//1024 bytes CRC is in 1028th and 1029th bytes
 				else if ( ((!is1K)&&(PktStatus == 131)) || ((is1K)&&(PktStatus == 1027)) )
 				{
 					myCrc = ((int)RcvPkt[PktStatus] << 8)&0xff00;
@@ -669,6 +714,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 				}
 				else if ( ((!is1K)&&(PktStatus == 132)) || ((is1K)&&(PktStatus == 1028)) )
 				{
+				    //This is the last byte of the packet
 					myCrc = myCrc|((int)RcvPkt[PktStatus]&0xff);
 					PktStatus = 0;
 					if (is1K)
@@ -686,6 +732,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 					{
 						printf ("CRC error, expected %x received %x\r\n",myCrc,pktCrc);
 						ret = TxByte (NAK);
+						//Set timeout as 1 to indicate error
 						TimeOut = 1;
 						break;
 					}
@@ -694,8 +741,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 						//Y Modem and received file name block?
 						if ((isYmodem)&&(Action == 'C')&&(CreateFile))
 						{
+						    //No file received, end of transmission
 							if (NoFile)
 								return 254;
+
+                            //Let's check for file name
+                            //
 							for (myCrc=3;myCrc<140;myCrc++)
 								if (RcvPkt[myCrc] == 0)
 									break;
@@ -710,38 +761,52 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 								FileSize = -1;
                             }
                             else
+                            {
+                                //Some servers do not comply to put a 0 after file size, use space
+                                //so just fix it
+                                for (pktCrc=myCrc; (RcvPkt[pktCrc]>='0')&&(RcvPkt[pktCrc]<='9'); ++pktCrc);
+                                RcvPkt[pktCrc]=0;
                                 printf("Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[myCrc]);
+                            }
 
 							*File = Open (&RcvPkt[3],O_CREAT);
 							if (*File != -1)
 							{
+							    //File created, success
 								ret = TxByte (ACK);
 								return 255;
 							}
 							else // couldn't create file
 							{
+							    //Failure creating file, can't move on
 								ret = TxByte (NAK);
+								//Set timeout as 1 to indicate failure
 								TimeOut = 1;
 								break;
 							}
 						}
+						//Otherwise it is a regular packet to save to disk
 						else if (is1K)
 						{
+						    // In YModem keep track of file size and received file size
 							if (isYmodem)
 								ReceivedSize += 1024;
-
+                            //If we've received file size
 							if (FileSize>0)
+                                //If we've received more than the file size
 								if (ReceivedSize>FileSize)
 								{
+								    //just save up to file size
 									Write(*File, &RcvPkt[3],1024 - (ReceivedSize-FileSize));
 								}
-								else
+								else //otherwise save the entire block
 									Write(*File, &RcvPkt[3],1024);
-							else
+							else //XMODEM you just save everything and file could be padded
 								Write(*File, &RcvPkt[3],1024);
 						}
 						else
 						{
+						    //Same as above, but for 128 bytes blocks
 							if (isYmodem)
 								ReceivedSize += 128;
 
@@ -755,6 +820,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 							else
 								Write(*File, &RcvPkt[3],128);
 						}
+						//Set time out as 0 to indicate success
 						TimeOut = 0;
 						break;
 					}
@@ -767,6 +833,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 			{
 				if (GetTickCount()>TimeOut)
 				{
+				    //if timed out set 1 to indicate error
 					TimeOut = 1;
 					break;
 				}
@@ -788,7 +855,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
 		if (TimeOut == 0) //Packet received
 		{
-			ret = 1;
+			ret = 1; //Success
 			break;
 		}
 		else
@@ -811,7 +878,7 @@ void XYModemGet (void)
 	rcvdataSize = 0;
 	rcvdataPointer = 0;
 
-	Print("XMODEM Download, File Name (or Y for Y-Modem transfer: ");
+	Print("For XMODEM Download type file Name, for YMODEM Download type Y: ");
 	InputString(filename,sizeof(filename-1));
 	Print("\n");
 
@@ -843,9 +910,9 @@ void XYModemGet (void)
 					do
 					{
 						//Our nice animation to show we are not stuck
-						PrintChar(8);
-						PrintChar(advance[PktNumber%4]);
-						++PktNumber;
+						PrintChar(8); //backspace
+						PrintChar(advance[PktNumber%4]); // next char
+						++PktNumber; //next packet
 						ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 1);
 					}
 					while (ret == 1); //basically, while receive packets with SOH/STX, continue receiving/writing
@@ -882,7 +949,7 @@ void XYModemGet (void)
 				break;
 			}
 		}
-		while (ret != 254); //Do this until any procces break or no more files
+		while (ret != 254); //Do this until any process break or no more files
 	}
 	else //X-Modem
 	{
@@ -1009,27 +1076,31 @@ void WorkOnReceivedData (unsigned char Data)
 	}
 }
 
+// That is where our program goes
 int main(char** argv, int argc)
 {
-	char tx_data = 0;
-	unsigned char ret;
-	unsigned char rxdata[1600];
-	unsigned int rxdatasize;
-	unsigned char input[48];
-	unsigned int i;
-	APList *myList = NULL;
-	unsigned char server[128];
-	unsigned char port[6];
-	unsigned char crlf[3]="\r\n";
-	unsigned char speedstr[8][8]={"115200","57600","38400","31250","19200","9600","4800","2400"};
-	unsigned char CanPrint;
-	unsigned int PrintSize = 20;
+	char tx_data = 0; //where our key inputs go
+	unsigned char ret; //return of functions
+	unsigned char rxdata[1600]; //in multiple connection, we get a big chunk of data, FIFO is about 1600 bytes long
+	unsigned int rxdatasize; //to help indicating rxdata buffer size and then received data size
+	unsigned char input[48]; //Use to get password of encrypted network
+	unsigned int i; //auxiliary
+	APList *myList = NULL; //structure to hold the access points listed by the device
+	unsigned char server[128]; //will hold the name of the server we will connect
+	unsigned char port[6]; //will hold the port that the server accepts connections
+	unsigned char crlf[3]="\r\n"; //auxiliary
+	unsigned char speedstr[8][8]={"115200","57600","38400","31250","19200","9600","4800","2400"}; //show speed
+	unsigned int PrintSize = 20; //control flag of how many characters we can print at a time between receiving data
 	//jANSI Stuff
-    unsigned int MemMamFH = 0;
-    unsigned int MemMamXTCall = 0;
-    unsigned int JANSIID = 0;
-    unsigned char *MemMamMemory = (unsigned char *)0xD000; //TODO: Need to reserve it later
-    Z80_registers regs;
+    unsigned int MemMamFH = 0; //Handle of the MemMam function handler to access MemMam not through Expansion BIOS calls
+    unsigned int MemMamXTCall = 0; //Handle to access MemMam TSR functions directly, bypassing MemMam
+    unsigned int JANSIID = 0; //will hold the handle to access jANSI TSR through MemMam
+    //IMPORTANT: You need to check the map compiler generates to make sure this
+    //address do not overlap functions, variables, etc
+    //MEMMAN and jANSI require memory information passed to it to be in the
+    //upper memory segment, so we use this address to interface with it
+    unsigned char *MemMamMemory = (unsigned char *)0xD000; //area to hold data sent to jANSI
+    Z80_registers regs; //auxiliary structure for asm function calling
 
 
 	// Reset our RXBuffer pointers
@@ -1038,13 +1109,10 @@ int main(char** argv, int argc)
 	// TX Buffer full control, if that happens, we will start to
 	// lose data.
 	Full = 0;
-	// This variable control whether Input was the last operation.
-	// If so, skip printing data, if any.
-	CanPrint = 1;
 	// Flag that indicates that a SUB OPTION reception is in progress
 	SubOptionInProgress = 0;
 	// Speed to use to interface with ESP 8266, 31Kbps should be enough
-	// so buffers won't fill up before we can process them
+	// so FIFO won't fill up before we can process them
 	speed = 3;
 	// If ESP indicates it is already connected, usually we do not list
 	// available APs to connect. This flag will force showing the AP list
@@ -1056,15 +1124,16 @@ int main(char** argv, int argc)
 	mode = 0;
 
 	//JANSI TSR will leave the screen in mode 7, so if we are in mode 7
-	//it should be loaded
+	//it should be loaded and started
 	if ( Peek(0xFCAF) == 7 )
     {
-		Ansi = 1;
+		Ansi = 1; //for now, let's say we have ANSI
+#ifdef log_debug
 		regs.Bytes.D = 'M'; //memman
         regs.Bytes.E = 50; //memman get info
         regs.Bytes.B = 7; //memman get version info
+        //Call Expansion BIOS Call, expansion MemMam
         AsmCall(0xFFCA, &regs, REGS_MAIN, REGS_MAIN);
-#ifdef log_debug
         printf ("MemMam version: %u.%u\r\n",regs.Bytes.H,regs.Bytes.L);
 #endif
         regs.Bytes.D = 'M'; //memman
@@ -1101,7 +1170,7 @@ int main(char** argv, int argc)
             regs.UWords.HL = 0; //return only after dumping all content
             AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
 
-            strcpy(MemMamMemory,"\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5 <\r\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n");
+            strcpy(MemMamMemory,"\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.60 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n");
             regs.Bytes.A = 3; //DMPSTR
             regs.UWords.IX = JANSIID;
             regs.UWords.HL = (unsigned int)MemMamMemory;
@@ -1122,9 +1191,7 @@ int main(char** argv, int argc)
 	ClearUartData();
 
 	if (!Ansi)
-		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.50 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
-	//else
-		//Print("\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\n");
+		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.60 <\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
 
 	// At least server:port should be received
 	if (argc == 0)
@@ -1274,50 +1341,14 @@ int main(char** argv, int argc)
 					}
 				}
 
-				// Ok, this is the way we currently print data
-				// If the last operation was not a read from UART FIFO/ESP
-				// Print one byte on the screen. Since printing on the screen
-				// is generally slower than Internet Speeds / UART speed, if
-				// we block processing printing lots of data FIFO might get
-				// full while we are still printing (specially if using JANSI)
-				if (CanPrint)
-                {
-                    PrintSize = 30;
-                    PPopBuffer (MemMamMemory,&PrintSize);
-                    if(PrintSize)
-                    {
-                        MemMamMemory[PrintSize]=0;
-                        if (!Ansi)
-                            Print(MemMamMemory);
-                        else
-                        {
-                            regs.Bytes.A = 3; //DMPSTR
-                            regs.UWords.IX = JANSIID;
-                            regs.UWords.HL = (unsigned int)MemMamMemory;
-                            regs.UWords.DE = PrintSize; //memman XTSRCall
-                            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
-                        }
-                    }
-                }
-				else
-					CanPrint = 1;
-
 				// Is there DATA in the UART FIFO?
 				if (UartRXData())
 				{
 					//Check if FIFO Full occurred
 					if (InPort(7)&4)
 					{
-						Print("Buffer OVERRUN! :-(\n");
+						Print("FIFO Full, possible data loss!\n");
 					}
-
-					// Why stop printing? If receiving consecutive bytes very fast
-					// we shouldn't allow the FIFO to overflow... But, generally,
-					// there is a time between characters and we should be good
-					// printing once between characters... This just control a trade-off
-					// of holding printing for intensive reception (where bytes accumulated
-					// in the FIFO)
-					CanPrint = 0;
 
 					if (mode == 0) //Single connection mode reception is simple
 					{
@@ -1343,6 +1374,32 @@ int main(char** argv, int argc)
 							printf (">>Error %u trying to receive data, %u bytes left...\r\n<<",ret,rxdatasize);
 					}
 				}
+				else //good time to print data
+                {
+                    // Why print only when no data in UART? If receiving consecutive bytes
+                    // very fast we shouldn't allow the FIFO to overflow... But, generally,
+					// there is a time between characters and we should be good
+					// printing once between characters... This just control a trade-off
+					// of holding printing for intensive reception (where bytes accumulated
+					// in the FIFO)
+                    PrintSize = 30;
+                    BPopBuffer (MemMamMemory,&PrintSize);
+                    //Data to print?
+                    if(PrintSize)
+                    {
+                        MemMamMemory[PrintSize]=0;
+                        if (!Ansi)
+                            Print(MemMamMemory);
+                        else
+                        {
+                            regs.Bytes.A = 3; //DMPSTR
+                            regs.UWords.IX = JANSIID;
+                            regs.UWords.HL = (unsigned int)MemMamMemory;
+                            regs.UWords.DE = PrintSize; //memman XTSRCall
+                            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
+                        }
+                    }
+                }
 			}
 			while (tx_data != 0x1b); //If ESC pressed, exit...
 
