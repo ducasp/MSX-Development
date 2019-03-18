@@ -34,6 +34,9 @@ Example to connect to rainmaker:
 
 telnetsm rainmaker.wunderground.com:23
 
+*** IMPORTANT ***
+
+Remember to copy the files in fusion-c\lib and fusion-c\header to your fusion-c lib and header folders!
 
 Redistribution and use of this source code or any derivative works, are
 permitted provided that the following conditions are met:
