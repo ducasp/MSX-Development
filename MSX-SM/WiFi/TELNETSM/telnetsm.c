@@ -39,6 +39,7 @@
 #include <string.h>
 #include "fusion-c/header/msx_fusion.h"
 #include "fusion-c/header/io.h"
+#include "fusion-c/header/asm.h"
 #include "WiFiMSXSM.h"
 
 //Defines for TELNET negotiations
@@ -46,10 +47,13 @@
 #define WONT 0xfc
 #define WILL 0xfb
 #define DONT 0xfe
-#define CMD 0xff
+#define IAC 0xff
 #define SB 0xfa
 #define SE 0xf0
+#define IS 0
+#define SEND 1
 #define CMD_ECHO 1
+#define CMD_SUPPRESS_GO_AHEAD 3
 #define CMD_TTYPE 24
 #define CMD_WINDOW_SIZE 31
 #define CMD_TERMINAL_SPEED 32
@@ -67,7 +71,7 @@
 #define ETB 0x17
 #define CAN 0x18
 
-//Our big internal FIFO as writing to screen is slower than receiving data
+//Our big internal FIFOCMD as writing to screen is slower than receiving data
 #define BUFFER_SIZE 24576
 unsigned char rxbuffer[BUFFER_SIZE];
 unsigned int Top = 0;
@@ -87,6 +91,7 @@ unsigned char SentTTYPE; //Sent Terminal Type for negotiation?
 unsigned char CmdInProgress = 0; //Is there a TELNET command in progress?
 unsigned char SubOptionInProgress = 0; // Is there a TELNET command sub option in progress?
 unsigned char mode = 0; //connection mode, 0 is single, faster... 1 is multiple, well, for the future
+unsigned char speed, reconnect;
 
 //For data receive parsing
 unsigned char rcvdata[1600];
@@ -98,77 +103,129 @@ unsigned int rcvdataPointer = 0;
 // terminal type and if ANSI is available or not. Also, upon receiving a DO
 // CMD_WINDOW_SIZE, tell our Windows is 80x24. Upon receiving TTYPE requests,
 // respond accordingly whether dumb or ANSI. On ECHO, will act with ECHO as
-// requested by the host. If host do not negotiate, our default is to echo data
+// requested by the host. If//send at the start everything we will do
 //
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
 void negotiate(unsigned char *buf, int len) {
     int i;
-	unsigned char tmp1[10] = {255, 251, 31};
-	unsigned char tmp2[10] = {255, 250, 31, 0, 80, 0, 24, 255, 240};
-	unsigned char tmpEchoWill[10] = {CMD, WILL, CMD_ECHO};
-	unsigned char tmpEchoWont[10] = {CMD, WONT, CMD_ECHO};
-	unsigned char tmpEchoDo[10] = {CMD, DO, CMD_ECHO};
-	unsigned char tmpTTYPE[10] = {255, 251, 24};
-	unsigned char tmpTTYPE2[11] = {255, 250, 24, 0, 65, 78, 83, 73, 255, 240};
+	unsigned char *Speed;
+	unsigned int SpeedSize;
+	static unsigned char tmpClientWill[] = { IAC, WILL, CMD_WINDOW_SIZE,\ //we are willing to negotiate Window Size
+                                      IAC, WILL, CMD_TTYPE,\ //we are willing to negotiate Terminal Type
+                                      IAC, WILL, CMD_TERMINAL_SPEED\ //we are willing to negotiate Terminal Speed
+                                      };
+	static unsigned char tmpWindowSize[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
+	static unsigned char tmpWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
+	static unsigned char tmpEchoDont[3] = {IAC, DONT, CMD_ECHO};
+	static unsigned char tmpEchoDo[3] = {IAC, DO, CMD_ECHO};
+	static unsigned char tmpTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'A', 'N', 'S', 'I', IAC, SE}; //Terminal ANSI
+	static unsigned char tmpTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
+	static unsigned char tmpSpeed115[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '1', '5', '2', '0', '0', ',', '1', '1', '5', '2', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed57[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '5', '7', '6', '0', '0', ',', '5', '7', '6', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed38[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '8', '4', '0', '0', ',', '3', '8', '4', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed31[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '1', '2', '5', '0', ',', '3', '1', '2', '5', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed19[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '9', '2', '0', '0', ',', '1', '9', '2', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed9[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '9', '6', '0', '0', ',', '9', '6', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed4[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '4', '8', '0', '0', ',', '4', '8', '0', '0', IAC,SE}; //terminal speed response
+	static unsigned char tmpSpeed2[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '2', '4', '0', '0', ',', '2', '4', '0', '0', IAC,SE}; //terminal speed response host do not negotiate, our default is to echo data
 
-	if (Ansi != 0 && SentTTYPE == 0) {   //send WILL TERMINAL TYPE
+	if (SentTTYPE == 0) {   //send WILL of what we are ready to negotiate
 		SentTTYPE = 1;
 		if (mode == 0)
 		{
 			while(UartTXInprogress());
-			TxData (tmpTTYPE, 3);
-			TxData (tmpTTYPE2, 10);
+			TxData (tmpClientWill, sizeof(tmpClientWill));
 		}
 		else
 		{
-			SendData (tmpTTYPE, 3, '0');
-			SendData (tmpTTYPE2, 10, '0');
+			SendData (tmpClientWill, sizeof(tmpClientWill), '0');
 		}
 		// Need to process whatever host asked
     }
 
-    if (buf[1] == DO && buf[2] == CMD_WINDOW_SIZE) {
+    if (buf[1] == DO && buf[2] == CMD_WINDOW_SIZE) { //request of our terminal window size
 		while(UartTXInprogress());
 		if (mode == 0)
 		{
-			TxData (tmp1, 3);
-			TxData (tmp2, 9);
+		    if (Ansi)
+                TxData (tmpWindowSize, sizeof(tmpWindowSize1));
+            else
+                TxData (tmpWindowSize, sizeof(tmpWindowSize));
 		}
 		else
 		{
-			SendData (tmp1, 3, '0');
-			SendData (tmp2, 9, '0');
+		    if (Ansi)
+                SendData (tmpWindowSize, sizeof(tmpWindowSize1), '0');
+            else
+                SendData (tmpWindowSize, sizeof(tmpWindowSize), '0');
 		}
         return;
     }
-	else if (Ansi != 0 && buf[1] == 250 && buf[2] == CMD_TTYPE) {
+	else if (buf[1] == SB && buf[2] == CMD_TTYPE) { //requesting Terminal Type list
 		while(UartTXInprogress());
 		if (mode == 0)
-			TxData (tmpTTYPE2, 10);
+            if (Ansi)
+                TxData (tmpTTYPE2, sizeof(tmpTTYPE2));
+            else
+                TxData (tmpTTYPE3, sizeof(tmpTTYPE3));
 		else
-			SendData (tmpTTYPE2, 10, '0');
+            if (Ansi)
+                SendData (tmpTTYPE2, sizeof(tmpTTYPE2), '0');
+            else
+                SendData (tmpTTYPE3, sizeof(tmpTTYPE3), '0');
         return;
     }
-	else if (Ansi != 0 && buf[1] == DO && buf[2] == CMD_TTYPE) {
+    else if (buf[1] == SB && buf[2] == CMD_TERMINAL_SPEED) { //requesting Terminal Speed
 		while(UartTXInprogress());
+		switch (speed)
+		{
+            case 0:
+                Speed = tmpSpeed115;
+                SpeedSize = sizeof(tmpSpeed115);
+            break;
+            case 1:
+                Speed = tmpSpeed57;
+                SpeedSize = sizeof(tmpSpeed57);
+            break;
+            case 2:
+                Speed = tmpSpeed38;
+                SpeedSize = sizeof(tmpSpeed38);
+            break;
+            case 3:
+                Speed = tmpSpeed31;
+                SpeedSize = sizeof(tmpSpeed31);
+            break;
+            case 4:
+                Speed = tmpSpeed19;
+                SpeedSize = sizeof(tmpSpeed19);
+            break;
+            case 5:
+                Speed = tmpSpeed9;
+                SpeedSize = sizeof(tmpSpeed9);
+            break;
+            case 6:
+                Speed = tmpSpeed4;
+                SpeedSize = sizeof(tmpSpeed4);
+            break;
+            case 7:
+                Speed = tmpSpeed2;
+                SpeedSize = sizeof(tmpSpeed2);
+            break;
+            default:
+                Print("Unknown Speed, check code, this shouldn't happen!\n");
+                Speed = tmpSpeed31;
+                SpeedSize = sizeof(tmpSpeed31);
+            break;
+		}
 		if (mode == 0)
-			TxData (tmpTTYPE, 3);
+            TxData (Speed, SpeedSize);
 		else
-			SendData (tmpTTYPE, 3, '0');
+            SendData (Speed, SpeedSize, '0');
         return;
     }
-	else if (buf[1] == DO && buf[2] == CMD_ECHO) {
-		Echo = 1;
-		while(UartTXInprogress());
-		if (mode == 0)
-			TxData (tmpEchoWill, 3);
-		else
-			SendData (tmpEchoWill, 3, '0');
-		return;
-	}
-	else if (buf[1] == WILL && buf[2] == CMD_ECHO) {
+	else if (buf[1] == WILL && buf[2] == CMD_ECHO) { //Host is going to echo
 		Echo = 0;
 		while(UartTXInprogress());
 		if (mode == 0)
@@ -177,10 +234,24 @@ void negotiate(unsigned char *buf, int len) {
 			SendData (tmpEchoDo, 3, '0');
 		return;
 	}
+	else if (buf[1] == WONT && buf[2] == CMD_ECHO) { //Host is not going to echo
+		Echo = 1;
+		while(UartTXInprogress());
+		if (mode == 0)
+			TxData (tmpEchoDont, 3);
+		else
+			SendData (tmpEchoDont, 3, '0');
+		return;
+	}
 
     for (i = 0; i < len; i++) {
         if (buf[i] == DO)
-            buf[i] = WONT;
+        {
+            if ( (buf[i+1] == CMD_TTYPE) || (buf[i+1] == CMD_TERMINAL_SPEED))
+                buf[i] = WILL;
+            else
+                buf[i] = WONT;
+        }
         else if (buf[i] == WILL)
             buf[i] = DO;
     }
@@ -294,17 +365,25 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *Server, unsigned
 // FIFO like manner as efficient as possible.
 
 // This function will Print a byte POPed out of RX Buffer
-void PPopBuffer (void )
+void PPopBuffer (unsigned char * Data, unsigned int * Size )
 {
-	if ((Bottom != Top )||(Full))
-	{
-		Full = 0;
-		PrintChar(rxbuffer[Bottom]);
-		if (Bottom < BUFFER_SIZE - 1)
-			++Bottom;
-		else
-			Bottom = 0;
-	}
+    unsigned int j;
+
+    for (j = 0; j<*Size; ++j)
+    {
+        if ((Bottom != Top )||(Full))
+        {
+            Full = 0;
+            Data[j] = rxbuffer[Bottom];
+            if (Bottom < BUFFER_SIZE - 1)
+                ++Bottom;
+            else
+                Bottom = 0;
+        }
+        else
+            break;
+    }
+    *Size = j;
 }
 
 // This function will PUSH a byte into RX Buffer
@@ -858,62 +937,71 @@ void WorkOnReceivedData (unsigned char Data)
 	// Have we flagged that a telnet CMD is being built?
 	if (!CmdInProgress)
 	{
-		if (Data != CMD)
+		if (Data != IAC)
 			BPushBuffer (Data); //Just put in our buffer
 		else
 		{
 			rcvdata[0] = Data;
 			CmdInProgress = 1; // flag a command or sub is in progress
-			Print("CMD->");
+#ifdef log_debug
+			Print("IAC->");
+#endif
 		}
 	}
 	else // a CMD or sub option is in progress
 	{
 		// Get the byte in the proper position
 		rcvdata[CmdInProgress] = Data;
+
+#ifdef log_debug
 		printf("{%x}",rcvdata[CmdInProgress]);
-		// Is it the first byte after CMD? If yes and it is CMD again
-		if ( (CmdInProgress==1) && (rcvdata[CmdInProgress] == CMD))
+#endif
+		// Is it the first byte after IAC? If yes and it is #define log_debug again
+		if ( (CmdInProgress==1) && (rcvdata[CmdInProgress] == IAC))
 		{
 			//This is the way to mean receive 0xFF, so put FF in the buffer
 			BPushBuffer (0xff);
 			CmdInProgress = 0;
 		}
-		// Is it the first byte after CMD and now indicate a sub option?
+		// Is it the first byte after IAC and now indicate a sub option?
 		else if ( (CmdInProgress==1) && (rcvdata[CmdInProgress] == SB))
 		{
 			//ok, it is a sub option, keep going
 			SubOptionInProgress = 1;
 			++CmdInProgress;
 		}
-		// If receive CMD processing sub option, it could be the end of sub option
-		else if ( (SubOptionInProgress == 1) && (rcvdata[CmdInProgress] == CMD) )//need to wait for CMD /SE
+		// If receive IAC processing sub option, it could be the end of sub option
+		else if ( (SubOptionInProgress == 1) && (rcvdata[CmdInProgress] == IAC) )//need to wait for IAC /SE
 		{
 			++SubOptionInProgress;
 			++CmdInProgress;
 		}
-		// Was processing sub option, received CMD, is the next byte SE?
+		// Was processing sub option, received IAC, is the next byte SE?
 		else if ( (SubOptionInProgress == 2) && (rcvdata[CmdInProgress] == SE) )
 		{
-			//It is, so our sub option reception is done (ends w/ CMD SE)
+			//It is, so our sub option reception is done (ends w/ IAC SE)
 			++CmdInProgress;
 			SubOptionInProgress = 0;
 			CmdInProgress = 0;
+#ifdef log_debug
 			Print("<-\n");
+#endif
 			//Negotiate the sub option
 			negotiate(rcvdata,CmdInProgress);
 		}
-		// Was processing sub option, received CMD, but now it is not SE
+		// Was processing sub option, received IAC, but now it is not SE
 		else if( (SubOptionInProgress == 2) && (rcvdata[CmdInProgress] != SE) )
 			//Keep processing sub option, not the end
 			SubOptionInProgress = 1;
-		else //ok, nothing special, just data for CMD or SUB
+		else //ok, nothing special, just data for IAC or SUB
 			++CmdInProgress;
 
 		//If not a sub option and is the third byte
 		if ((SubOptionInProgress == 0) && (CmdInProgress == 3))
 		{
+#ifdef log_debug
 		    Print("<-\n");
+#endif
 			//Commands are 3 bytes long, always
 			negotiate(rcvdata,3);
 			CmdInProgress = 0;
@@ -934,8 +1022,15 @@ int main(char** argv, int argc)
 	unsigned char port[6];
 	unsigned char crlf[3]="\r\n";
 	unsigned char speedstr[8][8]={"115200","57600","38400","31250","19200","9600","4800","2400"};
-	unsigned char speed, reconnect;
 	unsigned char CanPrint;
+	unsigned int PrintSize = 20;
+	//jANSI Stuff
+    unsigned int MemMamFH = 0;
+    unsigned int MemMamXTCall = 0;
+    unsigned int JANSIID = 0;
+    unsigned char *MemMamMemory = (unsigned char *)0xD000; //TODO: Need to reserve it later
+    Z80_registers regs;
+
 
 	// Reset our RXBuffer pointers
 	Top = 0;
@@ -963,7 +1058,63 @@ int main(char** argv, int argc)
 	//JANSI TSR will leave the screen in mode 7, so if we are in mode 7
 	//it should be loaded
 	if ( Peek(0xFCAF) == 7 )
+    {
 		Ansi = 1;
+		regs.Bytes.D = 'M'; //memman
+        regs.Bytes.E = 50; //memman get info
+        regs.Bytes.B = 7; //memman get version info
+        AsmCall(0xFFCA, &regs, REGS_MAIN, REGS_MAIN);
+#ifdef log_debug
+        printf ("MemMam version: %u.%u\r\n",regs.Bytes.H,regs.Bytes.L);
+#endif
+        regs.Bytes.D = 'M'; //memman
+        regs.Bytes.E = 50; //memman get info
+        regs.Bytes.B = 6; //memman function handler
+        AsmCall(0xFFCA, &regs, REGS_MAIN, REGS_MAIN);
+#ifdef log_debug
+        printf ("MemMam function handler at: %x%x\r\n",regs.Bytes.H,regs.Bytes.L);
+#endif
+        MemMamFH = regs.UWords.HL;
+
+        regs.Bytes.D = 'M'; //memman
+        regs.Bytes.E = 50; //memman get info
+        regs.Bytes.B = 8; //memman XTSRCall
+        AsmCall(MemMamFH, &regs, REGS_MAIN, REGS_MAIN);
+#ifdef log_debug
+        printf ("MemMam XTSRCall at: %x%x\r\n",regs.Bytes.H,regs.Bytes.L);
+#endif
+        MemMamXTCall = regs.UWords.HL;
+
+        regs.Bytes.D = 'M'; //memman
+        regs.Bytes.E = 62; //memman get tsr ID
+        strcpy(MemMamMemory,"MST jANSI   "); //jANSI ID
+        regs.UWords.HL = (unsigned int)MemMamMemory; //memman XTSRCall
+        AsmCall(MemMamFH, &regs, REGS_MAIN, REGS_MAIN);
+        if (!regs.Flags.C) //carry clear if success
+        {
+#ifdef log_debug
+            printf ("jANSI TSR ID: %x%x\r\n",regs.Bytes.B,regs.Bytes.C);
+#endif
+            JANSIID = regs.UWords.BC;
+            regs.Bytes.A = 2; //INIDMP
+            regs.UWords.IX = JANSIID;
+            regs.UWords.HL = 0; //return only after dumping all content
+            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
+
+            strcpy(MemMamMemory,"\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5 <\r\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n");
+            regs.Bytes.A = 3; //DMPSTR
+            regs.UWords.IX = JANSIID;
+            regs.UWords.HL = (unsigned int)MemMamMemory;
+            regs.UWords.DE = (unsigned int)strlen (MemMamMemory); //memman XTSRCall
+            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
+        }
+        else
+        {
+            Print("jANSI not found...\n");
+            Ansi = 0;
+        }
+
+    }
 	else
 		Ansi = 0;
 
@@ -972,8 +1123,8 @@ int main(char** argv, int argc)
 
 	if (!Ansi)
 		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.50 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
-	else
-		Print("\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5cd tel0 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\n");
+	//else
+		//Print("\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.5 <\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\n");
 
 	// At least server:port should be received
 	if (argc == 0)
@@ -1130,7 +1281,24 @@ int main(char** argv, int argc)
 				// we block processing printing lots of data FIFO might get
 				// full while we are still printing (specially if using JANSI)
 				if (CanPrint)
-					PPopBuffer ();
+                {
+                    PrintSize = 30;
+                    PPopBuffer (MemMamMemory,&PrintSize);
+                    if(PrintSize)
+                    {
+                        MemMamMemory[PrintSize]=0;
+                        if (!Ansi)
+                            Print(MemMamMemory);
+                        else
+                        {
+                            regs.Bytes.A = 3; //DMPSTR
+                            regs.UWords.IX = JANSIID;
+                            regs.UWords.HL = (unsigned int)MemMamMemory;
+                            regs.UWords.DE = PrintSize; //memman XTSRCall
+                            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
+                        }
+                    }
+                }
 				else
 					CanPrint = 1;
 
