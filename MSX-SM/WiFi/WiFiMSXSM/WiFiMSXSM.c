@@ -117,10 +117,7 @@ __sfr __at 0x06 myPort6; //reading this is same as IN and writing same as out, w
 __sfr __at 0x07 myPort7; //reading this is same as IN and writing same as out, without extra instructions
                          //when using Inport and Outport from Fusion-C
 
-unsigned int GetTickCount(void )
-{
-	return Peek(0xFC9E) + ((Peek(0xFC9F)<<8)&0xff00);
-}
+__at 0xFC9E unsigned int TickCount;
 
 unsigned char TxByte(char chTxByte)
 {
@@ -129,8 +126,8 @@ unsigned char TxByte(char chTxByte)
 	unsigned char Leaping;
 	unsigned int Retries;
 
-	Retries = GetTickCount() + 3; //Wait up to 3 Interrupts
-	if (Retries<GetTickCount()) //Leaping?
+	Retries = TickCount + 3; //Wait up to 3 Interrupts
+	if (Retries<TickCount) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
@@ -142,18 +139,18 @@ unsigned char TxByte(char chTxByte)
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Retries)
+					if (TickCount>Retries)
 						break;
 				}
 				else
-					if (GetTickCount()>Retries)
+					if (TickCount>Retries)
 						break;
 			}
 			else
-				if (GetTickCount()>Retries)
+				if (TickCount>Retries)
 					break;
 		}
 		else
@@ -228,9 +225,9 @@ unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsign
 	unsigned char Leaping;
 	unsigned int Timer;
 
-	Timer = (60 * TimeOut) + GetTickCount();
+	Timer = (60 * TimeOut) + TickCount;
 
-	if (Timer<GetTickCount()) //Leaping?
+	if (Timer<TickCount) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
@@ -258,18 +255,18 @@ unsigned char WaitResponse (char *chResponse, unsigned char ResponseSize, unsign
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 				}
 				else
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 			}
 			else
-				if (GetTickCount()>Timer)
+				if (TickCount>Timer)
 						break;
 		}
 	}
@@ -288,9 +285,9 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 	unsigned char Leaping;
 	unsigned int Timer;
 
-	Timer = (60 * TimeOut) + GetTickCount();
+	Timer = (60 * TimeOut) + TickCount;
 
-	if (Timer<GetTickCount()) //Leaping?
+	if (Timer<TickCount) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
@@ -429,18 +426,18 @@ unsigned char GetResponse (char *chResponse, unsigned int * ResponseSize, unsign
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 				}
 				else
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 			}
 			else
-				if (GetTickCount()>Timer)
+				if (TickCount>Timer)
 						break;
 		}
 	}
@@ -875,9 +872,9 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 	unsigned char Leaping;
 	unsigned int Timer;
 
-	Timer = 120 + GetTickCount();
+	Timer = 120 + TickCount;
 
-	if (Timer<GetTickCount()) //Leaping?
+	if (Timer<TickCount) //Leaping?
 		Leaping = 1;
 	else
 		Leaping = 0;
@@ -948,18 +945,18 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 					{
 						if (Leaping)
 						{
-							if (GetTickCount()<10)
+							if (TickCount<10)
 							{
 								Leaping = 0;
-								if (GetTickCount()>Timer)
+								if (TickCount>Timer)
 									break;
 							}
 							else
-								if (GetTickCount()>Timer)
+								if (TickCount>Timer)
 									break;
 						}
 						else
-							if (GetTickCount()>Timer)
+							if (TickCount>Timer)
 									break;
 					}
 				}
@@ -997,8 +994,8 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 						*DataSize = 0;
 						//At 2400 BPS, it would take about 7s to empty our FIFO
 						//So 10s (60Hz) or 12s (50Hz) is more than enough time-out
-						Timer = 600 + GetTickCount();
-						if (Timer<GetTickCount()) //Leaping?
+						Timer = 600 + TickCount;
+						if (Timer<TickCount) //Leaping?
 							Leaping = 1;
 						else
 							Leaping = 0;
@@ -1015,18 +1012,18 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 							{
 								if (Leaping)
 								{
-									if (GetTickCount()<10)
+									if (TickCount<10)
 									{
 										Leaping = 0;
-										if (GetTickCount()>Timer)
+										if (TickCount>Timer)
 											break;
 									}
 									else
-										if (GetTickCount()>Timer)
+										if (TickCount>Timer)
 											break;
 								}
 								else
-									if (GetTickCount()>Timer)
+									if (TickCount>Timer)
 											break;
 							}
 						}
@@ -1137,9 +1134,9 @@ unsigned char CloseSingleConnection (void)
 	if ((isInitialized)&&(isSingleConnection==1))
 	{
 		//First check if last byte transmission has been done 16~30ms is more than enough
-		Timer = 2 + GetTickCount();
+		Timer = 2 + TickCount;
 
-		if (Timer<GetTickCount()) //Leaping?
+		if (Timer<TickCount) //Leaping?
 			Leaping = 1;
 		else
 			Leaping = 0;
@@ -1148,25 +1145,25 @@ unsigned char CloseSingleConnection (void)
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 				}
 				else
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 			}
 			else
-				if (GetTickCount()>Timer)
+				if (TickCount>Timer)
 						break;
 		}
 
 		//Wait one second to make sure there is a time between our exit token and the last sent data
-		Timer = 60 + GetTickCount();
+		Timer = 60 + TickCount;
 
-		if (Timer<GetTickCount()) //Leaping?
+		if (Timer<TickCount) //Leaping?
 			Leaping = 1;
 		else
 			Leaping = 0;
@@ -1175,18 +1172,18 @@ unsigned char CloseSingleConnection (void)
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 				}
 				else
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 			}
 			else
-				if (GetTickCount()>Timer)
+				if (TickCount>Timer)
 						break;
 		}
 
@@ -1197,9 +1194,9 @@ unsigned char CloseSingleConnection (void)
 		myPort7 = '+';
 
 		//Wait more than 2 seconds
-		Timer = 200 + GetTickCount();
+		Timer = 200 + TickCount;
 
-		if (Timer<GetTickCount()) //Leaping?
+		if (Timer<TickCount) //Leaping?
 			Leaping = 1;
 		else
 			Leaping = 0;
@@ -1208,18 +1205,18 @@ unsigned char CloseSingleConnection (void)
 		{
 			if (Leaping)
 			{
-				if (GetTickCount()<10)
+				if (TickCount<10)
 				{
 					Leaping = 0;
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 				}
 				else
-					if (GetTickCount()>Timer)
+					if (TickCount>Timer)
 						break;
 			}
 			else
-				if (GetTickCount()>Timer)
+				if (TickCount>Timer)
 						break;
 		}
 

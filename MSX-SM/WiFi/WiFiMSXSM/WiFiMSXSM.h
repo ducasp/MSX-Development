@@ -553,15 +553,6 @@ unsigned char SendCommand (char *chCmd, unsigned int Size, char *chExpectedRespo
 unsigned char SendCommand2 (char *chCmd, char *chResponse, unsigned int * MaxResponseSize, unsigned char TimeOut);
 
 /*
--- GetTickCount - MSX BIOS will update a 16 bit unsigned integer every VDP
---                interrupt cycle (60Hz or 50Hz). Get this tick counter.
---
--- Input - none
--- Return - VDP Tick Counter
-*/
-unsigned int GetTickCount(void );
-
-/*
 -- FindBaudRateWiFi - Find the Baudrate Wifi is working on.
 --
 -- Input - none
