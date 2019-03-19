@@ -89,21 +89,26 @@ const char strUsage[] = "Usage: telnetsm <server:port> [/sSPEED] [/mMODE] [/r]\n
 //Our Flags
 unsigned char Echo = 1; //Echo On?
 unsigned char Ansi = 0; //Detected J-ANSI?
-unsigned char SentTTYPE; //Sent what information we are willing for negotiation?
+unsigned char SentWill; //Sent what information we are willing for negotiation?
 unsigned char CmdInProgress = 0; //Is there a TELNET command in progress?
+unsigned char EscInProgress = 0; //Is there an ESC command in progress?
 unsigned char SubOptionInProgress = 0; // Is there a TELNET command sub option in progress?
 unsigned char mode = 0; //connection mode, 0 is single, faster... 1 is multiple, well, for the future
 unsigned char speed, reconnect;
 
 //For data receive parsing
+unsigned char escdata[25];
 unsigned char rcvdata[1600];
 unsigned int rcvdataSize = 0;
 unsigned int rcvdataPointer = 0;
+__at 0xF3DC unsigned char CursorY;
+__at 0xF3DD unsigned char CursorX;
 
 //I/O made simple...
 __sfr __at 0x07 UartStatus; //reading this is same as IN and writing same as out, without extra instructions
                             //when using Inport and Outport from Fusion-C
 __at 0xD000 unsigned char MemMamMemory[1024]; //area to hold data sent to jANSI
+__at 0xFC9E unsigned int TickCount; //JIFFY
 
 // This will handle CMD negotiation...
 // Basically, the first time host send any command our client will send it
@@ -135,23 +140,25 @@ void negotiate(unsigned char *buf, int len)
                                       IAC, WILL, CMD_TTYPE,\ //we are willing to negotiate Terminal Type
                                       IAC, WILL, CMD_TERMINAL_SPEED\ //we are willing to negotiate Terminal Speed
                                       };
-	static unsigned char tmpWindowSize[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
-	static unsigned char tmpWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
-	static unsigned char tmpEchoDont[3] = {IAC, DONT, CMD_ECHO};
-	static unsigned char tmpEchoDo[3] = {IAC, DO, CMD_ECHO};
-	static unsigned char tmpTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'x', 't', 'e', 'r', 'm', '-', '1', '6', 'c', 'o', 'l', 'o', 'r', IAC, SE}; //Terminal xterm-16color
-	static unsigned char tmpTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
-	static unsigned char tmpSpeed115[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '1', '5', '2', '0', '0', ',', '1', '1', '5', '2', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed57[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '5', '7', '6', '0', '0', ',', '5', '7', '6', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed38[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '8', '4', '0', '0', ',', '3', '8', '4', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed31[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '1', '2', '5', '0', ',', '3', '1', '2', '5', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed19[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '9', '2', '0', '0', ',', '1', '9', '2', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed9[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '9', '6', '0', '0', ',', '9', '6', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed4[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '4', '8', '0', '0', ',', '4', '8', '0', '0', IAC,SE}; //terminal speed response
-	static unsigned char tmpSpeed2[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '2', '4', '0', '0', ',', '2', '4', '0', '0', IAC,SE}; //terminal speed response host do not negotiate, our default is to echo data
+    static unsigned char tmpWindowSize[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
+    static unsigned char tmpWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
+    static unsigned char tmpEchoDont[3] = {IAC, DONT, CMD_ECHO};
+    static unsigned char tmpEchoDo[3] = {IAC, DO, CMD_ECHO};
+    static unsigned char tmpTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'x', 't', 'e', 'r', 'm', '-', '1', '6', 'c', 'o', 'l', 'o', 'r', IAC, SE}; //Terminal xterm-16color
+    static unsigned char tmpTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
+    static unsigned char tmpSpeed115[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '1', '5', '2', '0', '0', ',', '1', '1', '5', '2', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed57[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '5', '7', '6', '0', '0', ',', '5', '7', '6', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed38[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '8', '4', '0', '0', ',', '3', '8', '4', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed31[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '3', '1', '2', '5', '0', ',', '3', '1', '2', '5', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed19[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '1', '9', '2', '0', '0', ',', '1', '9', '2', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed9[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '9', '6', '0', '0', ',', '9', '6', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed4[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '4', '8', '0', '0', ',', '4', '8', '0', '0', IAC,SE}; //terminal speed response
+    static unsigned char tmpSpeed2[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '2', '4', '0', '0', ',', '2', '4', '0', '0', IAC,SE}; //terminal speed response host do not negotiate, our default is to echo data
 
-	if (SentTTYPE == 0) {   //send WILL of what we are ready to negotiate
-		SentTTYPE = 1;
+	if (!SentWill)
+    {
+        //send WILL of what we are ready to negotiate
+        SentWill = 1;
 		if (mode == 0)
 		{
 			while(UartTXInprogress());
@@ -560,7 +567,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 	for (i = 0; i<Retries; i++)
 	{
 		// Timeout for a packet
-		Time1 = GetTickCount();
+		Time1 = TickCount;
 		TimeOut = 360 + Time1;
 		if (TimeOut<Time1)
 			TimeLeap = 1;
@@ -836,7 +843,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
 			if (TimeLeap == 0)
 			{
-				if (GetTickCount()>TimeOut)
+				if (TickCount>TimeOut)
 				{
 				    //if timed out set 1 to indicate error
 					TimeOut = 1;
@@ -845,10 +852,10 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 			}
 			else
 			{
-				if (GetTickCount()<10)
+				if (TickCount<120)
 				{
 					TimeLeap = 0;
-					if (GetTickCount()>TimeOut)
+					if (TickCount>TimeOut)
 					{
 						TimeOut = 1;
 						break;
@@ -877,6 +884,7 @@ void XYModemGet (void)
 	int iFile;
 	int iNoFile=-1;
 	unsigned char PktNumber;
+	unsigned char key=0;
 	unsigned char advance[4] = {'-','\\','|','/'};
 	unsigned int FilesRcvd = 0;
 
@@ -894,6 +902,14 @@ void XYModemGet (void)
 	{
 		do
 		{
+		    // A key has been hit?
+            if (KeyboardHit())
+            {
+                // Get the key
+				key = InputChar ();
+				if (key == 0x1b) //esc?
+                    break;
+            }
 			//First let's receive file name, size, etc...
 			PktNumber = 1;
 			iFile = 0;
@@ -902,6 +918,17 @@ void XYModemGet (void)
 			ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
 			if (ret == 255) //Created a file, cool, let's move on
 			{
+			    // A key has been hit?
+                if (KeyboardHit())
+                {
+                    // Get the key
+                    key = InputChar ();
+                    if (key == 0x1b) //esc?
+                    {
+                        Close (iFile);
+                        break;
+                    }
+                }
 				++FilesRcvd;
 				//Now transfer is like XMODEM for this file
 				PktNumber = 1;
@@ -914,6 +941,17 @@ void XYModemGet (void)
 				{
 					do
 					{
+					    // A key has been hit?
+                        if (KeyboardHit())
+                        {
+                            // Get the key
+                            key = InputChar ();
+                            if (key == 0x1b) //esc?
+                            {
+                                Close (iFile);
+                                break;
+                            }
+                        }
 						//Our nice animation to show we are not stuck
 						PrintChar(8); //backspace
 						PrintChar(advance[PktNumber%4]); // next char
@@ -936,6 +974,8 @@ void XYModemGet (void)
 						XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
 						Print ("File Transfer Completed!\n");
 					}
+					else if (key == 0x1b) //esc?
+                        break;
 				}
 				else //error starting CRC section
 					Print("Timeout waiting for file...\n");
@@ -954,7 +994,7 @@ void XYModemGet (void)
 				break;
 			}
 		}
-		while (ret != 254); //Do this until any process break or no more files
+		while ((key != 0x1b)&&(ret != 254)); //Do this until any process break or no more files
 	}
 	else //X-Modem
 	{
@@ -972,6 +1012,14 @@ void XYModemGet (void)
 			{
 				do
 				{
+				    // A key has been hit?
+                    if (KeyboardHit())
+                    {
+                        // Get the key
+                        key = InputChar ();
+                        if (key == 0x1b) //esc?
+                            break;
+                    }
 					//Our nice animation to show we are not stuck
 					PrintChar(8);
 					PrintChar(advance[PktNumber%4]);
@@ -992,6 +1040,16 @@ void XYModemGet (void)
 					XYModemPacketReceive (&iNoFile, ACK, PktNumber, 0);
 					Print ("File Transfer Completed!\n");
 				}
+				else if (key == 0x1b) //cancelled by user?
+                {
+                    Print("Ok, cancelling transfer...\n");
+                    //Ok, just CANcel it
+                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
+                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
+                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
+                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
+                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
+                }
 			}
 			else //error starting CRC section
 				Print("Timeout waiting for file...\n");
@@ -1010,7 +1068,42 @@ void WorkOnReceivedData (unsigned char Data)
 	if (!CmdInProgress)
 	{
 		if (Data != IAC)
+        {
+            if ((!EscInProgress)&&(Ansi))
+            {
+                if (Data == 0x1b)
+                {
+                    escdata[EscInProgress]=Data;
+                    ++EscInProgress;
+                }
+            }
+            else
+            {
+                if( ((EscInProgress==1)&&(Data=='[')) || ((EscInProgress==2)&&(Data=='6')) || ((EscInProgress==3)&&(Data=='n')) )
+                {
+                    escdata[EscInProgress]=Data;
+                    ++EscInProgress;
+                    if(EscInProgress==4)
+                    {
+                        //return cursor position
+                        escdata[0]=0x1b;
+                        escdata[1]=0x5b;
+                        sprintf(&escdata[2],"%u",CursorY);
+                        escdata[strlen(escdata) + 1]=0;
+                        escdata[strlen(escdata)]=0x3b;
+                        sprintf(&escdata[strlen(escdata)],"%uR",CursorX);
+                        if (mode == 0)
+                            TxData (escdata, strlen(escdata));
+                        else
+                            SendData (escdata, strlen(escdata), '0');
+                        EscInProgress = 0;
+                    }
+                }
+                else
+                    EscInProgress = 0;
+            }
 			BPushBuffer (Data); //Just put in our buffer
+        }
 		else
 		{
 			rcvdata[0] = Data;
@@ -1284,7 +1377,6 @@ int main(char** argv, int argc)
 			Print("> Initialization OK!\n");
 
 		printf ("Connecting to server: %s:%s \r\n", server, port);
-		SentTTYPE = 0;
 
 		// Open TCP connection to server/port
 		if (mode == 0)
@@ -1295,6 +1387,8 @@ int main(char** argv, int argc)
 		if ( ret == RET_WIFI_MSXSM_OK)
 		{
 			Print("Connected!\n");
+
+			SentWill = 0;
 
 			// Ok, we are connected, now we stay looping into this state
 			// machine until ESC key is pressed
