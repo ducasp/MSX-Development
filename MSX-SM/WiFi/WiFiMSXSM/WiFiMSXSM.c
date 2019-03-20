@@ -741,6 +741,7 @@ unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password)
 	return ret;
 }
 
+#ifndef USE_WIFI_SINGLE_CONNECTION_ONLY
 unsigned char OpenConnection (unsigned char Conn_type, unsigned char * Address, unsigned char * Port, unsigned char Number)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
@@ -1055,7 +1056,9 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 
 	return ret;
 }
+#endif
 
+#ifndef USE_WIFI_MULTIPLE_CONNECTION_ONLY
 unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Address, unsigned char * Port)
 {
 	unsigned char ret = RET_WIFI_MSXSM_OK;
@@ -1243,3 +1246,4 @@ unsigned char CloseSingleConnection (void)
 
 	return ret;
 }
+#endif

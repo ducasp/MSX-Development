@@ -189,6 +189,7 @@ unsigned char GetWiFiAPList (APList * stList);
 */
 unsigned char JoinWiFiAP (AP * stAP, unsigned char * Password);
 
+#ifndef USE_WIFI_SINGLE_CONNECTION_ONLY
 /*
 *******************************************************************************
 * 					   Routines for Multiple Connections					  *
@@ -299,7 +300,9 @@ unsigned char ReceiveData (unsigned char * Data, unsigned int * DataSize, unsign
 --                                    timeout expired
 */
 unsigned char CloseConnection (unsigned char Number);
+#endif
 
+#ifndef USE_WIFI_MULTIPLE_CONNECTION_ONLY
 /*
 *******************************************************************************
 * 					     Routines for Single Connection					      *
@@ -356,7 +359,7 @@ unsigned char OpenSingleConnection (unsigned char Conn_type, unsigned char * Add
 --                                    timeout expired
 */
 unsigned char CloseSingleConnection (void);
-
+#endif
 
 /*
 -- Internal use functions
