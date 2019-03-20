@@ -2,7 +2,7 @@
 --
 -- telnetsm.c
 --   Simple TELNET client using the WiFi module of your MSX-SM.
---   Revision 0.60
+--   Revision 0.70
 --
 -- Requires SDCC and Fusion-C library and WiFiMSXSM to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
@@ -80,11 +80,8 @@ unsigned int Top = 0;
 unsigned int Bottom = 0;
 unsigned char Full = 0;
 
-//X and YMODEM globals
-unsigned char filename[20];
-
 //Instructions
-const char strUsage[] = "Usage: telnetsm <server:port> [/sSPEED] [/mMODE] [/r]\n\n<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\n\n/s0 - 115200, /s1 - 57600, /s2 - 38400 /s3 - 31250 /s4 - 19200\n    /s5 - 9600 /s6 - 4800 /s7 - 2400\n\n/m0 - Single Connection /m1 - Multiple Connection\n\n/r: Force reconnection/choosing AP\n";
+const char strUsage[] = "Usage: telnetsm <server:port> [/sSPEED] [/r]\n\n<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\n\n/s0 - 115200, /s1 - 57600, /s2 - 38400 /s3 - 31250 /s4 - 19200\n    /s5 - 9600 /s6 - 4800 /s7 - 2400\n\n/r: Force reconnection/choosing AP\n";
 
 //Our Flags
 unsigned char Echo = 1; //Echo On?
@@ -93,7 +90,6 @@ unsigned char SentWill; //Sent what information we are willing for negotiation?
 unsigned char CmdInProgress = 0; //Is there a TELNET command in progress?
 unsigned char EscInProgress = 0; //Is there an ESC command in progress?
 unsigned char SubOptionInProgress = 0; // Is there a TELNET command sub option in progress?
-unsigned char mode = 0; //connection mode, 0 is single, faster... 1 is multiple, well, for the future
 unsigned char speed, reconnect;
 
 //For data receive parsing
@@ -101,14 +97,55 @@ unsigned char escdata[25];
 unsigned char rcvdata[1600];
 unsigned int rcvdataSize = 0;
 unsigned int rcvdataPointer = 0;
+
+//MSX Variables that we will access
 __at 0xF3DC unsigned char CursorY;
 __at 0xF3DD unsigned char CursorX;
+__at 0xFC9E unsigned int TickCount; //JIFFY
 
 //I/O made simple...
 __sfr __at 0x07 UartStatus; //reading this is same as IN and writing same as out, without extra instructions
                             //when using Inport and Outport from Fusion-C
-__at 0xD000 unsigned char MemMamMemory[1024]; //area to hold data sent to jANSI
-__at 0xFC9E unsigned int TickCount; //JIFFY
+
+//IMPORTANT: You need to check the map compiler generates to make sure this
+//address do not overlap functions, variables, etc
+//MEMMAN and jANSI require memory information passed to it to be in the
+//upper memory segment, so we use this address to interface with it
+__at 0xD000 unsigned char MemMamMemory[1024]; //area to hold data sent to jANSI, need to be in the 3rd 16K block
+
+//File transfer RAMDISK stuff
+#define NO_RAMDISK 0
+#define RAMDISK_CREATED 1
+#define RAMDISK_USED 2
+int CurrentDrive;
+char RamDisk;
+char OurRamdisk;
+
+//X and YMODEM Vars
+unsigned char filename[20];
+//Indicates G-Modem transfer in progress
+unsigned char G=0;
+
+// READ BEFORE CHANGING BELOW: it takes half a second to calculate CRC for 1K block
+// In half a second, at 31250, about 1500 bytes have been received
+// You could distribute the time updating CRC between bytes, but still it takes
+// about .5ms to calculate 1 byte, and in that period 75 bytes have entered.
+// This is a race we can't win... Probably using highly optimized CRC
+// calculation, ASM, and tables, we could get there, but then, our data is being
+// transferred in TCP packets, that have already been checked for integrity by
+// ESP, so in the end, why bother? Data won't be corrupt.
+// So please left this define commented, otherwise, you've been warned and low
+// performance is waiting you, or lost packets if using YMODEM-G. I don't think
+// it is wort the trouble optimizing CRC as data integrity has already been
+// checked
+//#define CRC_CHECK
+
+
+/*
+ *
+ * START OF CODE
+ *
+ */
 
 // This will handle CMD negotiation...
 // Basically, the first time host send any command our client will send it
@@ -159,48 +196,26 @@ void negotiate(unsigned char *buf, int len)
     {
         //send WILL of what we are ready to negotiate
         SentWill = 1;
-		if (mode == 0)
-		{
-			while(UartTXInprogress());
-			TxData (tmpClientWill, sizeof(tmpClientWill));
-		}
-		else
-		{
-			SendData (tmpClientWill, sizeof(tmpClientWill), '0');
-		}
+		while(UartTXInprogress());
+		TxData (tmpClientWill, sizeof(tmpClientWill));
 		// Need to process whatever host asked
     }
 
     if (buf[1] == DO && buf[2] == CMD_WINDOW_SIZE) { //request of our terminal window size
 		while(UartTXInprogress());
-		if (mode == 0)
-		{
-		    if (Ansi)
-                TxData (tmpWindowSize, sizeof(tmpWindowSize1));
-            else
-                TxData (tmpWindowSize, sizeof(tmpWindowSize));
-		}
-		else
-		{
-		    if (Ansi)
-                SendData (tmpWindowSize, sizeof(tmpWindowSize1), '0');
-            else
-                SendData (tmpWindowSize, sizeof(tmpWindowSize), '0');
-		}
+        if (Ansi)
+            TxData (tmpWindowSize, sizeof(tmpWindowSize1));
+        else
+            TxData (tmpWindowSize, sizeof(tmpWindowSize));
+
         return;
     }
 	else if (buf[1] == SB && buf[2] == CMD_TTYPE) { //requesting Terminal Type list
 		while(UartTXInprogress());
-		if (mode == 0)
-            if (Ansi)
-                TxData (tmpTTYPE2, sizeof(tmpTTYPE2));
-            else
-                TxData (tmpTTYPE3, sizeof(tmpTTYPE3));
-		else
-            if (Ansi)
-                SendData (tmpTTYPE2, sizeof(tmpTTYPE2), '0');
-            else
-                SendData (tmpTTYPE3, sizeof(tmpTTYPE3), '0');
+        if (Ansi)
+            TxData (tmpTTYPE2, sizeof(tmpTTYPE2));
+        else
+            TxData (tmpTTYPE3, sizeof(tmpTTYPE3));
         return;
     }
     else if (buf[1] == SB && buf[2] == CMD_TERMINAL_SPEED) { //requesting Terminal Speed
@@ -245,28 +260,19 @@ void negotiate(unsigned char *buf, int len)
                 SpeedSize = sizeof(tmpSpeed31);
             break;
 		}
-		if (mode == 0)
-            TxData (Speed, SpeedSize);
-		else
-            SendData (Speed, SpeedSize, '0');
+        TxData (Speed, SpeedSize);
         return;
     }
 	else if (buf[1] == WILL && buf[2] == CMD_ECHO) { //Host is going to echo
 		Echo = 0;
 		while(UartTXInprogress());
-		if (mode == 0)
-			TxData (tmpEchoDo, 3);
-		else
-			SendData (tmpEchoDo, 3, '0');
+		TxData (tmpEchoDo, 3);
 		return;
 	}
 	else if (buf[1] == WONT && buf[2] == CMD_ECHO) { //Host is not going to echo
 		Echo = 1;
 		while(UartTXInprogress());
-		if (mode == 0)
-			TxData (tmpEchoDont, 3);
-		else
-			SendData (tmpEchoDont, 3, '0');
+		TxData (tmpEchoDont, 3);
 		return;
 	}
 
@@ -282,10 +288,7 @@ void negotiate(unsigned char *buf, int len)
             buf[i] = DO;
     }
 	while(UartTXInprogress());
-	if (mode == 0)
-		TxData (buf, len);
-	else
-		SendData (buf, len, '0');
+	TxData (buf, len);
 }
 
 // Checks Input Data received from command Line and copy to the variables
@@ -304,12 +307,8 @@ void negotiate(unsigned char *buf, int len)
 //        of performance of this program (perhaps optimizing in ASM or better
 //        logic in C could squeeze more performance)
 //
-// Mode: This is a work in progress. For a simple TELNET client single mode (0)
-//       is the best approach. But, TELNET is the basis for other services like
-//       FTP, and those will require multiple connections and the larger latency
-//       of this mode is a valid trade-off
 //
-unsigned int IsValidInput (char**argv, int argc, unsigned char *Server, unsigned char *Port, unsigned char *Reconnect, unsigned char *Speed, unsigned char *Mode)
+unsigned int IsValidInput (char**argv, int argc, unsigned char *Server, unsigned char *Port, unsigned char *Reconnect, unsigned char *Speed)
 {
 	unsigned int ret = 0;
 	unsigned char * myseek = NULL;
@@ -353,14 +352,6 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *Server, unsigned
 						case 'S':
 							if ( (Input[2]>='0') && (Input[2]<='7') )
 								*Speed = Input[2] - '0';
-							else
-								ret = 0;
-						break;
-						//if /m, force the communication mode
-						case 'm':
-						case 'M':
-							if ( (Input[2]=='0') || (Input[2]=='1') )
-								*Mode = Input[2] - '0';
 							else
 								ret = 0;
 						break;
@@ -429,6 +420,7 @@ void BPushBuffer (unsigned char myByte)
 	}
 }
 
+#ifdef CRC_CHECK
 //CRC Auxiliary functions for XMODEM and YMODEM
 #define CRC_POLY 0x1021
 
@@ -459,51 +451,7 @@ unsigned int crc16(char *data, unsigned int size)
 
         return crc;
 }
-
-//Support for multiple connection mode - File Transfer
-unsigned char BufferRXData (void )
-{
-	//Data in buffer?
-	if (rcvdataSize)
-		return 1; //we have data
-	else
-		return UartRXData(); //otherwise just check if UART has data
-}
-
-unsigned char GetBufferData (void)
-{
-	unsigned char ret;
-
-	if (!rcvdataSize)
-	{
-		//We can clear up to the size of our buffer
-		//That is as big as the MSX-SM FIFO
-		rcvdataSize = sizeof (rcvdata);
-		ret = ReceiveData (rcvdata, &rcvdataSize, '0');
-		if ((ret == RET_WIFI_MSXSM_OK) && (rcvdataSize))
-		{
-			rcvdataPointer = 0;
-			rcvdataSize--;
-			ret = rcvdata[rcvdataPointer];
-			++rcvdataPointer;
-		}
-		else //simulate fifo false read
-		{
-		    rcvdataSize = 0;
-		    rcvdataPointer = 0;
-			printf ("ReceiveData error %u",ret);
-			ret = 0xff;
-		}
-	}
-	else
-	{
-		rcvdataSize--;
-		ret = rcvdata[rcvdataPointer];
-		++rcvdataPointer;
-	}
-
-	return ret;
-}
+#endif
 
 // This already implement retries, so if it fails, consider it done deal
 //
@@ -524,8 +472,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 {
 	unsigned char ret = 0;
 	unsigned char is1K = 0;
+#ifdef CRC_CHECK
 	unsigned int myCrc=0;
 	unsigned int pktCrc=0;
+#endif
+    unsigned int chrLen = 0;
+    unsigned int chrTerm = 0;
 	unsigned int TimeOut,Time1;
 	unsigned char TimeLeap;
 	unsigned char RcvPkt[1036];
@@ -541,10 +493,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 	//This is an escape indicating to just send an Action (i.e.: C, ACK, NAK)
 	if (*File == -1)
 	{
-		if (mode == 0)
-			ret = TxByte (Action);
-		else
-			ret = SendData (&Action, 1, '0');
+		ret = TxByte (Action);
 
 		if (ret == RET_WIFI_MSXSM_OK)
 			return 1;
@@ -553,10 +502,13 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 	}
 
 	// If sending a start of transmission 3 retries
-	if (Action == 'C')
+	if ((Action == 'C')||(Action == 'G'))
 		Retries = 3;
 	else //otherwise 10
-		Retries = 10;
+        if(!G)
+            Retries = 10;
+        else
+            Retries = 1; //YMODEM-G - no retries at all, once wrong, cancel
 
 	//flags being cleared
 	CreateFile = 0;
@@ -579,38 +531,21 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
 		//Send the Action (could either be an ACK or NAK or C)
 		if (Action)
-        {
-            if (mode == 0)
-                ret = TxByte (Action);
-            else
-                ret = SendData (&Action, 1, '0');
-        }
+            ret = TxByte (Action);
 
 		//This is the packet receiving loop, it will exit upon timeout
 		//or receiving the packet
 		do
 		{
 			// Is there DATA in the UART FIFO?
-			if ( ((mode == 0)&&(UartRXData())) || ((mode == 1)&&(BufferRXData())) )
+			if (UartRXData())
 			{
 				//Get a byte
-				if (mode == 0)
-					RcvPkt[PktStatus] = GetUARTData();
-				else
-					RcvPkt[PktStatus] = GetBufferData();
-
+				RcvPkt[PktStatus] = GetUARTData();
 				if (RcvPkt[PktStatus] == 0xff) //telnet, FF will be doubled
 				{
-					if (mode == 0)
-					{
-						while(!UartRXData());
-						GetUARTData(); //discard the second 0xFF
-					}
-					else
-					{
-						while(!BufferRXData());
-						GetBufferData(); //discard the second 0xFF
-					}
+					while(!UartRXData());
+					GetUARTData(); //discard the second 0xFF
 				}
 
 				//First PKT byte?
@@ -628,12 +563,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 					{
 						//next byte
 						++PktStatus;
-						is1K = 1; //not 1K transfer
+						is1K = 1; //1K transfer
 					}
 					//End of Transmission of CANCEL and not in a packet? Return it so the protocol can procces it
 					else if ((RcvPkt[PktStatus] == EOT)||(RcvPkt[PktStatus] == ETB)||(RcvPkt[PktStatus] == CAN))
 					{
-							return RcvPkt[PktStatus];
+						return RcvPkt[PktStatus];
 					}
 				}
 				else if (PktStatus == 1)
@@ -644,15 +579,15 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 					{
 					    //YMODEM
 					    //
-					    //First response to a C (start CRC session) won't be
+					    //First response to a C (start CRC session) or G won't be
 					    //a data packet, but a packet with number 0 containing
 					    //filename and possibly file size...
-						if ((isYmodem)&&(Action == 'C')&&(RcvPkt[PktStatus] == 0))
+						if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(RcvPkt[PktStatus] == 0))
 							//Ok, receiving file name/size as response
 							++PktStatus;
 						else
 						{
-						    //Server might not like how much we are taking to reply
+						    //Server might not like how long we are taking to reply
 						    //with ACK (MSX Disk I/O not really fast) and re-send
 						    //packets even before we send ACK/NAK. So, if that happens
 						    //we will get the same packet again. In this case we just
@@ -675,7 +610,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 				}
 				else if (PktStatus == 2)
 				{
-				    //If Ignoring, just go ahed
+				    //If Ignoring, just go ahead
 					if (IgnorePkt)
 						++PktStatus;
 					else if (RcvPkt[PktStatus] == (0xFF - PktNumber) )
@@ -684,11 +619,11 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 					{
 					    //YMODEM
 					    //
-					    //First response to a C (start CRC session) won't be
+					    //First response to a C (start CRC session) or G won't be
 					    //a data packet, but a packet with number 0 containing
 					    //filename and possibly file size... FF is the complement
 					    //of 0.
-						if ((isYmodem)&&(Action == 'C')&&(RcvPkt[PktStatus] == 0xFF))
+						if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(RcvPkt[PktStatus] == 0xFF))
 						{
 							//Ok, receiving file name/size as response
 							++PktStatus;
@@ -710,7 +645,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                 //Data of a (0) packet in response to C is the filename, if no
                 //filename, means that there are no more files (YMODEM is a
                 //batch operation, allowing multiple files)
-				else if ((isYmodem)&&(Action == 'C')&&(CreateFile)&&(PktStatus == 3))
+				else if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(CreateFile)&&(PktStatus == 3))
 				{
 					//is NULL the filename?
 					if (RcvPkt[PktStatus] == 0 )
@@ -721,18 +656,22 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 				//1024 bytes CRC is in 1028th and 1029th bytes
 				else if ( ((!is1K)&&(PktStatus == 131)) || ((is1K)&&(PktStatus == 1027)) )
 				{
+#ifdef CRC_CHECK
 					myCrc = ((int)RcvPkt[PktStatus] << 8)&0xff00;
+#endif
 					++PktStatus;
 				}
 				else if ( ((!is1K)&&(PktStatus == 132)) || ((is1K)&&(PktStatus == 1028)) )
 				{
 				    //This is the last byte of the packet
+				    PktStatus = 0;
+#ifdef CRC_CHECK
 					myCrc = myCrc|((int)RcvPkt[PktStatus]&0xff);
-					PktStatus = 0;
 					if (is1K)
 						pktCrc = crc16(&RcvPkt[3],1024);
 					else
 						pktCrc = crc16(&RcvPkt[3],128);
+#endif
 
 					if (IgnorePkt)
 					{
@@ -740,18 +679,20 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 						IgnorePkt = 0; //No longer ignoring anything
 						PktStatus = 0; // start from 0
 					}
+#ifdef CRC_CHECK
 					else if ( myCrc != pktCrc )
 					{
 						printf ("CRC error, expected %x received %x\r\n",myCrc,pktCrc);
 						ret = TxByte (NAK);
-						//Set timeout as 1 to indicate error
+						Set timeout as 1 to indicate error
 						TimeOut = 1;
 						break;
 					}
+#endif
 					else
 					{
 						//Y Modem and received file name block?
-						if ((isYmodem)&&(Action == 'C')&&(CreateFile))
+						if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(CreateFile))
 						{
 						    //No file received, end of transmission
 							if (NoFile)
@@ -759,13 +700,13 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
                             //Let's check for file name
                             //
-							for (myCrc=3;myCrc<140;myCrc++)
-								if (RcvPkt[myCrc] == 0)
+							for (chrLen=3;chrLen<140;chrLen++)
+								if (RcvPkt[chrLen] == 0)
 									break;
-							++myCrc;
+							++chrLen;
 
-							if ((RcvPkt[myCrc]>='0')&&(RcvPkt[myCrc]<='9'))
-								FileSize = atol(&RcvPkt[myCrc]);
+							if ((RcvPkt[chrLen]>='0')&&(RcvPkt[chrLen]<='9'))
+								FileSize = atol(&RcvPkt[chrLen]);
 
 							if (FileSize == 0)
                             {
@@ -776,11 +717,11 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                             {
                                 //Some servers do not comply to put a 0 after file size, use space
                                 //so just fix it
-                                for (pktCrc=myCrc; (RcvPkt[pktCrc]>='0')&&(RcvPkt[pktCrc]<='9'); ++pktCrc);
-                                RcvPkt[pktCrc]=0;
-                                printf("Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[myCrc]);
+                                for (chrTerm=chrLen; (RcvPkt[chrTerm]>='0')&&(RcvPkt[chrTerm]<='9'); ++chrTerm);
+                                RcvPkt[chrTerm]=0;
+                                printf("Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[chrLen]);
                             }
-
+                            strcpy (filename, &RcvPkt[3]);
 							*File = Open (&RcvPkt[3],O_CREAT);
 							if (*File != -1)
 							{
@@ -881,7 +822,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 void XYModemGet (void)
 {
 	unsigned char ret;
-	int iFile;
+	int iFile=0;
 	int iNoFile=-1;
 	unsigned char PktNumber;
 	unsigned char key=0;
@@ -891,34 +832,53 @@ void XYModemGet (void)
 	rcvdataSize = 0;
 	rcvdataPointer = 0;
 
-	Print("For XMODEM Download type file Name, for YMODEM Download type Y: ");
+	//No RAMDISK, no YMODEM-G
+	//Reason: Nextor/DOS2 takes a whole life (6s in my 4GB partition) to
+	//calculate free disk size, so the first write to the file and every
+	//time disk buffer is flushed, it will take that long period before
+	//effectively writing to disk. YMODEM G is a stream protocol that will
+	//loose packets in that 6s (or 4, or 3, depend on your partition size).
+	if (RamDisk == NO_RAMDISK)
+        Print("XMODEM Download type file Name\nYMODEM Download type Y: ");
+    else
+        Print("XMODEM Download type file Name\nYMODEM Download type Y\nYMODEM-G Download type G: ");
 	InputString(filename,sizeof(filename-1));
 	Print("\n");
 
 	ClearUartData();
 
+	if ( (RamDisk != NO_RAMDISK) && ((((filename[0]=='g')||(filename[0]=='G'))&&(filename[1]==0))) )
+        G=1;
+    else
+        G=0;
 	//Y-Modem?
-	if (((filename[0]=='y')||(filename[0]=='Y'))&&(filename[1]==0))
+	if ( (((filename[0]=='y')||(filename[0]=='Y'))&&(filename[1]==0)) || (G) )
 	{
-		do
-		{
-		    // A key has been hit?
+        do
+        {
+            // A key has been hit?
             if (KeyboardHit())
             {
                 // Get the key
-				key = InputChar ();
-				if (key == 0x1b) //esc?
+                key = InputChar ();
+                if (key == 0x1b) //esc?
                     break;
             }
-			//First let's receive file name, size, etc...
-			PktNumber = 1;
-			iFile = 0;
+            //First let's receive file name, size, etc...
+            PktNumber = 1;
 
-			// Request start of YMODEM 1K
-			ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
-			if (ret == 255) //Created a file, cool, let's move on
-			{
-			    // A key has been hit?
+            if (G)
+                // Request start of YMODEM 1K
+                ret = XYModemPacketReceive (&iFile, 'G', PktNumber, 1);
+            else
+                // Request start of YMODEM 1K
+                ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
+
+            //Our nice animation to show we are not stuck
+            PrintChar('S');
+            if (ret == 255) //Created a file, cool, let's move on
+            {
+                // A key has been hit?
                 if (KeyboardHit())
                 {
                     // Get the key
@@ -929,19 +889,22 @@ void XYModemGet (void)
                         break;
                     }
                 }
-				++FilesRcvd;
-				//Now transfer is like XMODEM for this file
-				PktNumber = 1;
+                ++FilesRcvd;
+                //Now transfer is like XMODEM for this file
+                PktNumber = 1;
 
-				//Our nice animation to show we are not stuck
-				PrintChar('S');
-				// Request start of XMODEM 1K
-				ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
-				if (ret)
-				{
-					do
-					{
-					    // A key has been hit?
+                if (G)
+                    // Request start of YMODEMG
+                    ret = XYModemPacketReceive (&iFile, 'G', PktNumber, 1);
+                else
+                    // Request start of XMODEM 1K
+                    ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
+
+                if (ret)
+                {
+                    do
+                    {
+                        // A key has been hit?
                         if (KeyboardHit())
                         {
                             // Get the key
@@ -952,49 +915,63 @@ void XYModemGet (void)
                                 break;
                             }
                         }
-						//Our nice animation to show we are not stuck
-						PrintChar(8); //backspace
-						PrintChar(advance[PktNumber%4]); // next char
-						++PktNumber; //next packet
-						ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 1);
-					}
-					while (ret == 1); //basically, while receive packets with SOH/STX, continue receiving/writing
 
-					if (ret == 0) //Time Out or other errors
-						Print ("Error receiving file\n");
-					else if (ret == CAN) //Host canceled the transfer
-					{
-						//Ok, just ACK it
-						XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-						Print ("Server canceled transfer\n");
-					}
-					else if ((ret == EOT)||(ret == ETB)) //End of Transmission
-					{
-						//Ok, just ACK it
-						XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-						Print ("File Transfer Completed!\n");
-					}
-					else if (key == 0x1b) //esc?
+                        //Our nice animation to show we are not stuck
+                        PrintChar(8); //backspace
+                        PrintChar(advance[PktNumber%4]); // next char
+
+                        ++PktNumber; //next packet
+                        if (G)
+                            ret = XYModemPacketReceive (&iFile, 0, PktNumber, 1);
+                        else
+                            ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 1);
+                    }
+                    while (ret == 1); //basically, while receive packets with SOH/STX, continue receiving/writing
+
+                    if (ret == 0) //Time Out or other errors
+                    {
+                        Print ("Error receiving file\n");
+                        key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                    }
+                    else if (ret == CAN) //Host canceled the transfer
+                    {
+                        //Ok, just ACK it
+                        XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
+                        Print ("Server canceled transfer\n");
+                    }
+                    else if ((ret == EOT)||(ret == ETB)) //End of Transmission
+                    {
+                        //Ok, just ACK it
+                        XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
+                        Print ("File Transfer Completed!\n");
+                        if (RamDisk == RAMDISK_CREATED)
+                            RamDisk = RAMDISK_USED;
+                    }
+                    else if (key == 0x1b) //esc?
                         break;
-				}
-				else //error starting CRC section
-					Print("Timeout waiting for file...\n");
+                }
+                else //error starting CRC section
+                {
+                    Print("Timeout waiting for file...\n");
+                    key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                }
 
-				Close (iFile);
-			}
-			else if (ret == 254) //No file or no more files
-			{
-				//Ok, just ACK it
-				XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-				printf ("DONE! Transferred %u files...\r\n",FilesRcvd);
-			}
-			else
-			{
-				Print("Unknown error waiting for file...\n");
-				break;
-			}
-		}
-		while ((key != 0x1b)&&(ret != 254)); //Do this until any process break or no more files
+                Close (iFile);
+            }
+            else if (ret == 254) //No file or no more files
+            {
+                //Ok, just ACK it
+                XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
+                printf ("DONE! Transferred %u files...\r\n",FilesRcvd);
+            }
+            else
+            {
+                Print("Unknown error waiting for file...\n");
+                key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                break;
+            }
+        }
+        while ((key != 0x1b)&&(ret != 254)); //Do this until any process break or no more files
 	}
 	else //X-Modem
 	{
@@ -1029,7 +1006,10 @@ void XYModemGet (void)
 				while (ret == 1); //basically, while receive packets with SOH/STX, continue receiving/writing
 
 				if (ret == 0) //Time Out or other errors
+                {
 					Print ("Error receiving file\n");
+					key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                }
 				else if (ret == CAN) //Host canceled the transfer
 				{
 					XYModemPacketReceive (&iNoFile, ACK, PktNumber, 0);
@@ -1039,26 +1019,34 @@ void XYModemGet (void)
 				{
 					XYModemPacketReceive (&iNoFile, ACK, PktNumber, 0);
 					Print ("File Transfer Completed!\n");
+					if (RamDisk == RAMDISK_CREATED)
+                        RamDisk = RAMDISK_USED;
 				}
-				else if (key == 0x1b) //cancelled by user?
-                {
-                    Print("Ok, cancelling transfer...\n");
-                    //Ok, just CANcel it
-                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
-                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
-                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
-                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
-                    XYModemPacketReceive (&iNoFile, CAN, PktNumber, 1);
-                }
 			}
 			else //error starting CRC section
+            {
 				Print("Timeout waiting for file...\n");
+				key == 0x1b; //force send of CAN CAN CAN CAN CAN
+            }
 
 			Close (iFile);
 		}
 		else
+        {
 			printf ("Error creating file %s ...\r\n",filename);
+			key == 0x1b; //force send of CAN CAN CAN CAN CAN
+        }
 	}
+
+	if (key == 0x1b) //cancelled
+    {
+        //Ok, just CANcel it
+        XYModemPacketReceive (&iNoFile, CAN, 0, 1);
+        XYModemPacketReceive (&iNoFile, CAN, 0, 1);
+        XYModemPacketReceive (&iNoFile, CAN, 0, 1);
+        XYModemPacketReceive (&iNoFile, CAN, 0, 1);
+        XYModemPacketReceive (&iNoFile, CAN, 0, 1);
+    }
 }
 
 // This will handle each byte received to work on TELNET commands and sub options
@@ -1092,10 +1080,7 @@ void WorkOnReceivedData (unsigned char Data)
                         escdata[strlen(escdata) + 1]=0;
                         escdata[strlen(escdata)]=0x3b;
                         sprintf(&escdata[strlen(escdata)],"%uR",CursorX);
-                        if (mode == 0)
-                            TxData (escdata, strlen(escdata));
-                        else
-                            SendData (escdata, strlen(escdata), '0');
+                        TxData (escdata, strlen(escdata));
                         EscInProgress = 0;
                     }
                 }
@@ -1179,8 +1164,6 @@ int main(char** argv, int argc)
 {
 	char tx_data = 0; //where our key inputs go
 	unsigned char ret; //return of functions
-	unsigned char rxdata[1600]; //in multiple connection, we get a big chunk of data, FIFO is about 1600 bytes long
-	unsigned int rxdatasize; //to help indicating rxdata buffer size and then received data size
 	unsigned char input[48]; //Use to get password of encrypted network
 	unsigned int i; //auxiliary
 	APList *myList = NULL; //structure to hold the access points listed by the device
@@ -1193,10 +1176,6 @@ int main(char** argv, int argc)
     unsigned int MemMamFH = 0; //Handle of the MemMam function handler to access MemMam not through Expansion BIOS calls
     unsigned int MemMamXTCall = 0; //Handle to access MemMam TSR functions directly, bypassing MemMam
     unsigned int JANSIID = 0; //will hold the handle to access jANSI TSR through MemMam
-    //IMPORTANT: You need to check the map compiler generates to make sure this
-    //address do not overlap functions, variables, etc
-    //MEMMAN and jANSI require memory information passed to it to be in the
-    //upper memory segment, so we use this address to interface with it
     Z80_registers regs; //auxiliary structure for asm function calling
 
 
@@ -1215,10 +1194,6 @@ int main(char** argv, int argc)
 	// available APs to connect. This flag will force showing the AP list
 	// even if ESP is already connected.
 	reconnect = 0;
-	// Connection mode, default is single, it is faster, lower latency
-	// Multiple can introduce big latency for small data (like data being
-	// typed and sent byte per byte), but is needed for FTP as an example.
-	mode = 0;
 
 	//JANSI TSR will leave the screen in mode 7, so if we are in mode 7
 	//it should be loaded and started
@@ -1267,7 +1242,7 @@ int main(char** argv, int argc)
             regs.UWords.HL = 0; //return only after dumping all content
             AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
 
-            strcpy(MemMamMemory,"\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.60 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n");
+            strcpy(MemMamMemory,"\x1b[3.\x1b[31m> MSX-SM ESP8266 WIFI Module TELNET Client v0.70 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n");
             regs.Bytes.A = 3; //DMPSTR
             regs.UWords.IX = JANSIID;
             regs.UWords.HL = (unsigned int)MemMamMemory;
@@ -1288,7 +1263,7 @@ int main(char** argv, int argc)
 	ClearUartData();
 
 	if (!Ansi)
-		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.60 <\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
+		Print("> MSX-SM ESP8266 WIFI Module TELNET Client v0.70 <\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n");
 
 	// At least server:port should be received
 	if (argc == 0)
@@ -1298,7 +1273,7 @@ int main(char** argv, int argc)
 	}
 
 	// Validate command line parameters
-    if(!IsValidInput(argv, argc, server, port, &reconnect, &speed, &mode))
+    if(!IsValidInput(argv, argc, server, port, &reconnect, &speed))
 	{
 		// If invalid parameters, just show some instructions
 		Print(strUsage);
@@ -1376,13 +1351,41 @@ int main(char** argv, int argc)
 		else
 			Print("> Initialization OK!\n");
 
+        //Let's create our RAMDISK
+        //MSXDOS2 / NEXTOR take too much time calculating free space
+        //on large partitions. This make it impossible to use streaming
+        //protocols like YMODEM-G, as the first write takes several seconds
+        //and it is a blocking operation. In that time several packets
+        //will be lost and the transfer fails
+        //
+        //Why 2M? Well, this is to run on MSX-SM that has 4MB mapper, so lets
+        //put to good use. Perhaps if porting for other MSX/Device you might
+        //use less memory/ramdisk
+
+        regs.Bytes.B = 128;//2M ramdisk
+        DosCall(0x68, &regs, REGS_MAIN, REGS_MAIN);
+        //Should be Ok or already exists
+        if ((regs.Bytes.A != 0)&&(regs.Bytes.A != 0xBC))
+        {
+            printf("Error %x creating RAMDISK, YMODEM(G) not available...\r\n",regs.Bytes.A);
+            RamDisk = NO_RAMDISK;
+        }
+        else
+        {
+            //If created, it was ours, if already existed, user.
+            if (regs.Bytes.A == 0)
+                OurRamdisk = 1;
+            else
+                OurRamdisk = 0;
+            RamDisk = RAMDISK_CREATED;
+            CurrentDrive = GetDisk();
+            SetDisk(7);
+        }
+
 		printf ("Connecting to server: %s:%s \r\n", server, port);
 
 		// Open TCP connection to server/port
-		if (mode == 0)
-			ret = OpenSingleConnection (CONNECTION_TYPE_TCP, server, port);
-		else
-			ret = OpenConnection (CONNECTION_TYPE_TCP, server, port,'0');
+		ret = OpenSingleConnection (CONNECTION_TYPE_TCP, server, port);
 
 		if ( ret == RET_WIFI_MSXSM_OK)
 		{
@@ -1409,20 +1412,14 @@ int main(char** argv, int argc)
 						// Make sure UART is not sending a byte
 						while(UartTXInprogress());
 						// Send the byte
-						if (mode == 0)
-							ret = TxByte (tx_data);
-						else
-							ret = SendData(&tx_data,1,'0');
+						ret = TxByte (tx_data);
 					}
 					else // enter/CR
 					{
 						// Make sure UART is not sending a byte
 						while(UartTXInprogress());
 						// Send CR and LF as well
-						if (mode == 0)
-							ret = TxData (crlf, 2);
-						else
-							ret = SendData(crlf,2,'0');
+						ret = TxData (crlf, 2);
 					}
 
 					// If we are echoing our own keys
@@ -1448,29 +1445,7 @@ int main(char** argv, int argc)
 						Print("FIFO Full, possible data loss!\n");
 					}
 
-					if (mode == 0) //Single connection mode reception is simple
-					{
-						WorkOnReceivedData(GetUARTData());
-					}
-					else // Multiple Connection Mode
-					{
-						//We can clear up to the size of our buffer
-						//That is as big as the MSX-SM FIFO
-						rxdatasize = sizeof (rxdata);
-						ret = ReceiveData (rxdata, &rxdatasize, '0');
-						if ((ret == RET_WIFI_MSXSM_OK) && (rxdatasize))
-						{
-							//Not really efficient but works for now
-							//Treat the data as if coming from single
-							//connection, byte per byte
-							for (i=0;i<rxdatasize;i++)
-							{
-								WorkOnReceivedData(rxdata[i]);
-							}
-						}
-						else
-							printf (">>Error %u trying to receive data, %u bytes left...\r\n<<",ret,rxdatasize);
-					}
+					WorkOnReceivedData(GetUARTData());
 				}
 				else //good time to print data
                 {
@@ -1502,10 +1477,7 @@ int main(char** argv, int argc)
 			while (tx_data != 0x1b); //If ESC pressed, exit...
 
 			Print("Closing connection...\n");
-			if (mode == 0)
-				ret = CloseSingleConnection();
-			else
-				ret = CloseConnection('0');
+			ret = CloseSingleConnection();
 
 			if (ret != RET_WIFI_MSXSM_OK)
 				printf ("Error %u closing connection.\r\n", ret);
@@ -1515,6 +1487,22 @@ int main(char** argv, int argc)
 	}
 	else
 		Print("> ESP Init error...\n");
+
+    // Created RAM DISK but no files transferred
+    if (RamDisk == RAMDISK_CREATED)
+    {
+        if(OurRamdisk)
+        {
+            //Let's destroy our RAMDISK as it was not used
+            regs.Bytes.B = 0; // destroy
+            DosCall(0x68, &regs, REGS_MAIN, REGS_MAIN);
+        }
+        SetDisk(CurrentDrive);
+    }
+    else if (RamDisk == RAMDISK_USED)
+    {
+        Print("Exiting in drive H:, copy the files transferred from RAMDISK to your disk drive,otherwise you will loose files upon reboot or power failure. Then you can destroy the drive/free memory using \"ramdisk 0\"\n");
+    }
 
 	return 0;
 }
