@@ -15,6 +15,7 @@ It adds a new options:
 		   
 Downloading from a local server to my MSX using an ESP8266 based network adapter HGET 
 performance for a 512KB file went from 5KB/s (original) to:
+
 	- 9,5KB/s (no extra options)
 	- Whooping 24KB/s (no breathe, no print)!!!
 
