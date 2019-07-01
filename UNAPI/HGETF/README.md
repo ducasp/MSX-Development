@@ -22,9 +22,9 @@ It adds two new options:
 		   adapter and cpu is up to it. :-) And nowadays internet connections
 		   and servers are really reliable.
 		   
-Using both options downloading from a local server to my MSX using an ESP8266
-based network adapter HGET performance went from 5KB/s (original) to 9KB/s (pre
-allocate file) to a whooping 34KB/s (pre allocate, no breathe, no print)!!!
+Using both options downloading from a local server to my MSX using an ESP8266 based network
+adapter HGET performance for a 512KB file went from 5KB/s (original) to 20KB/s (no breathe)
+to a whooping 34KB/s (pre allocate, no breathe, no print)!!!
 
 HGETF (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
