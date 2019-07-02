@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="waitwifi" />
+		<Option pch_mode="2" />
+		<Option compiler="sdcc" />
+		<Build>
+			<Target title="Release">
+				<Option output="bin/Release/waitwifi" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="sdcc" />
+				<Compiler>
+					<Add option="--out-fmt-ihx" />
+					<Add option="--no-std-crt0" />
+					<Add option="-mz80" />
+					<Add option="--opt-code-size" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196 --allow-unsafe-read" />
+					<Add directory="../fusion-c/header" />
+				</Compiler>
+				<Linker>
+					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="../fusion-c/lib/fusion.lib" />
+					<Add library="../fusion-c/lib/asm.lib" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="cmd /c ren bin\Release\waitwifi.exe waitwifi.ihx" />
+					<Add after="cmd /c ..\hex2bin -e com bin\Release\waitwifi.ihx" />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Unit filename="../waitwifi.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
