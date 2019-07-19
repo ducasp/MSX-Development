@@ -1,6 +1,6 @@
 # HGET v1.3
 
-HGETF v1.3 is based on HGET v1.1 by Nestor Soriano / Konamiman.
+HGET v1.3 is based on HGET v1.1 by Nestor Soriano / Konamiman.
 
 How HGET v1.3 is any different than the original HGET?
 
