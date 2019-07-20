@@ -1,6 +1,6 @@
-# TFTPF v1.1
+# TFTP v1.1
 
-TFTPF v1.1 is based on TFTP v1.0 by Nestor Soriano / Konamiman.
+TFTP v1.1 is based on TFTP v1.0 by Nestor Soriano / Konamiman.
 
 This version removes the wait for a whole tick after TCPIP_WAIT calls
 for at least a whole tick (1/50s or 1/60s) that were not needed. This 
