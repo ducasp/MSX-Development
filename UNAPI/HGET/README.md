@@ -51,6 +51,9 @@ performance for a 512KB file went from 5KB/s (original) to:
 
 HGET v1.3 - 2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+Source code is no longer here, it can be found at my copy of Konamiman repository:
+https://github.com/ducasp/MSX
+
 All code can be re-used, re-written, derivative work can be sold, as long as the source 
 code of changes is made public as well. (Unless this violates the original code owner
 policies, which, in this case, the original owner rules applies!)
