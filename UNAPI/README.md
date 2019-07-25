@@ -4,15 +4,15 @@ Generally, if the software was made by others, my revision is in order to have
 better performance. Unfortunatelly MSX is dead-slow writting text to screen...
 
 As such, avoiding to write to screen will speed-up performance, specially when
-software updates how many bytes have been transferred...
+software updates how many bytes have been transferred writing the same line over
+and over and over... Print less, print just what is needed, gives great results!
 
-Another general performance enhancement is an idea from Louthrax (SofaRun and
-other great stuff), pre-allocate the whole file when file size is known. MSX is
-not exactly fast dealing with FAT16 partitions, specially bigger ones. In order
-to calculate free space (which it does every time it flushes disk buffer to the
-file and has to allocate more space) it will spend a few seconds, seconds no 
-other task will run. Pre-allocating file with its whole size will have this time
-consuming task ocurring only once, instead of once every time buffer is flushed.
+Another common pitfall on some tools is to add an extra wait for a VDP interrupt
+(or tick, or 1/60-1/50ms period) after calling TCPIP_WAIT. This waste time, the
+whole idea is that if the adapter need any pauses/time not receiving request for
+optimum performance, it should implement it in TCPIP_WAIT, and if not needing,
+just return immediatelly. Thus, an extra wait after returning from TCPIP_WAIT 
+will just make it slower for adapters/connections fast enough.
 
 All source code and binaries: 
 Original work (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
