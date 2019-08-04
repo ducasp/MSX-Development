@@ -25,12 +25,12 @@ show ANSI escape codes / colors. How is it different than TCPCON?
 	  as 80x24 if JANSI is not running or 80x25 otherwise). Also will respond
 	  to ANSI request to cursor position, some BBS's use this to detect if 
 	  terminal is ANSI capable. The first time you hit ENTER, it will stop
-    TELNET negotiations to be faster rendering data on screen
+          TELNET negotiations to be faster rendering data on screen
 	  
 	- If using JANSI, ANSI capabilities are automatically detected by most BBSs
 	
 	- It will use MS-DOS character set, which allow seeing ANSI animations and
-	  menus as they are.
+	  menus as they are
 	
 	- It accesses JANSI directly instead of using JANSI built in hook into DOS
 	  functions, also it will initialize JANSI if it is installed but screen 
@@ -82,10 +82,10 @@ File download is very preliminar and there are known issues:
 	  no filename to a C or G request, but they exit after sending the only 
 	  file. This is an error on their protocol implementation and will cause
 	  YMODEM transfers of single files to terminate with an error after writing
-	  on the screen transfer succesful. Don't worry, your file is ok.
+	  on the screen transfer succesful. Don't worry, your file is ok
 	  
 	- I've not been able to test it on many BBS's, so if you have an issue,
-	  please tell me which BBS and which file failed.
+	  please tell me which BBS and which file failed
 	  
 	- Maybe in the future YMODEM-G performance might be better, I won't make
 	  any promisses, this is a hobby that I do in my spare time. :) XMODEM 
@@ -95,7 +95,7 @@ File download is very preliminar and there are known issues:
 	  200ms between 128 bytes packets... Yeah, it won't work at great speeds. 
 	  Using 1024 bytes packets it gets better, but HISPAMSX as an example will
 	  use XMODEM and YMODEM with 128 bytes packets only (slow as you get about
-	  512 bytes of data in a second).
+	  512 bytes of data in a second)
 
 Usage: 
 telnet server:port [s]
