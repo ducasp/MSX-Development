@@ -63,6 +63,7 @@ unsigned char ucSentWill; //Sent what information we are willing for negotiation
 unsigned char ucCmdInProgress; //Is there a TELNET command in progress?
 unsigned char ucEscInProgress; //Is there an ESC command in progress?
 unsigned char ucSubOptionInProgress; // Is there a TELNET command sub option in progress?
+unsigned char ucRepliedToGetCursorPosition;
 
 //For data receive parsing
 unsigned char ucEscData[25];
@@ -82,8 +83,8 @@ unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling
 
-int negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen);
+void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen);
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucSmoothScroll);
 void WorkOnReceivedData(unsigned char ucConnNumber);
-void ClearTelnetDoubleFF();
+void ParseTelnetData(unsigned char ucConnNumber);
 #endif // _TELNET_HEADER_INCLUDED

@@ -121,6 +121,137 @@ void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
 	TxData (ucConnNumber, ucBuf, iLen);
 }
 
+// This function will handle a received buffer from a TELNET connection. If
+// there are TELNET commands or sub-commands, it will properly remove and not
+// print those, as well try to negotiate it using our negotiate function.
+// Also clear double FF's (this is how telnet indicate FF) and replace by a
+// single FF.
+void ParseTelnetData(unsigned char ucConnNumber)
+{
+    unsigned int uiTmp = 0;
+
+    //While we have data in the buffer
+    while (uiTmp<uiGetSize)
+    {
+        // Have we flagged that a telnet CMD is being built?
+        if (!ucCmdInProgress)
+        {
+            if (ucMemMamMemory[uiTmp] == IAC)
+            {
+                ucRcvData[0] = ucMemMamMemory[uiTmp];
+                ucCmdInProgress = 1; // flag a command or sub is in progress
+            }
+            else if (!ucRepliedToGetCursorPosition) //some BBSs detect ANSI through ANSI command to get cursor position
+            {
+                if (!ucEscInProgress)
+                {
+                    if (ucMemMamMemory[uiTmp] == 0x1b)
+                    {
+                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
+                        ++ucEscInProgress;
+                    }
+                }
+                else
+                {
+                    if( ((ucEscInProgress==1)&&(ucMemMamMemory[uiTmp]=='[')) || ((ucEscInProgress==2)&&(ucMemMamMemory[uiTmp]=='6')) || ((ucEscInProgress==3)&&(ucMemMamMemory[uiTmp]=='n')) )
+                    {
+                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
+                        ++ucEscInProgress;
+                        if(ucEscInProgress==4)
+                        {
+                            //return cursor position
+                            ucEscData[0]=0x1b;
+                            ucEscData[1]=0x5b;
+                            sprintf(&ucEscData[2],"%u",ucCursorY);
+                            ucEscData[strlen(ucEscData) + 1]=0;
+                            ucEscData[strlen(ucEscData)]=0x3b;
+                            sprintf(&ucEscData[strlen(ucEscData)],"%uR",ucCursorX);
+                            TxData (ucConnNumber, ucEscData, strlen(ucEscData));
+                            ucEscInProgress = 0;
+                            ucRepliedToGetCursorPosition = 1;
+                        }
+                    }
+                    else
+                    {
+                        ucEscInProgress = 0;
+                    }
+                }
+            }
+            ++uiTmp;
+        }
+        else // a CMD or sub option is in progress
+        {
+            // Get the byte in the proper position
+            ucRcvData[ucCmdInProgress] = ucMemMamMemory[uiTmp];
+
+            // Is it the first byte after IAC? If yes and it is IAC again
+            if ( (ucCmdInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC))
+            {
+                //move the memory so no extra FF is printed
+                memcpy (&ucMemMamMemory[uiTmp-ucCmdInProgress],&ucMemMamMemory[uiTmp+1],(uiGetSize-uiTmp-1));
+                --uiGetSize;
+                --uiTmp;
+                ucCmdInProgress = 0;
+            }
+            // Is it the first byte after IAC and now indicate a sub option?
+            else if ( (ucCmdInProgress == 1) && (ucRcvData[ucCmdInProgress] == SB))
+            {
+                //ok, it is a sub option, keep going
+                ucSubOptionInProgress = 1;
+                ++ucCmdInProgress;
+                ++uiTmp;
+            }
+            // If receive IAC processing sub option, it could be the end of sub option
+            else if ( (ucSubOptionInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC) )//need to wait for IAC /SE
+            {
+                ++ucSubOptionInProgress;
+                ++ucCmdInProgress;
+                ++uiTmp;
+            }
+            // Was processing sub option, received IAC, is the next byte SE?
+            else if ( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] == SE) )
+            {
+                //It is, so our sub option reception is done (ends w/ IAC SE)
+                ++ucCmdInProgress;
+                ++uiTmp;
+                //move the memory so the command/suboption is not printed on screen
+                memcpy (&ucMemMamMemory[uiTmp-ucCmdInProgress],&ucMemMamMemory[uiTmp],(uiGetSize-uiTmp));
+                uiGetSize-=ucCmdInProgress;
+                uiTmp-=ucCmdInProgress;
+                ucSubOptionInProgress = 0;
+                ucCmdInProgress = 0;
+                //Negotiate the sub option
+                negotiate(ucConnNumber, ucRcvData, ucCmdInProgress);
+            }
+            // Was processing sub option, received IAC, but now it is not SE
+            else if( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] != SE) )
+            {
+                //Keep processing sub option, not the end
+                ucSubOptionInProgress = 1;
+                ++ucCmdInProgress;
+                ++uiTmp;
+            }
+            else //ok, nothing special, just data for IAC or SUB
+            {
+                ++ucCmdInProgress;
+                ++uiTmp;
+            }
+
+            //If not a sub option and is the third byte
+            if ((ucSubOptionInProgress == 0) && (ucCmdInProgress == 3))
+            {
+                //Commands are 3 bytes long, always
+                negotiate(ucConnNumber, ucRcvData,3);
+                //move the memory so the command is not printed on screen
+                memcpy (&ucMemMamMemory[uiTmp-3],&ucMemMamMemory[uiTmp],(uiGetSize-uiTmp));
+                ucCmdInProgress = 0;
+                uiGetSize-=3;
+                uiTmp-=3;
+            }
+        }
+    }
+}
+
 // Checks Input Data received from command Line and copy to the variables
 // It is mandatory to have server:port as first argument
 // All other arguments are optional
@@ -160,141 +291,6 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 	return iRet;
 }
 
-void ClearTelnetDoubleFF()
-{
-    unsigned int uiTmp = 0;
-
-    do
-    {
-        if (ucMemMamMemory[uiTmp] == IAC)
-        {
-            if (ucMemMamMemory[uiTmp+1] == IAC)
-            {
-                if(uiGetSize>(uiTmp+2))
-                    memcpy (&ucMemMamMemory[uiTmp+1],&ucMemMamMemory[uiTmp+2],(uiGetSize-uiTmp-2));
-                --uiGetSize;
-            }
-        }
-    }
-    while ((++uiTmp)<uiGetSize);
-}
-
-// This will handle each byte received to work on TELNET commands and sub options
-void WorkOnReceivedData (unsigned char ucConnNumber)
-{
-    unsigned int uiTmp = 0;
-
-    do
-    {
-        // Have we flagged that a telnet CMD is being built?
-        if (!ucCmdInProgress)
-        {
-            if (ucMemMamMemory[uiTmp] != IAC)
-            {
-                PrintChar(ucMemMamMemory[uiTmp]);
-                if ((!ucEscInProgress)&&(ucAnsi))
-                {
-                    if (ucMemMamMemory[uiTmp] == 0x1b)
-                    {
-                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
-                        ++ucEscInProgress;
-                    }
-                }
-                else
-                {
-                    if( ((ucEscInProgress==1)&&(ucMemMamMemory[uiTmp]=='[')) || ((ucEscInProgress==2)&&(ucMemMamMemory[uiTmp]=='6')) || ((ucEscInProgress==3)&&(ucMemMamMemory[uiTmp]=='n')) )
-                    {
-                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
-                        ++ucEscInProgress;
-                        if(ucEscInProgress==4)
-                        {
-                            //return cursor position
-                            ucEscData[0]=0x1b;
-                            ucEscData[1]=0x5b;
-                            sprintf(&ucEscData[2],"%u",ucCursorY);
-                            ucEscData[strlen(ucEscData) + 1]=0;
-                            ucEscData[strlen(ucEscData)]=0x3b;
-                            sprintf(&ucEscData[strlen(ucEscData)],"%uR",ucCursorX);
-                            TxData (ucConnNumber, ucEscData, strlen(ucEscData));
-                            ucEscInProgress = 0;
-                        }
-                    }
-                    else
-                        ucEscInProgress = 0;
-                }
-            }
-            else
-            {
-                ucRcvData[0] = ucMemMamMemory[uiTmp];
-                ucCmdInProgress = 1; // flag a command or sub is in progress
-#ifdef log_debug
-                Print("IAC->");
-#endif
-            }
-        }
-        else // a CMD or sub option is in progress
-        {
-            // Get the byte in the proper position
-            ucRcvData[ucCmdInProgress] = ucMemMamMemory[uiTmp];
-
-#ifdef log_debug
-            printf("{%x}",ucRcvData[ucCmdInProgress]);
-#endif
-            // Is it the first byte after IAC? If yes and it IAC again
-            if ( (ucCmdInProgress==1) && (ucRcvData[ucCmdInProgress] == IAC))
-            {
-                PrintChar(ucMemMamMemory[uiTmp]); //print FF
-                ucCmdInProgress = 0;
-            }
-            // Is it the first byte after IAC and now indicate a sub option?
-            else if ( (ucCmdInProgress==1) && (ucRcvData[ucCmdInProgress] == SB))
-            {
-                //ok, it is a sub option, keep going
-                ucSubOptionInProgress = 1;
-                ++ucCmdInProgress;
-            }
-            // If receive IAC processing sub option, it could be the end of sub option
-            else if ( (ucSubOptionInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC) )//need to wait for IAC /SE
-            {
-                ++ucSubOptionInProgress;
-                ++ucCmdInProgress;
-            }
-            // Was processing sub option, received IAC, is the next byte SE?
-            else if ( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] == SE) )
-            {
-                //It is, so our sub option reception is done (ends w/ IAC SE)
-                ++ucCmdInProgress;
-                ucSubOptionInProgress = 0;
-                ucCmdInProgress = 0;
-#ifdef log_debug
-                Print("<-\n");
-#endif
-                //Negotiate the sub option
-                negotiate(ucConnNumber, ucRcvData, ucCmdInProgress);
-            }
-            // Was processing sub option, received IAC, but now it is not SE
-            else if( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] != SE) )
-                //Keep processing sub option, not the end
-                ucSubOptionInProgress = 1;
-            else //ok, nothing special, just data for IAC or SUB
-                ++ucCmdInProgress;
-
-            //If not a sub option and is the third byte
-            if ((ucSubOptionInProgress == 0) && (ucCmdInProgress == 3))
-            {
-#ifdef log_debug
-                Print("<-\n");
-#endif
-                //Commands are 3 bytes long, always
-                negotiate(ucConnNumber, ucRcvData,3);
-                ucCmdInProgress = 0;
-            }
-        }
-    }
-    while ((++uiTmp)<uiGetSize);
-    uiGetSize = 0;
-}
-
 // That is where our program goes
 int main(char** argv, int argc)
 {
@@ -321,6 +317,7 @@ int main(char** argv, int argc)
 	ucCmdInProgress = 0;
 	// No escape code to handle
 	ucEscInProgress = 0;
+	ucRepliedToGetCursorPosition = 0;
 
 	// Validate command line parameters
     if(!IsValidInput(argv, argc, ucServer, ucPort, &ucSmoothScroll))
@@ -369,9 +366,9 @@ int main(char** argv, int argc)
         if (!regs.Flags.C) //carry clear if success
         {
             ucAnsi = 1;
-    #ifdef log_debug
+#ifdef log_debug
             printf ("jANSI TSR ID: %x%x\r\n",regs.Bytes.B,regs.Bytes.C);
-    #endif
+#endif
             JANSIID = regs.UWords.BC;
             regs.Bytes.A = 2; //INIDMP
             regs.UWords.IX = JANSIID;
@@ -396,7 +393,10 @@ int main(char** argv, int argc)
     }
 
     if (!ucAnsi)
+    {
         Print(ucSWInfo);
+        ucRepliedToGetCursorPosition = 1;
+    }
 
 	// At least server:port should be received
 	if (argc == 0)
@@ -453,6 +453,7 @@ int main(char** argv, int argc)
                         // Send CR and LF as well
                         TxData (ucConnNumber, ucCrLf, sizeof(ucCrLf));
                         ucEnterHit = 1;
+                        ucRepliedToGetCursorPosition = 1;
                     }
 
                     // If we are echoing our own keys
@@ -472,15 +473,12 @@ int main(char** argv, int argc)
 
             // Is there DATA?
             uiGetSize = MemMamMemorySize - 1;
-            if ((RXData(ucConnNumber, ucMemMamMemory, &uiGetSize))&&(ucEnterHit==0))
-                WorkOnReceivedData(ucConnNumber);
-
-            if (ucEnterHit)
+            if (RXData(ucConnNumber, ucMemMamMemory, &uiGetSize))
             {
                 //Data to print?
                 if(uiGetSize)
                 {
-                    ClearTelnetDoubleFF();
+                    ParseTelnetData(ucConnNumber);
                     if (!ucAnsi)
                     {
                         ucMemMamMemory[uiGetSize]=0;
