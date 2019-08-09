@@ -30,7 +30,7 @@
 	  HISPA which is really slow, not sure why they do not enable 1K blocks)
 	  
 	- ESC no longer quits the program, as this key might be requested to 
-	  interact with some BBSs. Now, to quit the program hit CTRL+ESC
+	  interact with some BBSs. Now, to quit the program hit CTRL+E
 	  
 	- It should now work fine with MSX1 as long as you have an UNAPI adapter 
 	  that works with it. It will understand that it is a MSX1 and not try to
