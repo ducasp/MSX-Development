@@ -1,3 +1,39 @@
+/*
+--
+-- XYMODEM.c
+--   X/YMODEM(G) for UNAPI Telnet Terminal.
+--   Revision 0.70
+--
+-- Requires SDCC and Fusion-C library to compile
+-- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- All rights reserved.
+--
+-- Redistribution and use of this source code or any derivative works, are
+-- permitted provided that the following conditions are met:
+--
+-- 1. Redistributions of source code must retain the above copyright notice,
+--    this list of conditions and the following disclaimer.
+-- 2. Redistributions in binary form must reproduce the above copyright
+--    notice, this list of conditions and the following disclaimer in the
+--    documentation and/or other materials provided with the distribution.
+-- 3. Redistributions may not be sold, nor may they be used in a commercial
+--    product or activity without specific prior written permission.
+-- 4. Source code of derivative works MUST be published to the public.
+--
+-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+-- TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+-- PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+-- CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+-- EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+-- PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+-- OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+-- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+-- OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+-- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+--
+*/
+
 #include "../../fusion-c/header/io.h"
 #include "../../fusion-c/header/msx_fusion.h"
 #include "UnapiHelper.h"
@@ -8,6 +44,7 @@
 
 //X and YMODEM Vars
 __at 0xB000 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
+__at 0xB500 unsigned char RcvBuffer[]; //make sure it works in your map file, need to be in 0x8000 and beyond
 unsigned char filename[20];
 //Indicates G-Modem transfer in progress
 unsigned char G;
@@ -58,10 +95,11 @@ char *ultostr(unsigned long value, char *ptr, int base)
   return(ptr);
 }
 
-int ParseReceivedData(unsigned char * ucReceived, unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K)
+int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket, unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K)
 {
     unsigned int uiRet = 0;
-    unsigned int uiI;
+    unsigned int uiI = 0;
+	unsigned int uiJ;
     unsigned char ucContinueAfterHeaderFound = 0;
     static unsigned char ucSplitFF = 0;
 
@@ -74,8 +112,6 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned int uiIndex, unsigned
             {
                 //printf ("[%x]",ucReceived[uiI]);
                 ucContinueAfterHeaderFound = 1;
-                memcpy (ucReceived,&ucReceived[uiI],(uiReceivedSize-uiI));
-                uiReceivedSize-= uiI;
                 *ucIs1K = 0;
                 break;
             }
@@ -83,8 +119,6 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned int uiIndex, unsigned
             {
                 //printf ("[%x]",ucReceived[uiI]);
                 ucContinueAfterHeaderFound = 1;
-                memcpy (ucReceived,&ucReceived[uiI],(uiReceivedSize-uiI));
-                uiReceivedSize-= uiI;
                 *ucIs1K = 1;
                 break;
             }
@@ -101,12 +135,14 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned int uiIndex, unsigned
     if ((uiIndex)||(ucContinueAfterHeaderFound)) //packet has started
     {
         //now get rid of all double FF's replacing by  single FF
-        for (uiI=0;uiI<uiReceivedSize;++uiI)
+        for (uiJ=0;uiI<uiReceivedSize;++uiI)
         {
-            if (ucReceived[uiI+uiIndex]  != 0xFF) //not telnet IAC
+            if (ucReceived[uiI]  != 0xFF) //not telnet IAC
             {
+				ucPacket[uiJ+uiIndex]=ucReceived[uiI];
                 //printf ("<%x>",ucReceived[uiI+uiIndex]);
                 ++uiRet;
+				++uiJ;
             }
             else
             {
@@ -117,23 +153,20 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned int uiIndex, unsigned
                         continue; //this might confuse you, continue will jump to next iteration of loop and not execute the rest of the code below
                 }
 
-                if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+uiIndex+1] == 0xff) )
+                if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+1] == 0xff) )
                 {
                     //printf (">%x<",ucReceived[uiI+uiIndex]);
                     ++uiRet;
-                    if (uiI<(uiReceivedSize-2))
-                        memcpy (&ucReceived[uiI+uiIndex+1],&ucReceived[uiI+uiIndex+2], (uiReceivedSize-(uiI+2)) );
-                    --uiReceivedSize;
-                }
-                else if (uiI != (uiReceivedSize-1)) //not double FF, not a chance of being split, weird...
-                {
-                    ++uiRet;
-                    //printf ("|%x|",ucReceived[uiI+uiIndex]);
+					ucPacket[uiJ+uiIndex]=ucReceived[uiI];
+                    ++uiI; //jump next FF
+					++uiJ;
                 }
                 else //an alone FF in the last byte, should have been split
                 {
                     ucSplitFF = 1;
+					ucPacket[uiJ+uiIndex]=ucReceived[uiI];
                     ++uiRet;
+					++uiJ;
                 }
             }
         }
@@ -171,9 +204,9 @@ int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K)
             uiReadHelper = (1029-PktStatus); //at least 1024 bytes + 5 bytes header
 
         // Read remaining data
-        if (RXData (chTransferConn, &ucPacket[PktStatus], &uiReadHelper))
+        if (RXData (chTransferConn, RcvBuffer, &uiReadHelper))
         {
-            iParseResult = ParseReceivedData(ucPacket, PktStatus, uiReadHelper, &is1K);
+            iParseResult = ParseReceivedData(RcvBuffer, ucPacket, PktStatus, uiReadHelper, &is1K);
             //printf ("Iparse got: %i out of %u received bytes\r\n",iParseResult,uiReadHelper);
             if (iParseResult>0)
             {
@@ -308,7 +341,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                 if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(RcvPkt[1] == 0))
                 {
 					//is NULL the filename?
-					if (RcvPkt[2] == 0)
+					if (RcvPkt[3] == 0)
 						//No file received, end of transmission
                         return 254;
                     else
@@ -483,7 +516,7 @@ void XYModemGet (unsigned char chConn)
 
 	chTransferConn = chConn;
 
-    Print("XMODEM Download type file Name\nYMODEM Download type Y\nYMODEM-G Download type G: ");
+    Print("\r\nXMODEM Download type file Name\nYMODEM Download type Y\nYMODEM-G Download type G: ");
 	InputString(filename,sizeof(filename-1));
 	Print("\n");
 
@@ -571,7 +604,7 @@ void XYModemGet (unsigned char chConn)
                     if (ret == 0) //Time Out or other errors
                     {
                         Print ("Error receiving file\n");
-                        key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                        key = 0x1b; //force send of CAN CAN CAN CAN CAN
                     }
                     else if (ret == CAN) //Host canceled the transfer
                     {
@@ -591,7 +624,7 @@ void XYModemGet (unsigned char chConn)
                 else //error starting CRC section
                 {
                     Print("Timeout waiting for file...\n");
-                    key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                    key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 }
 
                 Close (iFile);
@@ -605,7 +638,7 @@ void XYModemGet (unsigned char chConn)
             else
             {
                 Print("Unknown error waiting for file...\n");
-                key == 0x1b; //force send of CAN CAN CAN CAN CAN
+                key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 break;
             }
         }
@@ -646,7 +679,7 @@ void XYModemGet (unsigned char chConn)
 				if (ret == 0) //Time Out or other errors
                 {
 					Print ("Error receiving file\n");
-					key == 0x1b; //force send of CAN CAN CAN CAN CAN
+					key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 }
 				else if (ret == CAN) //Host canceled the transfer
 				{
@@ -662,7 +695,7 @@ void XYModemGet (unsigned char chConn)
 			else //error starting CRC section
             {
 				Print("Timeout waiting for file...\n");
-				key == 0x1b; //force send of CAN CAN CAN CAN CAN
+				key = 0x1b; //force send of CAN CAN CAN CAN CAN
             }
 
 			Close (iFile);
@@ -670,7 +703,7 @@ void XYModemGet (unsigned char chConn)
 		else
         {
 			printf ("Error creating file %s ...\r\n",filename);
-			key == 0x1b; //force send of CAN CAN CAN CAN CAN
+			key = 0x1b; //force send of CAN CAN CAN CAN CAN
         }
 	}
 
