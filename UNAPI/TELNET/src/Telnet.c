@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 0.70
+--   Revision 0.80
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -54,10 +54,13 @@
 // Upon receiving a DO CMD_WINDOW_SIZE, respond with Window Size.
 // Upon receiving TTYPE SUB OPTION request, respond accordingly whether dumb
 // or ANSI (xterm-16color).
-// Upon receiving TSPEED SUB OPTION request, respond accordingly our current
-// UART Speed.
+// Upon receiving TSPEED SUB OPTION request, respond accordingly our fake 800000
+// Speed.
 // Upon receiving WILL ECHO, turn off our ECHO (as host will ECHO), otherwise
 // if receiving WONT ECHO or no ECHO negotiation, we will ECHO locally.
+// Upon receiving TRANSMIT_BINARY, will just acknowledge if enter was not hit
+// as some BBSs send it at start negotiations, but after that, invoke the
+// file transfer function automatically (some bbss do that before sending files)
 //
 // Treat the DO for TTYPE and TSPEED with an WILL to tell that we are ready
 // to send the information when requested.
@@ -65,7 +68,7 @@
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
-void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
+unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
 {
     int i;
 
@@ -81,30 +84,42 @@ void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
         if (ucAnsi)
             TxData (ucConnNumber, ucWindowSize1, sizeof(ucWindowSize1));
         else
-            TxData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize));
-
-        return;
+            if (!ucWidth40)
+                TxData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize));
+            else
+                TxData (ucConnNumber, ucWindowSize0, sizeof(ucWindowSize0));
+        return 1;
     }
 	else if (ucBuf[1] == SB && ucBuf[2] == CMD_TTYPE) { //requesting Terminal Type list
         if (ucAnsi)
             TxData (ucConnNumber, ucTTYPE2, sizeof(ucTTYPE2));
         else
             TxData (ucConnNumber, ucTTYPE3, sizeof(ucTTYPE3));
-        return;
+        return 1;
     }
     else if (ucBuf[1] == SB && ucBuf[2] == CMD_TERMINAL_SPEED) { //requesting Terminal Speed
         TxData (ucConnNumber, ucSpeed800K, sizeof(ucSpeed800K));
-        return;
+        return 1;
     }
 	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_ECHO) { //Host is going to echo
 		ucEcho = 0;
 		TxData (ucConnNumber, ucEchoDo, sizeof(ucEchoDo));
-		return;
+		return 1;
+	}
+	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_TRANSMIT_BINARY) { //Host is going to send a file
+		TxData (ucConnNumber, ucBinaryDo, sizeof(ucBinaryDo));
+		if (ucEnterHit)
+        {
+            XYModemGet(ucConnNumber);
+            return 0;
+        }
+        else
+            return 1;
 	}
 	else if (ucBuf[1] == WONT && ucBuf[2] == CMD_ECHO) { //Host is not going to echo
 		ucEcho = 1;
 		TxData (ucConnNumber, ucEchoDont, sizeof(ucEchoDont));
-		return;
+		return 1;
 	}
 
     for (i = 0; i < iLen; i++) {
@@ -119,6 +134,8 @@ void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
             ucBuf[i] = DO;
     }
 	TxData (ucConnNumber, ucBuf, iLen);
+
+	return 1;
 }
 
 // This function will handle a received buffer from a TELNET connection. If
@@ -126,6 +143,13 @@ void negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
 // print those, as well try to negotiate it using our negotiate function.
 // Also clear double FF's (this is how telnet indicate FF) and replace by a
 // single FF.
+// This function will handle a received buffer from a TELNET connection. If
+// there are TELNET commands or sub-commands, it will properly remove and not
+// print those, as well try to negotiate it using our negotiate function.
+// Also clear double FF's (this is how telnet indicate FF) and replace by a
+// single FF.
+// Here it is worth moving using memcpy as it is rarely done, FF on text is
+// not usual.
 void ParseTelnetData(unsigned char ucConnNumber)
 {
     unsigned int uiTmp = 0;
@@ -162,11 +186,11 @@ void ParseTelnetData(unsigned char ucConnNumber)
                             //return cursor position
                             ucEscData[0]=0x1b;
                             ucEscData[1]=0x5b;
-                            sprintf(&ucEscData[2],"%u",ucCursorY);
-                            ucEscData[strlen(ucEscData) + 1]=0;
-                            ucEscData[strlen(ucEscData)]=0x3b;
-                            sprintf(&ucEscData[strlen(ucEscData)],"%uR",ucCursorX);
-                            TxData (ucConnNumber, ucEscData, strlen(ucEscData));
+                            sprintf((char*)&ucEscData[2],"%u",25); //just fake 25,80 so BBSs can detect 25 lines
+                            ucEscData[strlen((char*)ucEscData) + 1]=0;
+                            ucEscData[strlen((char*)ucEscData)]=0x3b;
+                            sprintf((char*)&ucEscData[strlen((char*)ucEscData)],"%uR",80);
+                            TxData (ucConnNumber, ucEscData, strlen((char*)ucEscData));
                             ucEscInProgress = 0;
                             ucRepliedToGetCursorPosition = 1;
                         }
@@ -188,8 +212,21 @@ void ParseTelnetData(unsigned char ucConnNumber)
             if ( (ucCmdInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC))
             {
                 //move the memory so no extra FF is printed
-                memcpy (&ucMemMamMemory[uiTmp-ucCmdInProgress],&ucMemMamMemory[uiTmp+1],(uiGetSize-uiTmp-1));
+                memcpy (&ucMemMamMemory[uiTmp],&ucMemMamMemory[uiTmp+1],(uiGetSize-uiTmp-1));
                 --uiGetSize;
+                ucCmdInProgress = 0;
+            }
+			// Is it a two byte command? Just ignore, we do not react to those
+            else if ( (ucCmdInProgress == 1) && (
+				  (ucRcvData[ucCmdInProgress] == GA) || (ucRcvData[ucCmdInProgress] == EL) || (ucRcvData[ucCmdInProgress] == EC) ||
+				  (ucRcvData[ucCmdInProgress] == AYT) || (ucRcvData[ucCmdInProgress] == AO) || (ucRcvData[ucCmdInProgress] == IP) ||
+				  (ucRcvData[ucCmdInProgress] == BRK) || (ucRcvData[ucCmdInProgress] == DM) || (ucRcvData[ucCmdInProgress] == NOP)
+				 )
+			   )
+            {
+                //move the memory so two byte command is not printed
+                memcpy (&ucMemMamMemory[uiTmp-1],&ucMemMamMemory[uiTmp+1],(uiGetSize-uiTmp-1));
+                uiGetSize-=2;
                 --uiTmp;
                 ucCmdInProgress = 0;
             }
@@ -304,12 +341,12 @@ int main(char** argv, int argc)
     unsigned int JANSIID = 0; //will hold the handle to access jANSI TSR through MemMam
     unsigned int uiPrintPage;
     unsigned char ucConnNumber;
-    unsigned char ucEnterHit = 0;
     unsigned char ucSmoothScroll = 0;
     unsigned char ucAliveConnCount = 0;
 
+    ucEnterHit = 0;
     uiGetSize = 0;
-	// Flag that indicates that a SUB OPTION reception is in progress
+    // Flag that indicates that a SUB OPTION reception is in progress
 	ucSubOptionInProgress = 0;
 	// If server do not negotiate, we will echo
 	ucEcho = 1;
@@ -394,7 +431,33 @@ int main(char** argv, int argc)
 
     if (!ucAnsi)
     {
+        //Ok, no jANSI, do we have 80 columns?
+        if (ucLinLen<80)
+        {
+            //Nope, what type of MSX?
+            if(ReadMSXtype()==0) //MSX-1?
+            {
+                //Ok, it is not 80 columns capable
+                //but some have 80 columns cards
+                //so if LinLen is >=40, leave at that
+                if (ucLinLen<40)
+                {
+                    Screen(0);
+                    Width(40);
+                    ucWidth40 = 1;
+                }
+                else //hopefully it will be 80
+                    ucWidth40 = 0;
+            }
+            else
+            {
+                //MSX2 or better, just set 80 columns
+                Width(80);
+                ucWidth40 = 0;
+            }
+        }
         Print(ucSWInfo);
+        //Won't reply ANSI commands
         ucRepliedToGetCursorPosition = 1;
     }
 
@@ -479,6 +542,7 @@ int main(char** argv, int argc)
                 if(uiGetSize)
                 {
                     ParseTelnetData(ucConnNumber);
+                    //we can parse and data be just commands, return 0 bytes, so we won't
                     if (!ucAnsi)
                     {
                         ucMemMamMemory[uiGetSize]=0;
@@ -511,7 +575,7 @@ int main(char** argv, int argc)
                     break;
             }
         }
-        while (ucTxData != 0x1b); //If ESC pressed, exit...
+        while (ucTxData != 5); //If CTRL+E pressed, exit...
 
         if (ucTxData == 0x1b)
             Print("Closing connection...\n");
