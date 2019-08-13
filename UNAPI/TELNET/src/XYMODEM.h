@@ -2,7 +2,7 @@
 --
 -- XYMODEM.h
 --   X/YMODEM(G) for UNAPI Telnet Terminal.
---   Revision 0.70
+--   Revision 0.80
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -38,7 +38,7 @@
 #define _XYMODEM_HEADER_INCLUDED
 
 /*
- * This implementation of X/Y MODEM doesn't CRC check packets
+ * This implementation of X/Y MODEM doesn't CRC check packets during downloads
  * Mostly for three reasons:
  *
  * 1 - A few BBSs send bad CRC's not following the right CRC approach
@@ -64,7 +64,7 @@ __at 0xFC9E unsigned int uiTickCount;
 char *ultostr(unsigned long value, char *ptr, int base);
 unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned char PktNumber, unsigned char isYmodem);
 void CancelTransfer(void);
-void XYModemGet (unsigned char chConn);
+void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer);
 int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K);
 int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket,  unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K);
 #endif // _XYMODEM_HEADER_INCLUDED
