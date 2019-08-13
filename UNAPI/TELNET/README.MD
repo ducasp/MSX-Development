@@ -1,8 +1,46 @@
-# TELNET v0.80
+# TELNET v0.90
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-# CHANGELOG
+# CHANGELOG v0.90
+
+	- You can use it to receive files from some BBSs that did not work 
+	  before, i.e.: BBSs that use Mystic software. If download do not work
+	  try using r command switch to enable raw file receiving (i.e.: 
+	  telnet bbs.telnet.org:666 r ). Those BBSs misbehave and do not 
+	  implement TELNET protocol correctly, not doubling FF character, and
+	  this switch will cause telnet to not parse received download data as
+	  telnet data.
+
+	- You have option to tell terminal is ANSI even without jANSI. Perhaps
+      somene has a driver for GFX9000 or something like that and want to use 
+	  it... Use e switch to tell that (i.e.: telnet bbs.gfx900.net:9990 e )
+
+	- Possibility to turn off automatic download detection. Default is on, as 
+	  most BBSs around are Synchronet, mas other BBSs not using Synchronet 
+	  might use the transfer binary telnet command to send data (and as it 
+	  contains 8 bit characters, that is fine). This might get confusing... 
+	  Specially on BBSs  that hammer you with that darn transfer binary command
+	  every block of text they send.... Use s switch in that case (i.e.: telnet 
+	  bbs.noautotransfer.com:23 a )
+
+	- Cursor is turned off by default,by using switch c you can turn cursor on.
+	  I just like not having the cursor showing and moving around while drawing
+	  ANSI screens. 
+	  
+	  Note: if using my supplied version of jANSI, you get HISPAMSX boot screen
+	  working fine (using cursor or not), but  without cursor it seems to draw
+	  a little faster and it is possible to have the screen border at the same
+	  color of screen background (all blue). When cursor is on, screen border 
+	  will always be black, even if background is a different color. (This is 
+	  relative to my version of jANSI and not to this software)
+
+	- some internal improvements that allow a bit of better performance and 
+	  also better handling of telnet protocol, as well as responding proper 
+	  cursor position to ESC[6n, fixing synchronet BBSs pause when printing 
+	  avatars (as well the avatars and text being misplaced)
+
+# CHANGELOG v0.80
 
 	- Fix the program crashing when receiving two bytes TELNET commands. We do
 	  not execute those, but need to properly parse. It no longer crashes if
@@ -30,7 +68,7 @@
 	  HISPA which is really slow, not sure why they do not enable 1K blocks)
 	  
 	- ESC no longer quits the program, as this key might be requested to 
-	  interact with some BBSs. Now, to quit the program hit CTRL+E
+	  interact with some BBSs. Now, to quit the program hit CTRL+ESC
 	  
 	- It should now work fine with MSX1 as long as you have an UNAPI adapter 
 	  that works with it. It will understand that it is a MSX1 and not try to
@@ -89,9 +127,14 @@ will take almost the same time (12s) as a MSX TURBO-R using built-in telnet
 client of GR8NET to draw the MSX boot animation of HISPAMSX BBS. It also draws
 menus of ANSI BBSs really really fast at z80 turbo speeds. When using with 
 regular z80 speeds it is very usable, taking a couple of seconds to draw ANSI
-menus and 30s to draw the MSX boot animation of HISPAMSX BBS. As a reference 
-TCPCON with jANSI takes 35s (vs. 11s) to draw HISPAMSX boot at OCM turbo speed
-(and it is 85s vs. 30s at regular z80 speeds).	
+menus and 30s to draw the MSX boot animation of HISPAMSX BBS. 
+
+As a reference TCPCON with jANSI takes 35s (vs. 11s) to draw HISPAMSX boot at
+OCM turbo speed (and it is 85s vs. 30s at regular z80 speeds) on a MSX-SM with
+ESP8266. On BlueMSX using "OBSONET", HISPAMSX at regular z80 speeds TCPCON take
+150s vs 61s using this client (OBSONET uses lots of z80 CPU resources as it is
+not using TCP/IP hardware acceleration, DENYONET and GR8NET should have better
+results).
 
 # USAGE
 
