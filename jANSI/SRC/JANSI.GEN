@@ -8,7 +8,7 @@
  version 1.01 - by Oduvaldo Pavan Junior
  ducasp@gmail.com
  
- OPJ 10 Aug 2019
+ OPJ 13 Aug 2019
  - Kinda reverted (MJV 14 juli), this fix for a single BBS is affecting many
    actual BBSs. Many send commands to go down 255 lines and right 255 columns
    and then check cursor position to determine screen size. End result is that
@@ -17,9 +17,11 @@
    effects.
  - If cursor is invisible ( ESCx5 ) will not tie black color with border and
    disable sprites. This makes possible to render black on screen where the
-   border/screen color is not black (i.e.: HISPAMSX MSX Boot Logo animation),
-   when cursor is made visible again ( ESCy5 ) go back to regular black color
-   linked to border and re-enable sprites.
+   background color is not black (i.e.: HISPAMSX MSX Boot Logo animation).
+ - If cursor is visible ( ESCy5 ) screen border will be always black. This is,
+   in my oppinion, a small price to pay to be able to have black rendered as
+   black when the backdrop is not black. Again, this allows HISPAMSX Boot logo
+   animation to be properly shown.
 
  Wijzigingen / opmerkingen
 
@@ -581,7 +583,15 @@ zetHom:	ld	hl,#0101	; positie op HOME
 ;
 ; In: A=Kleur (0-14)
 ;
-zetBdr:	ld	b,a	; zet borderkleur voor o.a.
+zetBdrBackup:	db	0
+zetBdr:	ld	(zetBdrBackup),a
+	ld	a,(csrSw)
+	or	a
+	ld	a,(zetBdrBackup)
+	jr	z,zetBdrClr
+	xor a ; cursor on, border must be black, otherwise black won't be black
+zetBdrClr:	
+	ld	b,a	; zet borderkleur voor o.a.
 	call shft4	; wissen bovenste lijn
 	or	b
 	ld	(bdrDiB),a
@@ -2637,6 +2647,8 @@ lineCsr:	ld	a,-1
 dispCsr:
 	; OPJ - Restore sprites and using the border as black
 	push bc
+	xor	a
+	call zetBdr;
 	ld	a,(vReg8)
 	and	11011101B	; use black as border color and enable sprites
 	ld	(vReg8),a
@@ -2748,7 +2760,11 @@ hideCsr:	ld	a,7	; VRAM segment = 7
 	ld	(vReg8),a
 	ld	c,8+#80
 	call wrtVdp	; maak dat hard
+	; restore border color to background
+	ld	a,(bakCol)
+	call	zetBdr;
 	pop	bc
+	;OPJ end of changes
 	ret
 
 
