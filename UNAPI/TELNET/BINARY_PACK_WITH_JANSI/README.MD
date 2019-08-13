@@ -13,11 +13,49 @@ P.s.: MEMMAN loads in BASIC, and by going to BASIC and then
 returning to DOS, all your environment variables like PATH
 will be lost... :)
 
-# TELNET v0.80
+# TELNET v0.90
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-# CHANGELOG
+# CHANGELOG v0.90
+
+	- You can use it to receive files from some BBSs that did not work 
+	  before, i.e.: BBSs that use Mystic software. If download do not work
+	  try using r command switch to enable raw file receiving (i.e.: 
+	  telnet bbs.telnet.org:666 r ). Those BBSs misbehave and do not 
+	  implement TELNET protocol correctly, not doubling FF character, and
+	  this switch will cause telnet to not parse received download data as
+	  telnet data.
+
+	- You have option to tell terminal is ANSI even without jANSI. Perhaps
+      somene has a driver for GFX9000 or something like that and want to use 
+	  it... Use e switch to tell that (i.e.: telnet bbs.gfx900.net:9990 e )
+
+	- Possibility to turn off automatic download detection. Default is on, as 
+	  most BBSs around are Synchronet, mas other BBSs not using Synchronet 
+	  might use the transfer binary telnet command to send data (and as it 
+	  contains 8 bit characters, that is fine). This might get confusing... 
+	  Specially on BBSs  that hammer you with that darn transfer binary command
+	  every block of text they send.... Use s switch in that case (i.e.: telnet 
+	  bbs.noautotransfer.com:23 a )
+
+	- Cursor is turned off by default,by using switch c you can turn cursor on.
+	  I just like not having the cursor showing and moving around while drawing
+	  ANSI screens. 
+	  
+	  Note: if using my supplied version of jANSI, you get HISPAMSX boot screen
+	  working fine (using cursor or not), but  without cursor it seems to draw
+	  a little faster and it is possible to have the screen border at the same
+	  color of screen background (all blue). When cursor is on, screen border 
+	  will always be black, even if background is a different color. (This is 
+	  relative to my version of jANSI and not to this software)
+
+	- some internal improvements that allow a bit of better performance and 
+	  also better handling of telnet protocol, as well as responding proper 
+	  cursor position to ESC[6n, fixing synchronet BBSs pause when printing 
+	  avatars (as well the avatars and text being misplaced)
+
+# CHANGELOG v0.80
 
 	- Fix the program crashing when receiving two bytes TELNET commands. We do
 	  not execute those, but need to properly parse. It no longer crashes if
@@ -110,12 +148,31 @@ TCPCON with jANSI takes 35s (vs. 11s) to draw HISPAMSX boot at OCM turbo speed
 
 # USAGE
 
-telnet server:port [s]
+telnet server:port [s] [c] [a] [r] [e]
 
 server:port: 192.168.0.1:23 or bbs.hispamsx.org:23
 
 s - Will activate smooth scroll if jANSI is installed, I really don't dig it,
 but you can always test it and check if you like it.
+
+c - Turns on cursor. Cursor off performance is better and I find it nicer as well,
+and using my version of jANSI (supplied in this pack) you have now HISPAMSX ANSI
+ART of MSX Boot Logo rendering correctly (cursor off, borders same color as background,
+cursor on, borders always black).
+
+a - Turns of automatic download detection. This works mostly for Synchronet BBSs
+and is harmless for most BBSs, but a few others send TELNET binary transfer command 
+every time they send text/ANSI, and protocol selection keeps popping up, so for those
+BBSs, disable the download detection.
+
+r - Raw file transfers. Mystic based BBSs (and maybe others) will not telnet encode data,
+which is wrong. This causes FF to be sent as a single byte instead of two FF bytes. This
+switch allows our client to not apply telnet conversion on data received while transferring
+files, making file transfer/download work on those BBSs.
+
+e - External ANSI handler. Just in case you use a different ANSI driver than jANSI,
+so in this case the client won't try to detect jANSI but will inform the telnet server ANSI
+capabilities.
 
 Example to connect to rainmaker:
 
@@ -145,12 +202,6 @@ GR8NET and DENYONET, but in theory it should work fine. :)
 
 ***KNOWN ISSUES***
 
-jANSI is great when used directly, but its ANSI rendering, even though really
-good, is not perfect. HISPAMSX MSX Boot animation won't show the black
-rectangle around MSX, when Synchronet BBS's show user login information with
-it's avatar, avatar and some information is misaligned fully cleared and there
- is a pause as well. I've checked that the same occurs with TCPCON. 
-	
 	- XMODEM and YMODEM(G) transfers are a work in progress, at this moment it
 	  works on some BBSs, on others it just error. If you get errors, let me 
 	  know the file/BBS.
