@@ -2,7 +2,7 @@
 --
 -- XYMODEM.c
 --   X/YMODEM(G) for UNAPI Telnet Terminal.
---   Revision 0.70
+--   Revision 0.80
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -51,6 +51,7 @@ unsigned char G;
 unsigned long SentFileSize;
 unsigned char chFileSize[30];
 unsigned char chTransferConn;
+unsigned char chDoubleFF;
 
  // Helper function for file transfers
 char *ultostr(unsigned long value, char *ptr, int base)
@@ -105,71 +106,74 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket, unsi
 
     if (!uiIndex) //Index 0 means packet has not started yet
     {
+        //New package, so split information do not matter, we will wait SOH/STX/EOT/ETB/CAN
         ucSplitFF = 0;
         for (uiI=0;uiI<uiReceivedSize;++uiI)
         {
             if (ucReceived[uiI]  == SOH) //128 bytes packet
             {
-                //printf ("[%x]",ucReceived[uiI]);
                 ucContinueAfterHeaderFound = 1;
                 *ucIs1K = 0;
                 break;
             }
             else if (ucReceived[uiI] == STX) //1024 bytes packet
             {
-                //printf ("[%x]",ucReceived[uiI]);
                 ucContinueAfterHeaderFound = 1;
                 *ucIs1K = 1;
                 break;
             }
             else if ((ucReceived[uiI] == EOT)||(ucReceived[uiI] == ETB)||(ucReceived[uiI] == CAN))
             {
-                //printf ("(%x)",ucReceived[uiI]);
                 return (ucReceived[uiI]*-1);
             }
-            //else
-                //printf ("{%x}",ucReceived[uiI]);
         }
     }
 
     if ((uiIndex)||(ucContinueAfterHeaderFound)) //packet has started
     {
-        //now get rid of all double FF's replacing by  single FF
-        for (uiJ=0;uiI<uiReceivedSize;++uiI)
-        {
-            if (ucReceived[uiI]  != 0xFF) //not telnet IAC
+        if (chDoubleFF)
+		{
+            //now get rid of all double FF's replacing by  single FF
+            for (uiJ=0;uiI<uiReceivedSize;++uiI)
             {
-				ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                //printf ("<%x>",ucReceived[uiI+uiIndex]);
-                ++uiRet;
-				++uiJ;
-            }
-            else
-            {
-                if (ucSplitFF)
+                if (ucReceived[uiI]  != 0xFF) //not telnet IAC
                 {
-                    ucSplitFF = 0;
-                    if (uiI==0) //first after a split? Ignore, otherwise continue checking
-                        continue; //this might confuse you, continue will jump to next iteration of loop and not execute the rest of the code below
+                    ucPacket[uiJ+uiIndex]=ucReceived[uiI];
+                    ++uiRet;
+                    ++uiJ;
                 }
+                else
+                {
+                    if (ucSplitFF)
+                    {
+                        ucSplitFF = 0;
+                        if (uiI==0) //first after a split? Ignore, otherwise continue checking
+                            continue; //this might confuse you, continue will jump to next iteration of loop and not execute the rest of the code below
+                    }
 
-                if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+1] == 0xff) )
-                {
-                    //printf (">%x<",ucReceived[uiI+uiIndex]);
-                    ++uiRet;
-					ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                    ++uiI; //jump next FF
-					++uiJ;
-                }
-                else //an alone FF in the last byte, should have been split
-                {
-                    ucSplitFF = 1;
-					ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                    ++uiRet;
-					++uiJ;
+                    if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+1] == 0xff) )
+                    {
+                        //printf (">%x<",ucReceived[uiI+uiIndex]);
+                        ++uiRet;
+                        ucPacket[uiJ+uiIndex]=ucReceived[uiI];
+                        ++uiI; //jump next FF
+                        ++uiJ;
+                    }
+                    else //an alone FF in the last byte, should have been split
+                    {
+                        ucSplitFF = 1;
+                        ucPacket[uiJ+uiIndex]=ucReceived[uiI];
+                        ++uiRet;
+                        ++uiJ;
+                    }
                 }
             }
-        }
+		}
+		else
+		{
+			uiRet = uiReceivedSize - uiI;
+			memcpy (&ucPacket[uiIndex],&ucReceived[uiI],uiRet);
+		}
     }
 
     return uiRet;
@@ -504,7 +508,7 @@ void CancelTransfer(void)
 }
 
 // This function will deal with file reception
-void XYModemGet (unsigned char chConn)
+void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 {
 	unsigned char ret;
 	int iFile=0;
@@ -515,6 +519,7 @@ void XYModemGet (unsigned char chConn)
 	unsigned int FilesRcvd = 0;
 
 	chTransferConn = chConn;
+	chDoubleFF = chTelnetTransfer;
 
     Print("\r\nXMODEM Download type file Name\nYMODEM Download type Y\nYMODEM-G Download type G: ");
 	InputString(filename,sizeof(filename-1));
