@@ -223,6 +223,11 @@ GR8NET and DENYONET, but in theory it should work fine. :)
 Remember to copy the files in fusion-c\lib and fusion-c\header to your fusion-c lib and header folders!
 I recommend using Code::Blocks, it is a full featured UI that will allow you to check references, etc.
 
+I recommend you use SDCC 3.9.0... Fusion-c maintainer recommends SDCC 3.6.0 but
+it has issues with nested IFs, your code end-up crashing or misbehaving and you
+do not find any error with it... This code, if used with SDCC 3.6.0 will most 
+likely have issues and misbehave. 
+
 Redistribution and use of this source code or any derivative works, are
 permitted provided that the following conditions are met:
 
