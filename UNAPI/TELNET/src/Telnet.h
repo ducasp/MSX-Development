@@ -107,6 +107,7 @@ const char ucSWInfo[] = "> MSX UNAPI TELNET Client v0.90 <\n (c) 2019 Oduvaldo P
 const char ucSWInfoJANSI[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.90 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucSWInfoJANSISS[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.90 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\x1b[13;1.\r\n";
 const char ucCursorOff[] = "\x1bx5";
+const char ucCursor_On[] = "\x1by5";
 
 //Our Flags
 unsigned char ucEcho; //Echo On?

@@ -419,7 +419,7 @@ void myBulkPrint(unsigned char *ucData, unsigned int uiSize)
         {
             regs.Bytes.A = 3; //DMPSTR
             regs.UWords.IX = JANSIID;
-            regs.UWords.HL = (unsigned int)(ucData);//+uiPrintPage);
+            regs.UWords.HL = (unsigned int)(ucData);
             regs.UWords.DE = uiSize; //memman XTSRCall
             AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
         }
@@ -582,6 +582,8 @@ int main(char** argv, int argc)
     // Cursor on or off?
     if (!ucCursorOn)
         Print(ucCursorOff);
+    else
+        Print(ucCursor_On);
 
     // Time to check for UNAPI availability
 	if (!InitializeTCPIPUnapi())
@@ -686,7 +688,7 @@ int main(char** argv, int argc)
         printf ("Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
 
     if (ucAnsi) //make sure cursor is on when we leave
-        printf("\x1by5\r\n");
+        Print(ucCursor_On);
 
 	return 0;
 }
