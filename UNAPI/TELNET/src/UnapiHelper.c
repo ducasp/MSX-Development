@@ -39,6 +39,7 @@
 #include "../../fusion-c/header/msx_fusion.h"
 #include "../../fusion-c/header/asm.h"
 #include "UnapiHelper.h"
+#include "print.h"
 
 unapi_code_block helperCodeBlock;
 Z80_registers helperRegs; //auxiliary structure for asm function calling
@@ -170,11 +171,11 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
     {
 #ifdef UNAPIHELPER_VERBOSE
         if(helperRegs.Bytes.A == ERR_NO_NETWORK)
-            Print("No network connection available\n");
+            print("No network connection available\r\n");
         else if(helperRegs.Bytes.A == ERR_NO_DNS)
-            Print("There are no DNS servers configured\n");
+            print("There are no DNS servers configured\r\n");
         else if(helperRegs.Bytes.A == ERR_NOT_IMP)
-            Print("This TCP/IP UNAPI implementation does not support resolving host names.\nSpecify an IP address instead.\n");
+            print("This TCP/IP UNAPI implementation does not support resolving host names.\nSpecify an IP address instead.\r\n");
         else
             printf("Unknown error when resolving the host name (code %i)\r\n", helperRegs.Bytes.A);
 #endif
@@ -193,17 +194,17 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
     {
 #ifdef UNAPIHELPER_VERBOSE
         if(helperRegs.Bytes.B == 2)
-            Print("DNS server failure\n");
+            print("DNS server failure\r\n");
         else if(helperRegs.Bytes.B == 3)
-            Print("Unknown host name\n");
+            print("Unknown host name\r\n");
         else if(helperRegs.Bytes.B == 5)
-            Print("DNS server refused the query\n");
+            print("DNS server refused the query\r\n");
         else if(helperRegs.Bytes.B == 16 || helperRegs.Bytes.B == 17)
-            Print("DNS server did not reply\n");
+            print("DNS server did not reply\r\n");
         else if(helperRegs.Bytes.B == 19)
-            Print("No network connection available\n");
+            print("No network connection available\r\n");
         else if(helperRegs.Bytes.B == 0)
-            Print("DNS query failed\n");
+            print("DNS query failed\r\n");
         else
             printf("Unknown error returned by DNS server (code %i)\r\n", helperRegs.Bytes.B);
 #endif
@@ -257,9 +258,9 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
         {
 #ifdef UNAPIHELPER_VERBOSE
             if(uchRet == ERR_NO_FREE_CONN)
-                Print("No free TCP connections available\n");
+                print("No free TCP connections available\r\n");
             else if(uchRet == ERR_CONN_EXISTS)
-                Print("There is a resident TCP connection which uses the same IP/Port combination\n");
+                print("There is a resident TCP connection which uses the same IP/Port combination\r\n");
             else
                 printf("Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
 #endif

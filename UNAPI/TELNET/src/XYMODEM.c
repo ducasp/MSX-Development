@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "XYMODEM.h"
+#include "print.h"
 
 //X and YMODEM Vars
 __at 0xB000 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
@@ -521,9 +522,9 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 	chTransferConn = chConn;
 	chDoubleFF = chTelnetTransfer;
 
-    Print("\r\nXMODEM Download type file Name\nYMODEM Download type Y\nYMODEM-G Download type G: ");
+    print("\r\n\r\nXMODEM Download type file Name\r\nYMODEM Download type Y\r\nYMODEM-G Download type G: ");
 	InputString(filename,sizeof(filename-1));
-	Print("\n");
+	print("\r\n");
 
 	if ( ((filename[0]=='g')||(filename[0]=='G')) && (filename[1]==0) )
         G=1;
@@ -553,7 +554,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                 ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
 
             //Our nice animation to show we are not stuck
-            PrintChar('S');
+            putchar('S');
             if (ret == 255) //Created a file, cool, let's move on
             {
                 // A key has been hit?
@@ -595,8 +596,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                         }
 
                         //Our nice animation to show we are not stuck
-                        PrintChar(8); //backspace
-                        PrintChar(advance[PktNumber%4]); // next char
+                        putchar(8); //backspace
+                        putchar(advance[PktNumber%4]); // next char
 
                         ++PktNumber; //next packet
                         if (G)
@@ -608,27 +609,27 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 
                     if (ret == 0) //Time Out or other errors
                     {
-                        Print ("Error receiving file\n");
+                        print ("Error receiving file\r\n");
                         key = 0x1b; //force send of CAN CAN CAN CAN CAN
                     }
                     else if (ret == CAN) //Host canceled the transfer
                     {
                         //Ok, just ACK it
                         XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-                        Print ("Server canceled transfer\n");
+                        print ("Server canceled transfer\r\n");
                     }
                     else if ((ret == EOT)||(ret == ETB)) //End of Transmission
                     {
                         //Ok, just ACK it
                         XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-                        Print ("File Transfer Completed!\n");
+                        print ("File Transfer Completed!\r\n");
                     }
                     else if (key == 0x1b) //esc?
                         break;
                 }
                 else //error starting CRC section
                 {
-                    Print("Timeout waiting for file...\n");
+                    print("Timeout waiting for file...\r\n");
                     key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 }
 
@@ -642,7 +643,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
             }
             else
             {
-                Print("Unknown error waiting for file...\n");
+                print("Unknown error waiting for file...\r\n");
                 key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 break;
             }
@@ -658,7 +659,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 		{
 			PktNumber = 1;
 			//Our nice animation to show we are not stuck
-			PrintChar('S');
+			putchar('S');
 			// Request start of XMODEM 1K
 			ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 0);
 			if (ret)
@@ -674,8 +675,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                             break;
                     }
 					//Our nice animation to show we are not stuck
-					PrintChar(8);
-					PrintChar(advance[PktNumber%4]);
+					putchar(8);
+					putchar(advance[PktNumber%4]);
 					++PktNumber;
 					ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 0);
 				}
@@ -683,23 +684,23 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 
 				if (ret == 0) //Time Out or other errors
                 {
-					Print ("Error receiving file\n");
+					print ("Error receiving file\r\n");
 					key = 0x1b; //force send of CAN CAN CAN CAN CAN
                 }
 				else if (ret == CAN) //Host canceled the transfer
 				{
 					XYModemPacketReceive (&iNoFile, ACK, PktNumber, 0);
-					Print ("Server canceled transfer\n");
+					print ("Server canceled transfer\r\n");
 				}
 				else if ((ret == EOT)||(ret == ETB)) //End of Transmission
 				{
 					XYModemPacketReceive (&iNoFile, ACK, PktNumber, 0);
-					Print ("File Transfer Completed!\n");
+					print ("File Transfer Completed!\r\n");
 				}
 			}
 			else //error starting CRC section
             {
-				Print("Timeout waiting for file...\n");
+				print("Timeout waiting for file...\r\n");
 				key = 0x1b; //force send of CAN CAN CAN CAN CAN
             }
 
