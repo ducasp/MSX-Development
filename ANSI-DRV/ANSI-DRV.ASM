@@ -31,8 +31,11 @@ PRT_PS:	JP	BufferText
 ; OPJ - Add possibility to get current cursor position
 ; Calling GET_CSR, Cursor row is H and Cursor column is L
 PRT_GC:	JP	GetCursorInfo
-
-
+; OPJ - Add possibility to receive current cursor position
+; HL should hold the address of the callback funtion
+; Call back function will receive cursor row in H and Column in L
+; Whenever [6n is received
+PRT_CB:	JP	SetCursorInfoCallBack	
 
 ; Calling INIT needs no parameters
 INITRT:
@@ -44,6 +47,14 @@ INITRT:
 EXITRT:
 	CALL	V99XX_RestScreen
 	RET
+
+; OPJ - Add possibility to current cursor position be sent to a callback function
+SetCursorInfoCallBack:
+	LD	(ANSI_CGP.CALL_VEC + 1),HL
+	LD	A,1
+	LD	(ANSI_CB),A
+	RET
+
 
 ; OPJ - Add possibility to get current cursor position
 GetCursorInfo:
@@ -109,6 +120,7 @@ BufferChar:
 ANSI_M:	DB	$00			; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
 ANSI_P:	DW	ANSI_S		; Point the next free position in buffer
 ANSI_S:	DS	$10			; Buffer to hold the ANSI command or data received to print
+ANSI_CB:	DB	$00		; Wheter we have a callback for cursor position requests or not
 
 
 ; Calling PUT_STR, string is in register HL
@@ -300,6 +312,8 @@ Parameters:
 	JP	Z,ANSI_DL
 	CP	"m"
 	JP	Z,ANSI_SGR
+	CP	"n"
+	JP	Z,ANSI_CGP
 
 	JP	.ERR
 
@@ -309,7 +323,30 @@ Parameters:
 .PPT:	DW	.PRM
 .PRM:	DB	$00,$00,$00,$00,$00,$00,$00,$00
 
-
+; OPJ - Add possibility to current cursor position be sent to a callback function
+ANSI_CGP:				; ANSI Cursor Get Position
+	LD	A,B
+	CP	1				
+	JR	NZ,.END			; Not only 1 parameter, not 6n, done
+	LD	A,(Parameters.PRM+0)
+	CP	6				; Is it 6?
+	JR	NZ,.END			; Not 6, so it is not 6N
+	; Ok, ESC[6n, do we have a callback to report cursor position?
+	LD	A,(ANSI_CB)		; Is there a callback programmed?
+	OR	A
+	JR	Z,.END			; Nope, sorry, nothing to do
+	; So, lets report the position
+	LD	A,(CursorCol)	
+	INC	A
+	LD	L,A				; Column goes in L
+	LD	A,(CursorRow)
+	INC	A
+	LD	H,A				; Row goes in H
+.CALL_VEC:
+	CALL	0			; This address will change when someone wants to receive callbacks
+.END:	
+	LD	HL,(EndAddress)
+	JP	PrintText.RLP
 
 
 
