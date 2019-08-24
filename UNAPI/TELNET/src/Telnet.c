@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 0.90
+--   Revision 0.91
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -33,8 +33,8 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 */
-
 #include "Telnet.h"
+#include "print.h"
 #include "UnapiHelper.h"
 #include "XYMODEM.h"
 
@@ -148,6 +148,14 @@ unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iL
 	return 1;
 }
 
+void SendCursorPosition(unsigned char ucConnNumber)
+{
+    unsigned char uchPositionResponse[12];
+    //return cursor position
+    sprintf(uchPositionResponse,"\x1b[%u;%uR",ucCursorY,ucCursorX);
+    TxData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
+}
+
 // This function will handle a received buffer from a TELNET connection. If
 // there are TELNET commands or sub-commands, it will properly remove and not
 // print those, as well try to negotiate it using our negotiate function.
@@ -155,193 +163,207 @@ unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iL
 // single FF.
 void ParseTelnetData(unsigned char ucConnNumber)
 {
-    unsigned int uiTmp = 0;
-    unsigned char ucTmp;
-    unsigned char ucI;
+    unsigned char * chTmp = ucMemMamMemory;
     unsigned int uiPrintCount=0;
-    unsigned int uiPrintIndex=0;
+    unsigned char * chPrintIndex = ucMemMamMemory;
+    unsigned char * chLimit = chTmp + uiGetSize;
 
     //While we have data in the buffer
-    while (uiTmp<uiGetSize)
+    while (chTmp<chLimit)
     {
-        // Have we flagged that a telnet CMD is being built?
-        if (!ucCmdInProgress)
+        switch (ucState)
         {
-            //No command is being built, so is the character IAC?
-            if (ucMemMamMemory[uiTmp] == IAC)
-            {
-                ucRcvData[0] = ucMemMamMemory[uiTmp]; //copy to command buffer
-                ucCmdInProgress = 1; // flag a command or sub is in progress
-                ++uiTmp;
-            }
-            else if (ucAnsi) //will reply ESC[6n with current cursor position only if we are working with ANSI
-            {
-                //Have we flagged an ESC code was in progress?
-                if (!ucEscInProgress)
+            case TELNET_IDLE:
+                //No command is being built, so is the character IAC?
+                if (*chTmp == IAC)
                 {
-                    //No, so check if current character is ESC
-                    if (ucMemMamMemory[uiTmp] == 0x1b)
+                    ucRcvData[0] = *chTmp; //copy to command buffer
+                    ucState = TELNET_CMD_INPROGRESS; // flag a command or sub is in progress
+                    ucCmdCounter = 1;
+                    ++chTmp;
+                }
+                else if ((*chTmp == 0x1b)&&(ucAnsi)) //will reply ESC[6n with current cursor position only if we are working with ANSI
+                {
+                    //if we can go the fast route...
+                    if (chTmp<(chLimit-3))
                     {
-                        //It is, copy to ESC cmd buffer
-                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
-                        ++ucEscInProgress; //Esc cmd state
-                        ++uiTmp;
-                        ++uiPrintCount;
+                        if (*(++chTmp)=='[')
+                        {
+                            if (*(++chTmp)=='6')
+                            {
+                                if (*(++chTmp)=='n')
+                                {
+                                    //First we are going to print through all, excluding this command
+                                    //otherwise cursor position will not be correct :)
+                                    myBulkPrint(chPrintIndex,uiPrintCount);
+                                    chPrintIndex = ++chTmp;
+                                    uiPrintCount=0;
+                                    SendCursorPosition(ucConnNumber);
+                                }
+                                else //not our business, life goes on
+                                {
+                                    ++chTmp;
+                                    uiPrintCount+=4;
+                                }
+                            }
+                            else //not our business, life goes on
+                            {
+                                ++chTmp;
+                                uiPrintCount+=3;
+                            }
+                        }
+                        else //not our business, life goes on
+                        {
+                            ++chTmp;
+                            uiPrintCount+=2;
+                        }
                     }
-                    else
+                    else //possible ESC command in split buffer...
                     {
-                        //It is not, ok, nothing special, move-on
-                        ++uiTmp;
+                        ucState = TELNET_ESC_INPROGRESS;
+                        ucEscData[0]=*chTmp;
+                        ucEscCounter = 1; //Esc cmd byte count
+                        ++chTmp;
                         ++uiPrintCount;
                     }
                 }
                 else
                 {
-                    //Ok, it was in progress, so check if remaining bytes are [, 6 and n
-                    if( ((ucEscInProgress==1)&&(ucMemMamMemory[uiTmp]=='[')) || ((ucEscInProgress==2)&&(ucMemMamMemory[uiTmp]=='6')) || ((ucEscInProgress==3)&&(ucMemMamMemory[uiTmp]=='n')) )
+                    //Ansi not supported, or not ESC code and not telnet command, keep moving
+                    ++chTmp;
+                    ++uiPrintCount;
+                }
+            break;
+            case TELNET_ESC_INPROGRESS:
+                //Ok, ESC byte per byte processing in progress, so check if remaining bytes are [, 6 and n
+                if( ((ucEscCounter==1)&&(*chTmp=='[')) ||
+                    ((ucEscCounter==2)&&(*chTmp=='6')) ||
+                    ((ucEscCounter==3)&&(*chTmp=='n')) )
+                {
+                    //it is, copy to ESC cmd buffer
+                    ucEscData[ucEscCounter]=*chTmp;
+                    ++ucEscCounter; // update ESC cmd counter
+                    ++chTmp;
+                    ++uiPrintCount;
+                    if(ucEscCounter==4) // we've reached 4 bytes means ESC[6n was received
                     {
-                        //it is, copy to ESC cmd buffer
-                        ucEscData[ucEscInProgress]=ucMemMamMemory[uiTmp];
-                        ++ucEscInProgress; // update ESC cmd state
-                        ++uiTmp;
-                        ++uiPrintCount;
-                        if(ucEscInProgress==4) // we've reached state 4, which means ESC[6n was received
-                        {
-                            //First we are going to print through all, excluding this command
-                            //otherwise cursor position will not be correct :)
-                            myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount-4);
-                            //now return cursor position
-                            ucEscData[0]=0x1b;
-                            ucEscData[1]=0x5b;
-                            ucI = 2;
-
-                            ucTmp = ucCursorY/10;
-                            if(ucTmp)
-                                ucEscData[ucI++] = ucTmp+'0';
-                            ucTmp = ucCursorY%10;
-                            ucEscData[ucI++] = ucTmp+'0';
-                            ucEscData[ucI++] = 0x3b;
-
-                            ucTmp = ucCursorX/10;
-                            if(ucTmp)
-                                ucEscData[ucI++] = ucTmp+'0';
-                            ucTmp = ucCursorX%10;
-                            ucEscData[ucI++] = ucTmp+'0';
-                            ucEscData[ucI++] = 'R';
-                            ucEscData[ucI++] = 0;
-                            TxData (ucConnNumber, ucEscData, strlen((char*)ucEscData));
-                            //Now, command built and replied, no longer in progress
-                            ucEscInProgress = 0;
-                            uiPrintIndex = uiTmp; //we've printed up to the current position, so new index to start
-                            uiPrintCount = 0; //and for now we've 0 bytes to print
-                        }
-                    }
-                    else
-                    {
-                        //any other escape sequences are not our business
-                        ucEscInProgress = 0;
-                        ++uiTmp;
-                        ++uiPrintCount;
+                        //First we are going to print through all, excluding this command
+                        //otherwise cursor position will not be correct :)
+                        myBulkPrint(chPrintIndex,uiPrintCount-4);
+                        SendCursorPosition(ucConnNumber);
+                        //Now, command built and replied, no longer in progress
+                        ucState = TELNET_IDLE;
+                        chPrintIndex = chTmp; //we've printed up to the current position, so new index to start
+                        uiPrintCount = 0; //and for now we've 0 bytes to print
                     }
                 }
-            }
-            else
-            {
-                //Ansi not supported, keep moving
-                ++uiTmp;
-                ++uiPrintCount;
-            }
-        }
-        else // a CMD or sub option is in progress
-        {
-            // Get the byte in the proper position
-            ucRcvData[ucCmdInProgress] = ucMemMamMemory[uiTmp];
-
-            // Is it the first byte after IAC? If yes and it is IAC again
-            if ( (ucCmdInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC))
-            {
-                ++uiPrintCount; //it is going to be printed
-                //First we are going to print through all, including previous FF
-                myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount);
-                ++uiTmp; //skip current FF
-                uiPrintIndex = uiTmp; //new index as we've printed up to here
-                uiPrintCount = 0; //no more data to print for now
-                ucCmdInProgress = 0; //CMD finished
-            }
-			// Is it a two byte command? Just ignore, we do not react to those
-            else if ( (ucCmdInProgress == 1) && (
-				  (ucRcvData[ucCmdInProgress] == GA) || (ucRcvData[ucCmdInProgress] == EL) || (ucRcvData[ucCmdInProgress] == EC) ||
-				  (ucRcvData[ucCmdInProgress] == AYT) || (ucRcvData[ucCmdInProgress] == AO) || (ucRcvData[ucCmdInProgress] == IP) ||
-				  (ucRcvData[ucCmdInProgress] == BRK) || (ucRcvData[ucCmdInProgress] == DM) || (ucRcvData[ucCmdInProgress] == NOP)
-				 )
-			   )
-            {
-                //First we are going to print through all data
-                myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount);
-                ++uiTmp; //jump the CMD
-                uiPrintIndex = uiTmp; //new index
-                uiPrintCount = 0; //no more data to print
-                ucCmdInProgress = 0; //CMD finished
-            }
-            // Is it the first byte after IAC and now indicate a sub option?
-            else if ( (ucCmdInProgress == 1) && (ucRcvData[ucCmdInProgress] == SB))
-            {
-                //ok, it is a sub option, keep going
-                ucSubOptionInProgress = 1; //suboption state update
-                ++ucCmdInProgress; //cmd state update
-                ++uiTmp;
-            }
-            // If receive IAC processing sub option, it could be the end of sub option
-            else if ( (ucSubOptionInProgress == 1) && (ucRcvData[ucCmdInProgress] == IAC) )//need to wait for IAC /SE
-            {
-                ++ucSubOptionInProgress; //suboption state update
-                ++ucCmdInProgress; //cmd state update
-                ++uiTmp;
-            }
-            // Was processing sub option, received IAC, is the next byte SE?
-            else if ( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] == SE) )
-            {
-                //First we are going to print through all, excluding the command
-                myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount);
-                ++uiTmp; //skip SE
-                uiPrintIndex=uiTmp; //new index
-                uiPrintCount = 0; //no more data to print
-                ucCmdInProgress = 0; //CMD finished
-                ucSubOptionInProgress = 0; //suboption finished
-                //Negotiate the sub option
-                negotiate(ucConnNumber, ucRcvData, ucCmdInProgress);
-            }
-            // Was processing sub option, received IAC, but now it is not SE
-            else if( (ucSubOptionInProgress == 2) && (ucRcvData[ucCmdInProgress] != SE) )
-            {
-                //Keep processing sub option, not the end
-                ucSubOptionInProgress = 1; //suboption state update
-                ++ucCmdInProgress; //cmd state update
-                ++uiTmp;
-            }
-            else //ok, nothing special, just data for IAC or SUB
-            {
-                ++ucCmdInProgress;
-                ++uiTmp;
-            }
-
-            //If not a sub option and is the third byte
-            if ((ucSubOptionInProgress == 0) && (ucCmdInProgress == 3))
-            {
-                //First we are going to print through all, excluding the command
-                myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount);
-                uiPrintIndex = uiTmp; //new index
-                uiPrintCount = 0; //no more data to print
-                ucCmdInProgress = 0; //no cmd in progress
-                //Negotiate the sub option
-                negotiate(ucConnNumber, ucRcvData, 3);
-            }
+                else
+                {
+                    //any other escape sequences are not our business
+                    ucState = TELNET_IDLE;
+                    ++chTmp;
+                    ++uiPrintCount;
+                }
+            break;
+            case TELNET_CMD_INPROGRESS:
+                // Get the byte in the proper position
+                ucRcvData[ucCmdCounter] = *chTmp;
+                // Is it the first byte after IAC? If yes and it is IAC again
+                if ( (ucCmdCounter == 1) && (*chTmp == IAC))
+                {
+                    ++uiPrintCount; //it is going to be printed
+                    //First we are going to print through all, including previous FF
+                    myBulkPrint(chPrintIndex,uiPrintCount);
+                    ++chTmp; //skip current FF
+                    chPrintIndex = chTmp; //new index as we've printed up to here
+                    uiPrintCount = 0; //no more data to print for now
+                    ucState = TELNET_IDLE; //CMD finished
+                }
+                // Is it a two byte command? Just ignore, we do not react to those
+                else if ( (ucCmdCounter == 1) && (
+                      (*chTmp == GA) || (*chTmp == EL) || (*chTmp == EC) ||
+                      (*chTmp == AYT) || (*chTmp == AO) || (*chTmp == IP) ||
+                      (*chTmp == BRK) || (*chTmp == DM) || (*chTmp == NOP)
+                     )
+                   )
+                {
+                    //First we are going to print through all data
+                    myBulkPrint(chPrintIndex,uiPrintCount);
+                    ++chTmp; //jump the CMD
+                    chPrintIndex = chTmp; //new index
+                    uiPrintCount = 0; //no more data to print
+                    ucState = TELNET_IDLE; //CMD finished
+                }
+                // Is it the first byte after IAC and now indicate a sub option?
+                else if ( (ucCmdCounter == 1) && (*chTmp == SB))
+                {
+                    //ok, it is a sub option, keep going
+                    ucState = TELNET_SUB_INPROGRESS; //suboption state update
+                    ++ucCmdCounter; //cmd size update
+                    ++chTmp;
+                }
+                else //ok, nothing special, just data for IAC or SUB
+                {
+                    ++ucCmdCounter;
+                    ++chTmp;
+                    if (ucCmdCounter == 3)
+                    {
+                        //First we are going to print through all, excluding the command
+                        myBulkPrint(chPrintIndex,uiPrintCount);
+                        chPrintIndex = chTmp; //new index
+                        uiPrintCount = 0; //no more data to print
+                        ucState = TELNET_IDLE; //CMD finished
+                        //Negotiate the sub option
+                        negotiate(ucConnNumber, ucRcvData, 3);
+                    }
+                }
+            break;
+            case TELNET_SUB_INPROGRESS:
+                // Get the byte in the proper position
+                ucRcvData[ucCmdCounter] = *chTmp;
+                // If receive IAC processing sub option, it could be the end of sub option
+                if (*chTmp == IAC)//need to wait for IAC /SE
+                {
+                    ucState = TELNET_SUB_WAITEND;
+                    ++ucCmdCounter; //cmd size update
+                    ++chTmp;
+                }
+                else //ok, nothing special, just data for IAC or SUB
+                {
+                    ++ucCmdCounter;
+                    ++chTmp;
+                }
+            break;
+            case TELNET_SUB_WAITEND:
+                // Get the byte in the proper position
+                ucRcvData[ucCmdCounter] = *chTmp;
+                // is the next byte SE?
+                if (*chTmp == SE)
+                {
+                    //First we are going to print through all, excluding the command
+                    myBulkPrint(chPrintIndex,uiPrintCount);
+                    ++chTmp; //skip SE
+                    chPrintIndex=chTmp; //new index
+                    uiPrintCount = 0; //no more data to print
+                    ucState = TELNET_IDLE; //CMD finished
+                    //Negotiate the sub option
+                    negotiate(ucConnNumber, ucRcvData, 0);
+                }
+                // Was processing sub option, received IAC, but now it is not SE
+                else
+                {
+                    //Keep processing sub option, not the end
+                    ucState = TELNET_SUB_WAITEND;
+                    ++ucCmdCounter; //cmd state update
+                    ++chTmp;
+                }
+            break;
         }
     }
 
     //Ok, finished parsing, still data to print?
     if (uiPrintCount)
-        myBulkPrint(&ucMemMamMemory[uiPrintIndex],uiPrintCount);
+        myBulkPrint(chPrintIndex,uiPrintCount);
 }
 
 // Checks Input Data received from command Line and copy to the variables
@@ -413,7 +435,7 @@ void myBulkPrint(unsigned char *ucData, unsigned int uiSize)
         if ((!ucAnsi)||(ucExtAnsi))
         {
             ucData[uiSize]=0;
-            Print(ucData);
+            print(ucData);
         }
         else
         {
@@ -486,7 +508,7 @@ unsigned char useJAnsi()
         }
         else
         {
-            Print("MEMMAN Installed, but jANSI was not found...\n");
+            print("MEMMAN Installed, but jANSI was not found...\r\n");
             ucRet = 0;
         }
     }
@@ -513,11 +535,7 @@ int main(char** argv, int argc)
 
 	// Telnet Protocol Flags
     // Flag that indicates that a SUB OPTION reception is in progress
-	ucSubOptionInProgress = 0;
-	// No CMD received
-	ucCmdInProgress = 0;
-	// No escape code to handle
-	ucEscInProgress = 0;
+    ucState = TELNET_IDLE;
 	// If server do not negotiate, we will echo
 	ucEcho = 1;
 
@@ -525,8 +543,8 @@ int main(char** argv, int argc)
     if(!IsValidInput(argv, argc, ucServer, ucPort))
 	{
 		// If invalid parameters, just show some instructions
-		Print(ucSWInfo);
-		Print(ucUsage);
+		print(ucSWInfo);
+		print(ucUsage);
 		return 0;
 	}
 
@@ -562,7 +580,7 @@ int main(char** argv, int argc)
                 ucWidth40 = 0;
             }
         }
-        Print(ucSWInfo);
+        print(ucSWInfo);
     }
     else
     {
@@ -581,9 +599,9 @@ int main(char** argv, int argc)
 
     // Cursor on or off?
     if (!ucCursorOn)
-        Print(ucCursorOff);
+        print(ucCursorOff);
     else
-        Print(ucCursor_On);
+        print(ucCursor_On);
 
     // Time to check for UNAPI availability
 	if (!InitializeTCPIPUnapi())
@@ -596,7 +614,7 @@ int main(char** argv, int argc)
 
     if ( ucRet == ERR_OK)
     {
-        Print("Connected!\n");
+        print("Connected!\r\n");
 
         ucSentWill = 0;
 
@@ -645,7 +663,7 @@ int main(char** argv, int argc)
                     {
                         if (ucTxData != 13)
                         {
-                            PrintChar(ucTxData);
+                            putchar(ucTxData);
                         }
                         else
                         {
@@ -676,9 +694,9 @@ int main(char** argv, int argc)
         while (ucTxData != 5); //If CTRL+E pressed, exit...
 
         if (ucTxData == 5) //CTRL+E pressed?
-            Print("Closing connection...\n"); //Yes, so we are closing
+            print("Closing connection...\r\n"); //Yes, so we are closing
         else
-            Print("Connection closed on the other end...\n"); //No, so we will close after the other end closed
+            print("Connection closed on the other end...\r\n"); //No, so we will close after the other end closed
         ucRet = CloseConnection(ucConnNumber);
 
         if (ucRet != 0)
@@ -688,7 +706,7 @@ int main(char** argv, int argc)
         printf ("Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
 
     if (ucAnsi) //make sure cursor is on when we leave
-        Print(ucCursor_On);
+        print(ucCursor_On);
 
 	return 0;
 }

@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 0.90
+--   Revision 0.91
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -75,6 +75,14 @@
 #define CMD_ENV_VARIABLES 36
 #define CMD_ENCRYPTION 38
 
+enum TelnetDataParserStates {
+    TELNET_IDLE = 0,
+    TELNET_CMD_INPROGRESS = 1,
+    TELNET_SUB_INPROGRESS = 2,
+    TELNET_SUB_WAITEND = 3,
+    TELNET_ESC_INPROGRESS = 4
+};
+
 //Those won't change, so we won't waste memory and use global constants
 const unsigned char ucClientWill[] = { IAC, WILL, CMD_WINDOW_SIZE,\ //we are willing to negotiate Window Size
                                       IAC, WILL, CMD_TTYPE,\ //we are willing to negotiate Terminal Type
@@ -94,18 +102,19 @@ const unsigned char ucSpeed800K[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '8', '0', 
 const unsigned char ucCrLf[3]="\r\n"; //auxiliary
 
 //Instructions
-const char ucUsage[] = "Usage: telnet <server:port> [s] [c] [a] [r] [e]\n\n"
-                       "<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\n\n"
-                       "s: turns on smooth scroll if JANSI is installed\n"
-                       "c: turns on cursor (normally it is off unless server send code to turn it on)\n"
-                       "a: turns off automatic download detection (some BBSs can't be used with it)\n"
-                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\n"
-                       "e: Consider an external ANSI handler other than jANSI is available\n\n";
+const char ucUsage[] = "Usage: telnet <server:port> [s] [c] [a] [r] [e]\r\n\r\n"
+                       "<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\r\n\r\n"
+                       "s: turns on smooth scroll if JANSI is installed\r\n"
+                       "c: turns on cursor (normally it is off unless server send code to turn it on)\r\n"
+                       "a: turns off automatic download detection (some BBSs can't be used with it)\r\n"
+                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n"
+                       "e: Consider an external ANSI handler other than jANSI is available\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v0.90 <\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n\n";
-const char ucSWInfoJANSI[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.90 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
-const char ucSWInfoJANSISS[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.90 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\x1b[13;1.\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoJANSI[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfoJANSISS[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\x1b[13;1.\r\n";
 const char ucCursorOff[] = "\x1bx5";
 const char ucCursor_On[] = "\x1by5";
 
@@ -118,9 +127,9 @@ unsigned char ucAnsi; //Detected J-ANSI or using external ANSI?
 unsigned char ucEnterHit; //user has input enter?
 unsigned char ucWidth40; //Detected 40 Columns or less?
 unsigned char ucSentWill; //Sent what information we are willing for negotiation?
-unsigned char ucCmdInProgress; //Is there a TELNET command in progress?
-unsigned char ucEscInProgress; //Is there an ESC command in progress?
-unsigned char ucSubOptionInProgress; // Is there a TELNET command sub option in progress?
+unsigned char ucState; //State of Telnet Data Parser
+unsigned char ucCmdCounter; //If there is a TELNET command in progress, its size
+unsigned char ucEscCounter; //If there is an ESC command in progress, its size
 unsigned char ucStandardDataTransfer; //Is this telnet server proper and transmitting files using telnet double FF?
 
 //For data receive parsing
@@ -154,4 +163,5 @@ void WorkOnReceivedData(unsigned char ucConnNumber);
 void ParseTelnetData(unsigned char ucConnNumber);
 void myBulkPrint(unsigned char *ucData, unsigned int uiSize);
 unsigned char useJAnsi();
+void SendCursorPosition(unsigned char ucConnNumber);
 #endif // _TELNET_HEADER_INCLUDED
