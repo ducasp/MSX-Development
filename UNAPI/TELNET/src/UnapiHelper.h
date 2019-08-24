@@ -89,7 +89,7 @@ void UnapiBreath();
 //
 // Return 0 if no TCP-IP Unapi implementation found
 // Return 1 if a TCP-IP Unapi implementation has been found
-unsigned char InitializeTCPIPUnapi ();
+unsigned char InitializeTCPIPUnapi (unsigned char chIsAnsi);
 
 // OpenSingleConnection
 //

@@ -64,7 +64,7 @@ __at 0xFC9E unsigned int uiTickCount;
 char *ultostr(unsigned long value, char *ptr, int base);
 unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned char PktNumber, unsigned char isYmodem);
 void CancelTransfer(void);
-void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer);
+void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned char uchAnsi);
 int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K);
 int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket,  unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K);
 #endif // _XYMODEM_HEADER_INCLUDED

@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 0.91
+--   Revision 1.00
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -102,27 +102,19 @@ const unsigned char ucSpeed800K[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '8', '0', 
 const unsigned char ucCrLf[3]="\r\n"; //auxiliary
 
 //Instructions
-const char ucUsage[] = "Usage: telnet <server:port> [s] [c] [a] [r] [e]\r\n\r\n"
+const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
                        "<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\r\n\r\n"
-                       "s: turns on smooth scroll if JANSI is installed\r\n"
-                       "c: turns on cursor (normally it is off unless server send code to turn it on)\r\n"
                        "a: turns off automatic download detection (some BBSs can't be used with it)\r\n"
-                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n"
-                       "e: Consider an external ANSI handler other than jANSI is available\r\n\r\n";
+                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoJANSI[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
-const char ucSWInfoJANSISS[] = "\x1b[.\x1b[3.\x1b[31m> MSX UNAPI TELNET Client v0.91 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\x1b[13;1.\r\n";
-const char ucCursorOff[] = "\x1bx5";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.00 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.00 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_On[] = "\x1by5";
 
 //Our Flags
 unsigned char ucEcho; //Echo On?
-unsigned char ucCursorOn; //Cursor On?
 unsigned char ucAutoDownload; //Auto download on binary transfers?
-unsigned char ucExtAnsi; //using external ansi handler?
 unsigned char ucAnsi; //Detected J-ANSI or using external ANSI?
 unsigned char ucEnterHit; //user has input enter?
 unsigned char ucWidth40; //Detected 40 Columns or less?
@@ -131,6 +123,7 @@ unsigned char ucState; //State of Telnet Data Parser
 unsigned char ucCmdCounter; //If there is a TELNET command in progress, its size
 unsigned char ucEscCounter; //If there is an ESC command in progress, its size
 unsigned char ucStandardDataTransfer; //Is this telnet server proper and transmitting files using telnet double FF?
+unsigned char ucConnNumber; //hold the connection number received by UnapiHelper
 
 //For data receive parsing
 unsigned char ucEscData[25];
@@ -141,27 +134,19 @@ __at 0xF3DC unsigned char ucCursorY;
 __at 0xF3DD unsigned char ucCursorX;
 __at 0xF3B0 unsigned char ucLinLen;
 
-//jANSI Stuff
-unsigned int MemMamFH; //Handle of the MemMam function handler to access MemMam not through Expansion BIOS calls
-unsigned int MemMamXTCall; //Handle to access MemMam TSR functions directly, bypassing MemMam
-unsigned int JANSIID; //will hold the handle to access jANSI TSR through MemMam
-unsigned char ucSmoothScroll;
-
 //IMPORTANT: You need to check the map compiler generates to make sure this
 //address do not overlap functions, variables, etc
-//MEMMAN and jANSI require memory information passed to it to be in the
-//upper memory segment, so we use this address to interface with it
-__at 0xC000 unsigned char ucMemMamMemory[]; //area to hold data sent to jANSI, need to be in the 3rd 16K block
-#define MemMamMemorySize 1025
+//UNAPI requires memory buffer @ 0x8000 or higher...
+__at 0xC000 unsigned char ucRcvDataMemory[]; //area to hold data sent to jANSI, need to be in the 3rd 16K block
+#define RcvMemorySize 2049
 unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling
 
-unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen);
+extern	int 	DiskLoad( char* filename, unsigned int address, unsigned int runat );
+
+unsigned char negotiate(unsigned char *ucBuf, int iLen);
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort);
-void WorkOnReceivedData(unsigned char ucConnNumber);
-void ParseTelnetData(unsigned char ucConnNumber);
-void myBulkPrint(unsigned char *ucData, unsigned int uiSize);
-unsigned char useJAnsi();
-void SendCursorPosition(unsigned char ucConnNumber);
+void ParseTelnetData(unsigned char * ucBuffer);
+void SendCursorPosition();
 #endif // _TELNET_HEADER_INCLUDED

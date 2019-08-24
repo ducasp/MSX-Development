@@ -43,13 +43,14 @@
 
 unapi_code_block helperCodeBlock;
 Z80_registers helperRegs; //auxiliary structure for asm function calling
+char chHelperString[128];
 
 void UnapiBreath()
 {
     UnapiCall(&helperCodeBlock, TCPIP_WAIT, &helperRegs, REGS_NONE, REGS_NONE);
 }
 
-unsigned char InitializeTCPIPUnapi ()
+unsigned char InitializeTCPIPUnapi (unsigned char chIsAnsi)
 {
     unsigned char uchRet = 0;
     uint uiSpecVersion;
@@ -59,13 +60,13 @@ unsigned char InitializeTCPIPUnapi ()
     uint uiNameAddress;
     int i;
 #ifdef UNAPIHELPER_VERBOSE
-    printf("Looking for UNAPI Implementations...\r\n");
+    print("Looking for UNAPI Implementations...\r\n");
 #endif
 	i = UnapiGetCount("TCP/IP");
     if(i==0)
     {
 #ifdef UNAPIHELPER_VERBOSE
-        printf("Error, no TCP/IP Unapi found...\r\n");
+        print("Error, no TCP/IP Unapi found...\r\n");
 #endif
         uchRet = 0;
     }
@@ -74,7 +75,7 @@ unsigned char InitializeTCPIPUnapi ()
         uchRet = 1;
         UnapiBuildCodeBlock(NULL, 1, &helperCodeBlock);
 #ifdef UNAPIHELPER_VERBOSE
-        printf("Implementation name: ");
+        print("Implementation name: ");
 #endif
         UnapiCall(&helperCodeBlock, UNAPI_GET_INFO, &helperRegs, REGS_NONE, REGS_MAIN);
         btVersionMain = helperRegs.Bytes.B;
@@ -88,12 +89,16 @@ unsigned char InitializeTCPIPUnapi ()
                 break;
             }
 #ifdef UNAPIHELPER_VERBOSE
-            putchar(btReadChar);
+            if(!chIsAnsi)
+                putchar(btReadChar);
+            else
+                printCharExtAnsi(btReadChar);
 #endif
             uiNameAddress++;
         }
 #ifdef UNAPIHELPER_VERBOSE
-        printf(" v%u.%u\r\n", btVersionMain, btVersionSec);
+        sprintf(chHelperString," v%u.%u\r\n", btVersionMain, btVersionSec);
+        print(chHelperString);
 #endif
     }
 
@@ -162,7 +167,8 @@ unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsi
 unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
 {
 #ifdef UNAPIHELPER_VERBOSE
-    printf("Resolving host (%s)...\r\n",uchHostString);
+    sprintf(chHelperString,"Resolving host (%s)...\r\n",uchHostString);
+    print(chHelperString);
 #endif
     helperRegs.Words.HL = (int)uchHostString;
     helperRegs.Bytes.B = 0;
@@ -177,7 +183,10 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
         else if(helperRegs.Bytes.A == ERR_NOT_IMP)
             print("This TCP/IP UNAPI implementation does not support resolving host names.\nSpecify an IP address instead.\r\n");
         else
-            printf("Unknown error when resolving the host name (code %i)\r\n", helperRegs.Bytes.A);
+        {
+            sprintf(chHelperString,"Unknown error when resolving the host name (code %i)\r\n", helperRegs.Bytes.A);
+            print(chHelperString);
+        }
 #endif
         return helperRegs.Bytes.A;
     }
@@ -206,7 +215,10 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
         else if(helperRegs.Bytes.B == 0)
             print("DNS query failed\r\n");
         else
-            printf("Unknown error returned by DNS server (code %i)\r\n", helperRegs.Bytes.B);
+        {
+            sprintf(chHelperString,"Unknown error returned by DNS server (code %i)\r\n", helperRegs.Bytes.B);
+            print(chHelperString);
+        }
 #endif
     }
     else
@@ -249,7 +261,8 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
         paramsBlock[9] = 0;
         paramsBlock[10] = 0; //bit 1 set means passive, bit 1 set means resident
 #ifdef UNAPIHELPER_VERBOSE
-        printf("OK, opening %u.%u.%u.%u:%u\r\n", paramsBlock[0], paramsBlock[1], paramsBlock[2], paramsBlock[3],iPort);
+        sprintf(chHelperString,"OK, opening %u.%u.%u.%u:%u\r\n", paramsBlock[0], paramsBlock[1], paramsBlock[2], paramsBlock[3],iPort);
+        print(chHelperString);
 #endif
         helperRegs.UWords.HL = (int)paramsBlock; //conn info goes there
         UnapiCall(&helperCodeBlock, TCPIP_TCP_OPEN, &helperRegs, REGS_MAIN, REGS_MAIN);
@@ -262,7 +275,10 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
             else if(uchRet == ERR_CONN_EXISTS)
                 print("There is a resident TCP connection which uses the same IP/Port combination\r\n");
             else
-                printf("Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
+            {
+                sprintf(chHelperString,"Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
+                print(chHelperString);
+            }
 #endif
         }
         else

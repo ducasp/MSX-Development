@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 0.91
+--   Revision 1.00
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -60,7 +60,7 @@
 // if receiving WONT ECHO or no ECHO negotiation, we will ECHO locally.
 // Upon receiving TRANSMIT_BINARY, will just acknowledge if enter was not hit
 // as some BBSs send it at start negotiations, but after that, invoke the
-// file transfer function automatically (some bbss do that before sending files)
+// file transfer function automatically (some BBSs do that before sending files)
 //
 // Treat the DO for TTYPE and TSPEED with an WILL to tell that we are ready
 // to send the information when requested.
@@ -68,7 +68,7 @@
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
-unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iLen)
+unsigned char negotiate(unsigned char *ucBuf, int iLen)
 {
     int i;
 
@@ -118,7 +118,7 @@ unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iL
             //every darn time you are sending a screen. This is why there is a command to
             //disable the download detection (which works for Syncrhonet BBSs just fine, and
             //since those are the majority nowadays, why this option default is ON)
-            XYModemGet(ucConnNumber, ucStandardDataTransfer);
+            XYModemGet(ucConnNumber, ucStandardDataTransfer, ucAnsi);
             return 0;
         }
         else
@@ -148,11 +148,19 @@ unsigned char negotiate(unsigned char ucConnNumber, unsigned char *ucBuf, int iL
 	return 1;
 }
 
-void SendCursorPosition(unsigned char ucConnNumber)
+// This is a callback function
+// ANSI-DRV will call this function when ESC[6n is received
+// And we will return current cursor position
+// This is crucial for quite a few BBSs terminal window size detection routines
+// As well Synchronet BBSs that have avatars
+void SendCursorPosition()
 {
     unsigned char uchPositionResponse[12];
+    unsigned char uchRow,uchColumn;
+
+    printGetCursorInfo(&uchRow,&uchColumn);
     //return cursor position
-    sprintf(uchPositionResponse,"\x1b[%u;%uR",ucCursorY,ucCursorX);
+    sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
     TxData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
 }
 
@@ -161,11 +169,9 @@ void SendCursorPosition(unsigned char ucConnNumber)
 // print those, as well try to negotiate it using our negotiate function.
 // Also clear double FF's (this is how telnet indicate FF) and replace by a
 // single FF.
-void ParseTelnetData(unsigned char ucConnNumber)
+void ParseTelnetData(unsigned char * ucBuffer)
 {
-    unsigned char * chTmp = ucMemMamMemory;
-    unsigned int uiPrintCount=0;
-    unsigned char * chPrintIndex = ucMemMamMemory;
+    unsigned char * chTmp = ucBuffer;
     unsigned char * chLimit = chTmp + uiGetSize;
 
     //While we have data in the buffer
@@ -182,87 +188,14 @@ void ParseTelnetData(unsigned char ucConnNumber)
                     ucCmdCounter = 1;
                     ++chTmp;
                 }
-                else if ((*chTmp == 0x1b)&&(ucAnsi)) //will reply ESC[6n with current cursor position only if we are working with ANSI
-                {
-                    //if we can go the fast route...
-                    if (chTmp<(chLimit-3))
-                    {
-                        if (*(++chTmp)=='[')
-                        {
-                            if (*(++chTmp)=='6')
-                            {
-                                if (*(++chTmp)=='n')
-                                {
-                                    //First we are going to print through all, excluding this command
-                                    //otherwise cursor position will not be correct :)
-                                    myBulkPrint(chPrintIndex,uiPrintCount);
-                                    chPrintIndex = ++chTmp;
-                                    uiPrintCount=0;
-                                    SendCursorPosition(ucConnNumber);
-                                }
-                                else //not our business, life goes on
-                                {
-                                    ++chTmp;
-                                    uiPrintCount+=4;
-                                }
-                            }
-                            else //not our business, life goes on
-                            {
-                                ++chTmp;
-                                uiPrintCount+=3;
-                            }
-                        }
-                        else //not our business, life goes on
-                        {
-                            ++chTmp;
-                            uiPrintCount+=2;
-                        }
-                    }
-                    else //possible ESC command in split buffer...
-                    {
-                        ucState = TELNET_ESC_INPROGRESS;
-                        ucEscData[0]=*chTmp;
-                        ucEscCounter = 1; //Esc cmd byte count
-                        ++chTmp;
-                        ++uiPrintCount;
-                    }
-                }
                 else
                 {
                     //Ansi not supported, or not ESC code and not telnet command, keep moving
+                    if (ucAnsi)
+                        printCharExtAnsi(*chTmp);
+                    else
+                        putchar(*chTmp);
                     ++chTmp;
-                    ++uiPrintCount;
-                }
-            break;
-            case TELNET_ESC_INPROGRESS:
-                //Ok, ESC byte per byte processing in progress, so check if remaining bytes are [, 6 and n
-                if( ((ucEscCounter==1)&&(*chTmp=='[')) ||
-                    ((ucEscCounter==2)&&(*chTmp=='6')) ||
-                    ((ucEscCounter==3)&&(*chTmp=='n')) )
-                {
-                    //it is, copy to ESC cmd buffer
-                    ucEscData[ucEscCounter]=*chTmp;
-                    ++ucEscCounter; // update ESC cmd counter
-                    ++chTmp;
-                    ++uiPrintCount;
-                    if(ucEscCounter==4) // we've reached 4 bytes means ESC[6n was received
-                    {
-                        //First we are going to print through all, excluding this command
-                        //otherwise cursor position will not be correct :)
-                        myBulkPrint(chPrintIndex,uiPrintCount-4);
-                        SendCursorPosition(ucConnNumber);
-                        //Now, command built and replied, no longer in progress
-                        ucState = TELNET_IDLE;
-                        chPrintIndex = chTmp; //we've printed up to the current position, so new index to start
-                        uiPrintCount = 0; //and for now we've 0 bytes to print
-                    }
-                }
-                else
-                {
-                    //any other escape sequences are not our business
-                    ucState = TELNET_IDLE;
-                    ++chTmp;
-                    ++uiPrintCount;
                 }
             break;
             case TELNET_CMD_INPROGRESS:
@@ -271,13 +204,9 @@ void ParseTelnetData(unsigned char ucConnNumber)
                 // Is it the first byte after IAC? If yes and it is IAC again
                 if ( (ucCmdCounter == 1) && (*chTmp == IAC))
                 {
-                    ++uiPrintCount; //it is going to be printed
-                    //First we are going to print through all, including previous FF
-                    myBulkPrint(chPrintIndex,uiPrintCount);
                     ++chTmp; //skip current FF
-                    chPrintIndex = chTmp; //new index as we've printed up to here
-                    uiPrintCount = 0; //no more data to print for now
                     ucState = TELNET_IDLE; //CMD finished
+                    printCharExtAnsi(0xff);
                 }
                 // Is it a two byte command? Just ignore, we do not react to those
                 else if ( (ucCmdCounter == 1) && (
@@ -287,11 +216,7 @@ void ParseTelnetData(unsigned char ucConnNumber)
                      )
                    )
                 {
-                    //First we are going to print through all data
-                    myBulkPrint(chPrintIndex,uiPrintCount);
                     ++chTmp; //jump the CMD
-                    chPrintIndex = chTmp; //new index
-                    uiPrintCount = 0; //no more data to print
                     ucState = TELNET_IDLE; //CMD finished
                 }
                 // Is it the first byte after IAC and now indicate a sub option?
@@ -308,13 +233,9 @@ void ParseTelnetData(unsigned char ucConnNumber)
                     ++chTmp;
                     if (ucCmdCounter == 3)
                     {
-                        //First we are going to print through all, excluding the command
-                        myBulkPrint(chPrintIndex,uiPrintCount);
-                        chPrintIndex = chTmp; //new index
-                        uiPrintCount = 0; //no more data to print
                         ucState = TELNET_IDLE; //CMD finished
                         //Negotiate the sub option
-                        negotiate(ucConnNumber, ucRcvData, 3);
+                        negotiate(ucRcvData, 3);
                     }
                 }
             break;
@@ -340,14 +261,10 @@ void ParseTelnetData(unsigned char ucConnNumber)
                 // is the next byte SE?
                 if (*chTmp == SE)
                 {
-                    //First we are going to print through all, excluding the command
-                    myBulkPrint(chPrintIndex,uiPrintCount);
                     ++chTmp; //skip SE
-                    chPrintIndex=chTmp; //new index
-                    uiPrintCount = 0; //no more data to print
                     ucState = TELNET_IDLE; //CMD finished
                     //Negotiate the sub option
-                    negotiate(ucConnNumber, ucRcvData, 0);
+                    negotiate(ucRcvData, 0);
                 }
                 // Was processing sub option, received IAC, but now it is not SE
                 else
@@ -360,17 +277,11 @@ void ParseTelnetData(unsigned char ucConnNumber)
             break;
         }
     }
-
-    //Ok, finished parsing, still data to print?
-    if (uiPrintCount)
-        myBulkPrint(chPrintIndex,uiPrintCount);
 }
 
 // Checks Input Data received from command Line and copy to the variables
 // It is mandatory to have server:port as first argument
 // All other arguments are optional
-//
-// SmoothScroll: if using JANSI, will turn on SmoothScroll... It is cool... but it isn't!
 //
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort)
 {
@@ -380,10 +291,7 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 	unsigned char ucTmp;
 
 	//Defaults
-	ucSmoothScroll = 0; //no jANSI Smooth Scroll
-    ucCursorOn = 0; //Cursor is off
     ucAutoDownload = 1; //Auto download On
-    ucExtAnsi = 0; //try to find jANSI if not found, consider we are not ANSI capable
     ucStandardDataTransfer = 1; //usually standard
 
 	if (argc)
@@ -407,14 +315,8 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
             for (ucTmp = 1; ucTmp<=argc;ucTmp++)
             {
                 ucInput = (unsigned char*)argv[ucTmp];
-                if ( (ucInput[0]=='s')||(ucInput[0]=='S') )
-                    ucSmoothScroll = 1; //Turn on jANSI smooth scroll if jANSI is used
-                else if ( (ucInput[0]=='c')||(ucInput[0]=='C') )
-                    ucCursorOn = 1; //turn on cursor during telnet sessions
-                else if ( (ucInput[0]=='a')||(ucInput[0]=='A') )
+                if ( (ucInput[0]=='a')||(ucInput[0]=='A') )
                     ucAutoDownload = 0; //turn off auto download selection pop-up when binary transmission command received
-                else if ( (ucInput[0]=='e')||(ucInput[0]=='E') )
-                    ucExtAnsi = 1; //leap of faith, do not check jANSI but tell we are 80x25 ANSI capable and it will be handled externally
                 else if ( (ucInput[0]=='r')||(ucInput[0]=='R') )
                     ucStandardDataTransfer = 0; //server misbehave and do not double FF on file transfers
             }
@@ -422,98 +324,6 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 	}
 
 	return iRet;
-}
-
-// This function will use jANSI DMPSTR to print A LOT FASTER
-// or
-// If jANSI is not being used directly, just throw data for
-// regular print routines
-void myBulkPrint(unsigned char *ucData, unsigned int uiSize)
-{
-    if (uiSize)
-    {
-        if ((!ucAnsi)||(ucExtAnsi))
-        {
-            ucData[uiSize]=0;
-            print(ucData);
-        }
-        else
-        {
-            regs.Bytes.A = 3; //DMPSTR
-            regs.UWords.IX = JANSIID;
-            regs.UWords.HL = (unsigned int)(ucData);
-            regs.UWords.DE = uiSize; //memman XTSRCall
-            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
-        }
-    }
-}
-
-// This routine will detect if MEMMAN is installed
-// If it is, then it will check for jANSI
-// If jANSI is installed, configure STRDUMP for our needs
-// return 1 if MEMMAN and jANSI installed, otherwise 0
-unsigned char useJAnsi()
-{
-    unsigned char ucRet = 0;
-
-    MemMamFH = 0; //Handle of the MemMam function handler to access MemMam not through Expansion BIOS calls
-    MemMamXTCall = 0; //Handle to access MemMam TSR functions directly, bypassing MemMam
-    JANSIID = 0; //will hold the handle to access jANSI TSR through MemMam
-
-#ifdef log_debug
-    regs.Bytes.D = 'M'; //memman
-    regs.Bytes.E = 50; //memman get info
-    regs.Bytes.B = 7; //memman get version info
-    //Call Expansion BIOS Call, expansion MemMam
-    AsmCall(0xFFCA, &regs, REGS_MAIN, REGS_MAIN);
-    printf ("MemMam version: %u.%u\r\n",regs.Bytes.H,regs.Bytes.L);
-#endif
-    regs.Bytes.D = 'M'; //memman
-    regs.Bytes.E = 50; //memman get info
-    regs.Bytes.B = 6; //memman function handler
-    regs.UWords.HL = 0;
-    AsmCall(0xFFCA, &regs, REGS_MAIN, REGS_MAIN);
-#ifdef log_debug
-    printf ("MemMam function handler at: %x%x\r\n",regs.Bytes.H,regs.Bytes.L);
-#endif
-    if (regs.UWords.HL)
-    {
-        MemMamFH = regs.UWords.HL;
-
-        regs.Bytes.D = 'M'; //memman
-        regs.Bytes.E = 50; //memman get info
-        regs.Bytes.B = 8; //memman XTSRCall
-        AsmCall(MemMamFH, &regs, REGS_MAIN, REGS_MAIN);
-#ifdef log_debug
-        printf ("MemMam XTSRCall at: %x%x\r\n",regs.Bytes.H,regs.Bytes.L);
-#endif
-        MemMamXTCall = regs.UWords.HL;
-
-        regs.Bytes.D = 'M'; //memman
-        regs.Bytes.E = 62; //memman get tsr ID
-        strcpy(ucMemMamMemory,"MST jANSI   "); //jANSI ID
-        regs.UWords.HL = (unsigned int)ucMemMamMemory; //memman XTSRCall
-        AsmCall(MemMamFH, &regs, REGS_MAIN, REGS_MAIN);
-        if (!regs.Flags.C) //carry clear if success
-        {
-            ucRet = 1;
-#ifdef log_debug
-            printf ("jANSI TSR ID: %x%x\r\n",regs.Bytes.B,regs.Bytes.C);
-#endif
-            JANSIID = regs.UWords.BC;
-            regs.Bytes.A = 2; //INIDMP
-            regs.UWords.IX = JANSIID;
-            regs.UWords.HL = 0; //won't return on cls, key hit or each full screen
-            AsmCall(MemMamXTCall, &regs, REGS_ALL, REGS_MAIN);
-        }
-        else
-        {
-            print("MEMMAN Installed, but jANSI was not found...\r\n");
-            ucRet = 0;
-        }
-    }
-
-    return ucRet;
 }
 
 // That is where our program goes
@@ -524,7 +334,7 @@ int main(char** argv, int argc)
 	unsigned char ucServer[128]; //will hold the name of the server we will connect
 	unsigned char ucPort[6]; //will hold the port that the server accepts connections
     unsigned char ucAliveConnCount = 0; //when this is 0, check if connection is alive
-    unsigned char ucConnNumber; //hold the connection number received by UnapiHelper
+    char chTextLine[128];
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
@@ -538,6 +348,8 @@ int main(char** argv, int argc)
     ucState = TELNET_IDLE;
 	// If server do not negotiate, we will echo
 	ucEcho = 1;
+    // Initialize our text print engine
+	initPrint();
 
 	// Validate command line parameters
     if(!IsValidInput(argv, argc, ucServer, ucPort))
@@ -548,73 +360,64 @@ int main(char** argv, int argc)
 		return 0;
 	}
 
-    if (!ucExtAnsi)
-        ucAnsi = useJAnsi(); //not using external ANSI handler, so check if jANSI is available
-    else
+	//What type of MSX?
+    if(ReadMSXtype()!=0) //>MSX-1
+    {
         ucAnsi = 1; //ok, let's tell we are ANSI terminal
-
-    if (!ucAnsi)
+        print ("Trying to load ANSI-DRV.BIN...\r\n");
+        if (0==DiskLoad("ANSI-DRVBIN",0xb000,0))
+        {
+            print ("ANSI-DRV.BIN loaded, initializing it...\r\n");
+            initExtAnsi((unsigned int)SendCursorPosition);
+        }
+        else
+        {
+            print ("Failed loading ANSI-DRV.BIN, check your files and try again...\r\n");
+            return 0;
+        }
+    }
+    else
     {
         //Ok, no ANSI, do we have 80 columns?
         if (ucLinLen<80)
         {
-            //Nope, what type of MSX?
-            if(ReadMSXtype()==0) //MSX-1?
+            //Ok, it is not 80 columns capable
+            //but some have 80 columns cards
+            //so if LinLen is >=40, leave at that
+            if (ucLinLen<40)
             {
-                //Ok, it is not 80 columns capable
-                //but some have 80 columns cards
-                //so if LinLen is >=40, leave at that
-                if (ucLinLen<40)
-                {
-                    Screen(0);
-                    Width(40);
-                    ucWidth40 = 1;
-                }
-                else //hopefully it will be 80
-                    ucWidth40 = 0;
+                Screen(0);
+                Width(40);
+                ucWidth40 = 1;
             }
-            else
-            {
-                //MSX2 or better, just set 80 columns
-                Width(80);
+            else //hopefully it will be 80
                 ucWidth40 = 0;
-            }
         }
         print(ucSWInfo);
     }
-    else
-    {
-        if (!ucExtAnsi)
-        {
-            //jANSI, print string with or without Smooth Scroll command
-            if (ucSmoothScroll)
-                strcpy(ucMemMamMemory,ucSWInfoJANSISS);
-            else
-                strcpy(ucMemMamMemory,ucSWInfoJANSI);
-        }
-        else
-            strcpy(ucMemMamMemory,ucSWInfoJANSI);
-        myBulkPrint(ucMemMamMemory, strlen(ucMemMamMemory));
-    }
 
-    // Cursor on or off?
-    if (!ucCursorOn)
-        print(ucCursorOff);
+    if (ucAnsi)
+        print(ucSWInfoANSI);
     else
-        print(ucCursor_On);
+        print (ucSWInfoANSI);
 
     // Time to check for UNAPI availability
-	if (!InitializeTCPIPUnapi())
+	if (!InitializeTCPIPUnapi(ucAnsi))
+    {
+        if (ucAnsi) //loaded ansi-drv.bin?
+            endExtAnsi();
         return 0;
+    }
 
-    printf ("Connecting to server: %s:%s \r\n", ucServer, ucPort);
+    sprintf (chTextLine,"Connecting to server: %s:%s \r\n", ucServer, ucPort);
+    print (chTextLine);
 
     // Open TCP connection to server/port
     ucRet = OpenSingleConnection (ucServer, ucPort, &ucConnNumber);
 
     if ( ucRet == ERR_OK)
     {
-        print("Connected!\r\n");
+        //print("Connected!\r\n");
 
         ucSentWill = 0;
 
@@ -634,7 +437,7 @@ int main(char** argv, int argc)
                 ucTxData = InputChar ();
 
                 if (ucTxData == 0x02) //CTRL + B - Start file download
-                    XYModemGet(ucConnNumber, ucStandardDataTransfer);
+                    XYModemGet(ucConnNumber, ucStandardDataTransfer, ucAnsi);
 #ifdef XYMODEM_UPLOAD_SUPPORT
                 else if (ucTxData == 0x13) //CTRL + S - Start file upload
                 {
@@ -663,24 +466,26 @@ int main(char** argv, int argc)
                     {
                         if (ucTxData != 13)
                         {
-                            putchar(ucTxData);
+                            if (ucAnsi)
+                                printCharExtAnsi(ucTxData);
+                            else
+                                putchar(ucTxData);
                         }
                         else
-                        {
-                            printf("\r\n");
-                        }
+                            print("\r\n");
+
                     }
                 }
             }
 
             // Is there DATA?
-            uiGetSize = MemMamMemorySize - 1;
-            if (RXData(ucConnNumber, ucMemMamMemory, &uiGetSize))
+            uiGetSize = RcvMemorySize - 1;
+            if (RXData(ucConnNumber, ucRcvDataMemory, &uiGetSize))
             {
                 //Data received?
                 if(uiGetSize)
                     //Parse it and do what is needed, including printing it
-                    ParseTelnetData(ucConnNumber);
+                    ParseTelnetData(ucRcvDataMemory);
             }
 
             //Have we done 255 loops?
@@ -693,6 +498,9 @@ int main(char** argv, int argc)
         }
         while (ucTxData != 5); //If CTRL+E pressed, exit...
 
+        if (ucAnsi) //loaded ansi-drv.bin?
+            endExtAnsi();
+
         if (ucTxData == 5) //CTRL+E pressed?
             print("Closing connection...\r\n"); //Yes, so we are closing
         else
@@ -700,13 +508,18 @@ int main(char** argv, int argc)
         ucRet = CloseConnection(ucConnNumber);
 
         if (ucRet != 0)
-            printf ("Error %u closing connection.\r\n", ucRet);
+        {
+            sprintf (chTextLine,"Error %u closing connection.\r\n", ucRet);
+            print (chTextLine);
+        }
     }
     else
-        printf ("Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
+    {
+        sprintf (chTextLine,"Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
+        print (chTextLine);
+    }
 
-    if (ucAnsi) //make sure cursor is on when we leave
-        print(ucCursor_On);
+    print(ucCursor_On);
 
 	return 0;
 }

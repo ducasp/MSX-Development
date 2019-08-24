@@ -44,8 +44,8 @@
 #include "print.h"
 
 //X and YMODEM Vars
-__at 0xB000 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
-__at 0xB500 unsigned char RcvBuffer[]; //make sure it works in your map file, need to be in 0x8000 and beyond
+__at 0xC802 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
+__at 0xCD16 unsigned char RcvBuffer[]; //make sure it works in your map file, need to be in 0x8000 and beyond
 unsigned char filename[20];
 //Indicates G-Modem transfer in progress
 unsigned char G;
@@ -53,6 +53,7 @@ unsigned long SentFileSize;
 unsigned char chFileSize[30];
 unsigned char chTransferConn;
 unsigned char chDoubleFF;
+char chProtocolString[128];
 
  // Helper function for file transfers
 char *ultostr(unsigned long value, char *ptr, int base)
@@ -154,7 +155,6 @@ int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket, unsi
 
                     if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+1] == 0xff) )
                     {
-                        //printf (">%x<",ucReceived[uiI+uiIndex]);
                         ++uiRet;
                         ucPacket[uiJ+uiIndex]=ucReceived[uiI];
                         ++uiI; //jump next FF
@@ -212,11 +212,9 @@ int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K)
         if (RXData (chTransferConn, RcvBuffer, &uiReadHelper))
         {
             iParseResult = ParseReceivedData(RcvBuffer, ucPacket, PktStatus, uiReadHelper, &is1K);
-            //printf ("Iparse got: %i out of %u received bytes\r\n",iParseResult,uiReadHelper);
             if (iParseResult>0)
             {
                 PktStatus += iParseResult;
-                //printf ("Packet actual size: %u\r\n",PktStatus);
                 if ( ((is1K)&&(PktStatus>=1029)) || ((!is1K)&&(PktStatus>=133)) )
                 {
                     TimeOut = 0;
@@ -363,7 +361,8 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 
                         if (FileSize == 0)
                         {
-                            printf("Receiving file: %s Unknown size.\r\n",&RcvPkt[3]);
+                            sprintf(chProtocolString,"Receiving file: %s Unknown size.\r\n",&RcvPkt[3]);
+                            print(chProtocolString);
                             FileSize = -1;
                         }
                         else
@@ -372,7 +371,8 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                             //so just fix it
                             for (chrTerm=chrLen; (RcvPkt[chrTerm]>='0')&&(RcvPkt[chrTerm]<='9'); ++chrTerm);
                             RcvPkt[chrTerm]=0;
-                            printf("Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[chrLen]);
+                            sprintf(chProtocolString,"Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[chrLen]);
+                            print(chProtocolString);
                         }
 
                         strcpy (filename, &RcvPkt[3]);
@@ -509,7 +509,7 @@ void CancelTransfer(void)
 }
 
 // This function will deal with file reception
-void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
+void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned char chAnsi)
 {
 	unsigned char ret;
 	int iFile=0;
@@ -554,7 +554,10 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                 ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
 
             //Our nice animation to show we are not stuck
-            putchar('S');
+            if (!chAnsi)
+                putchar('S');
+            else
+                printCharExtAnsi('S');
             if (ret == 255) //Created a file, cool, let's move on
             {
                 // A key has been hit?
@@ -596,8 +599,16 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                         }
 
                         //Our nice animation to show we are not stuck
-                        putchar(8); //backspace
-                        putchar(advance[PktNumber%4]); // next char
+                        if (!chAnsi)
+                        {
+                            putchar(8); //backspace
+                            putchar(advance[PktNumber%4]); // next char
+                        }
+                        else
+                        {
+                            printCharExtAnsi(8); //backspace
+                            printCharExtAnsi(advance[PktNumber%4]); // next char
+                        }
 
                         ++PktNumber; //next packet
                         if (G)
@@ -639,7 +650,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
             {
                 //Ok, just ACK it
                 XYModemPacketReceive (&iNoFile, ACK, PktNumber, 1);
-                printf ("DONE! Transferred %u files...\r\n",FilesRcvd);
+                sprintf (chProtocolString,"DONE! Transferred %u files...\r\n",FilesRcvd);
+                print (chProtocolString);
             }
             else
             {
@@ -659,7 +671,10 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 		{
 			PktNumber = 1;
 			//Our nice animation to show we are not stuck
-			putchar('S');
+			if (!chAnsi)
+                putchar('S');
+            else
+                printCharExtAnsi('S');
 			// Request start of XMODEM 1K
 			ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 0);
 			if (ret)
@@ -675,8 +690,16 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
                             break;
                     }
 					//Our nice animation to show we are not stuck
-					putchar(8);
-					putchar(advance[PktNumber%4]);
+					if (!chAnsi)
+					{
+                        putchar(8);
+                        putchar(advance[PktNumber%4]);
+					}
+					else
+                    {
+                        printCharExtAnsi(8);
+                        printCharExtAnsi(advance[PktNumber%4]);
+					}
 					++PktNumber;
 					ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 0);
 				}
@@ -708,7 +731,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 		}
 		else
         {
-			printf ("Error creating file %s ...\r\n",filename);
+			sprintf (chProtocolString,"Error creating file %s ...\r\n",filename);
+			print (chProtocolString);
 			key = 0x1b; //force send of CAN CAN CAN CAN CAN
         }
 	}
