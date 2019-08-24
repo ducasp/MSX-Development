@@ -15,8 +15,9 @@
 					<Add option="--out-fmt-ihx" />
 					<Add option="--no-std-crt0" />
 					<Add option="-mz80" />
-					<Add option="--opt-code-size" />
-					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196 --allow-unsafe-read" />
+					<Add option="--opt-code-speed" />
+					<Add option="--verbose" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196  --allow-unsafe-read" />
 					<Add directory="../fusion-c/header" />
 				</Compiler>
 				<Linker>
@@ -42,6 +43,10 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/XYMODEM.h" />
+		<Unit filename="src/print.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/print.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
