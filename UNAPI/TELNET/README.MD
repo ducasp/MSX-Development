@@ -1,6 +1,29 @@
-# TELNET v0.90
+# TELNET v1.00
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.00
+
+	- jANSI is no longer used. Long history short: I've talked to Carlos
+	  Santana about INLCLIES (work only for internestor light) and its ANSI
+	  rendering was awesome, asking if I could use it. He did send me the 
+	  details of how it works, cool. Then I've reached the driver author, 
+	  Tobias Keizer (Sonic_AKA_T), and he is an awesome guy, that sent me 
+	  the source code of his driver and allowed me to change it and publish
+	  source code as well. End result: 6 seconds rendering HISPAMSX boot logo
+	  ANSI animation on OCM Turbo / Hardware accelerated UNAPI adapter, and 13 
+	  seconds at regular z80 speeds, pretty damn blazing amazing fast! So 
+	  Sonic_AKA_T just brought us BLAST PROCESSING from SEGA Genesis directly 
+	  to our MSX's 2 or greater. :) (And it is way, waaay, waaaaay faster on
+	  OBSONET as well really usable even at regular z80 speeds, how does 30s to 
+	  see HISPAMSX ANSI boot animation looks like? Remember that using jANSI
+	  it was 61s? :D )
+	
+	- As such, command line options have reduced a lot, no need to deal with 
+	  external ANSI drivers.
+	  
+	- And the cool thing is, this still works with MSX1, but it will be not 
+	  ANSI compatible.
 
 # CHANGELOG v0.90
 
@@ -92,58 +115,58 @@
 # DESCRIPTION
 
 This is a TELNET client that allow you to connect to a TELNET server / BBSs and
-interact with it. If used along with MEMMAN and JANSI it will be able to 
-receive and show ANSI escape codes / colors. It should be MSX1 friendly as long
-as your UNAPI adapter is compatible with MSX1.
+interact with it. If an MSX2 or better is used, it will be able to receive and 
+show ANSI escape codes / colors. It should be MSX1 friendly as long as your 
+UNAPI adapter is compatible with MSX1.
 
 How is it different than TCPCON? Why not keep using it?
 
 	- It implement telnet negotiations, as such, echo is used as the other end
 	  requests (no need to turn on or off manually), tell terminal type (Dumb
-	  if jANSI is not running or xterm 16 colors otherwise), tell window size 
-	  as 40x24 (MSX1) or 80x24 if jANSI is not running or 80x25 otherwise)
+	  if MSX1 or xterm 16 colors otherwise), tell window size as 40x24 (MSX1) 
+	  or 80x24 (MSX1 with external 80 columns adapter and screen set to 80
+	  columns before executing this software) or 80x25 if MSX2 or better.
 	  
-	- If using JANSI, ANSI capabilities are automatically detected by most BBSs
-	  either by telnet negotiation of Window Size or responding to ANSI request
-	  to cursor position (some BBS's use this to detect if terminal is ANSI 
-	  capable, this is done only once or until enter is pressed so performance
-	  is not impacted by analyzing it along with other ANSI escape codes)
+	- If using MSX2 or better, ANSI capabilities are automatically detected by
+      most BBSs either by telnet negotiation of Window Size or responding to 
+	  ANSI request to cursor position (some BBS's use this to detect if 
+	  terminal is ANSI capable)
 	
-	- It will use MS-DOS character set, which allow seeing ANSI animations and
-	  menus as they are
-	
-	- It accesses jANSI directly instead of using jANSI built in hook into DOS
-	  functions. Also it will initialize jANSI if it is installed but screen 
-	  mode is not jANSI, and it is possible to active jANSI smooth scroll mode
-	  
-	- Will send all data to be printed at once once it is received and not do
-	  it byte per byte (and in case of jANSI uses DMPSTR function)
+	- If using MSX2 or better, it will use MS-DOS character set, which allow 
+	  seeing ANSI animations and menus as they are
 	  
 	- It supports receiving files through XMODEM CRC, XMODEM 1K CRC, YMODEM and
 	  YMODEM-G, including file batch in YMODEM/YMODEM-G
 	  
-As a result, if you use jANSI it is fast, on an OCM running at turbo speed it
-will take almost the same time (12s) as a MSX TURBO-R using built-in telnet
-client of GR8NET to draw the MSX boot animation of HISPAMSX BBS. It also draws
-menus of ANSI BBSs really really fast at z80 turbo speeds. When using with 
-regular z80 speeds it is very usable, taking a couple of seconds to draw ANSI
-menus and 30s to draw the MSX boot animation of HISPAMSX BBS. 
+As a result, ANSI redering is real fast, on an OCM running at turbo speed it
+will be faster (6 to 7s) than a MSX TURBO-R using built-in telnet client of 
+GR8NET to draw the MSX boot animation of HISPAMSX BBS. It also draws menus of
+ANSI BBSs really really fast at z80 turbo speeds. When using with regular z80 
+speeds it is very usable, taking a couple of seconds to draw ANSI menus and 
+13s to draw the MSX boot animation of HISPAMSX BBS (H/W accelerated adapters,
+OBSONET uses a lot of z80 resources so it is slower). 
 
-As a reference TCPCON with jANSI takes 35s (vs. 11s) to draw HISPAMSX boot at
-OCM turbo speed (and it is 85s vs. 30s at regular z80 speeds) on a MSX-SM with
+As a reference TCPCON with jANSI takes 35s (vs. 7s) to draw HISPAMSX boot at
+OCM turbo speed (and it is 85s vs. 13s at regular z80 speeds) on a MSX-SM with
 ESP8266. On BlueMSX using "OBSONET", HISPAMSX at regular z80 speeds TCPCON take
-150s vs 61s using this client (OBSONET uses lots of z80 CPU resources as it is
+150s vs 30s using this client (OBSONET uses lots of z80 CPU resources as it is
 not using TCP/IP hardware acceleration, DENYONET and GR8NET should have better
 results).
 
 # USAGE
 
-telnet server:port [s]
+telnet server:port [a] [r]
 
 server:port: 192.168.0.1:23 or bbs.hispamsx.org:23
 
-s - Will activate smooth scroll if jANSI is installed, I really don't dig it,
-but you can always test it and check if you like it.
+a - Will turn off automatic file download detection. It works on all Synchronet
+BBS's and doesn't interfere on many others. But a few BBSs over use the Binary
+transfer command and this could cause the protocol pop-up to show a lot of 
+times. In this case, just use the a switch to de-activate this feature.
+
+r - Some BBS's do file transfer over telnet the wrong way, not replacing 0xFF
+bytes to 0xFF 0xFF (double 0xFF). This is not compliant to Telnet specs. If 
+file transfer do not work, try using this switch.
 
 Example to connect to rainmaker:
 
@@ -168,20 +191,15 @@ YMODEM at the BBS end and YMODEM-G after pressing CTRL+B.
 
 I just have an OCM like MSX ( MSX-SM by Victor Trucco ) and I'm using its built
 in WiFi capabilities with a customized ESP8266 firmware and an UNAPI driver 
-made by me. So I've not tested it with other UNAPI adapters like OBSONET,
-GR8NET and DENYONET, but in theory it should work fine. :)
+made by me. My other option to test this is using BlueMSX OBSONET emulation. So
+I've not tested it with other UNAPI adapters, but it should work fine. :)
 
 ***KNOWN ISSUES***
 
-jANSI is great when used directly, but its ANSI rendering, even though really
-good, is not perfect. HISPAMSX MSX Boot animation won't show the black
-rectangle around MSX, when Synchronet BBS's show user login information with
-it's avatar, avatar and some information is misaligned fully cleared and there
- is a pause as well. I've checked that the same occurs with TCPCON. 
-	
 	- XMODEM and YMODEM(G) transfers are a work in progress, at this moment it
 	  works on some BBSs, on others it just error. If you get errors, let me 
 	  know the file/BBS.
+	  
 	- XMODEM and YMODEM performance will generaly always suck, sorry! Those 
 	  will send an ACK to the server after receiving a block, and the server
 	  will wait receiving the ACK before sending the next block, so, you have
