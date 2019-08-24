@@ -1,19 +1,14 @@
-# TELNET BINARY PACK WITH JANSI
+# TELNET BINARY PACK
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-This pack includes MEMMAN and JANSI as well as TELNET.
+This pack includes ANSI-DRV.BIN as well as TELNET.
 
-As far as I know those are free and it is ok to distribute.
+If you have a MSX2 or better, ANSI will work trough ANSI-DRV.BIN
+(made by Tobias Keizer, improved a little bit by me). It is
+automatic, don't worry.
 
-If you have a MSX2/2+ with KANJI rom, you can use JANSI by
-calling ANSI.BAT before executing TELNET.
-
-P.s.: MEMMAN loads in BASIC, and by going to BASIC and then
-returning to DOS, all your environment variables like PATH
-will be lost... :)
-
-# TELNET v0.90
+# TELNET v1.00
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
