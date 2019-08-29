@@ -21,6 +21,7 @@ Synchronet BBSs).
 - I've fixed an issue where, after a few lines of text scrolled, some lines that were deleted would appear on the bottom.
 - I've added the possibility to have a callback function to handle returning cursor position when 6n escape command is received (for
 examples on how to use that, check the TELNET terminal source code).
+- I've added a sprite cursor, it has the same color that is set to text.
 
 How to integrate it in your program:
 
