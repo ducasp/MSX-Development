@@ -151,7 +151,7 @@ PrintText:
 	INC	A				; Increment it
 	LD	(CursorCol),A	; Save
 	PUSH	AF			; Save register
-	CALL	V99XX_SetCursorX	; Set cursor on screen
+	CALL	V99XX_SetCursorX	; Set cursor on screen	
 	POP	AF				; Restore
 	CP	80				
 	JP	C,PrintText.RLP	; If up to position 80, done
@@ -791,3 +791,4 @@ include "ansi9938.asm"
 
 FontData:
 	INCBIN "TESTFONT.DAT"
+DrvEnd:
