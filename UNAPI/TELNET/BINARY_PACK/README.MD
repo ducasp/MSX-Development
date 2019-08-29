@@ -8,9 +8,21 @@ If you have a MSX2 or better, ANSI will work trough ANSI-DRV.BIN
 (made by Tobias Keizer, improved a little bit by me). It is
 automatic, don't worry.
 
-# TELNET v1.00
+# TELNET v1.10
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.10
+
+	- Karloch from HISPAMSX BBS told about cursor keys not working properly, so
+	  it seems BBS's won't understand MSX Key Codes for cursors... :) Now this
+	  client sends ANSI Escape codes that BBS's understand, so you can edit
+	  your message properly.
+	
+	- Also Karloch told me about how bad it is to try to edit a message without
+	  a cursor on the screen, you move the cursor and have no idea where it is.
+	  Fair enough, I've updated ANSI-DRV.BIN as well, now it has a proper
+	  cursor, the same color as the current text color.	  
 
 # CHANGELOG v1.00
 
