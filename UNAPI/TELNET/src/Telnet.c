@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.00
+--   Revision 1.10
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -449,17 +449,24 @@ int main(char** argv, int argc)
 #endif
                 else
                 {
-                    //If not enter/CR
-                    if (ucTxData != 13)
-                        // Send the byte
-                        TxByte (ucConnNumber, ucTxData);
-                    else // enter/CR
+                    if (ucTxData == 13) // enter/CR ?
                     {
                         // Send CR and LF as well
                         TxData (ucConnNumber, ucCrLf, sizeof(ucCrLf));
                         // Update flag that enter has been hit
                         ucEnterHit = 1;
                     }
+                    else if (ucTxData == 28) // right?
+                        TxData (ucConnNumber, ucCursor_Forward, sizeof(ucCursor_Forward));
+                    else if (ucTxData == 29) // left?
+                        TxData (ucConnNumber, ucCursor_Backward, sizeof(ucCursor_Backward));
+                    else if (ucTxData == 30) // up?
+                        TxData (ucConnNumber, ucCursor_Up, sizeof(ucCursor_Up));
+                    else if (ucTxData == 31) // down?
+                        TxData (ucConnNumber, ucCursor_Down, sizeof(ucCursor_Down));
+                    else
+                        // Send the byte directly
+                        TxByte (ucConnNumber, ucTxData);
 
                     // If we are echoing our own keys
                     if (ucEcho)
@@ -515,6 +522,8 @@ int main(char** argv, int argc)
     }
     else
     {
+        if (ucAnsi) //loaded ansi-drv.bin?
+            endExtAnsi();
         sprintf (chTextLine,"Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
         print (chTextLine);
     }
