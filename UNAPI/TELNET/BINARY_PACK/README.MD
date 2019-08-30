@@ -8,10 +8,16 @@ If you have a MSX2 or better, ANSI will work trough ANSI-DRV.BIN
 (made by Tobias Keizer, improved a little bit by me). It is
 automatic, don't worry.
 
-# TELNET v1.10
+# TELNET v1.11
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+# CHANGELOG v1.11
+
+	- Oops... When changing to send arrows as ESC commands, was sending also
+	  0 (String terminator, not '0') after CR/LF and arrows, and this was causing 
+	  SlyEdit to quit even before you could type anything.	
+	  
 # CHANGELOG v1.10
 
 	- Karloch from HISPAMSX BBS told about cursor keys not working properly, so
