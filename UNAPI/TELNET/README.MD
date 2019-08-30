@@ -1,6 +1,12 @@
-# TELNET v1.10
+# TELNET v1.11
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.11
+
+	- Oops... When changing to send arrows as ESC commands, was sending also
+	  0 (String terminator, not '0') after CR/LF and arrows, and this was causing 
+	  SlyEdit to quit even before you could type anything.	
 
 # CHANGELOG v1.10
 
