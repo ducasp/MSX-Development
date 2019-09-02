@@ -1,8 +1,7 @@
-void print(char* s);
-void print_strout(char* s);
+// Just some functions to abstract screen printing routines
+
+void print(char* s) __z88dk_fastcall;
+void printChar(char c) __z88dk_fastcall;
 void initPrint();
-void initExtAnsi(unsigned int uiCallBackFunction);
-void endExtAnsi();
-void printExtAnsi(unsigned char * ucString);
-void printCharExtAnsi(unsigned char ucChar);
-void printGetCursorInfo(unsigned char *ucRow, unsigned char *ucColumn);
+void initAnsi(unsigned int uiCallBackFunction);
+void endAnsi();

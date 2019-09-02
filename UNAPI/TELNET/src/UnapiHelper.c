@@ -50,7 +50,7 @@ void UnapiBreath()
     UnapiCall(&helperCodeBlock, TCPIP_WAIT, &helperRegs, REGS_NONE, REGS_NONE);
 }
 
-unsigned char InitializeTCPIPUnapi (unsigned char chIsAnsi)
+unsigned char InitializeTCPIPUnapi ()
 {
     unsigned char uchRet = 0;
     uint uiSpecVersion;
@@ -89,10 +89,7 @@ unsigned char InitializeTCPIPUnapi (unsigned char chIsAnsi)
                 break;
             }
 #ifdef UNAPIHELPER_VERBOSE
-            if(!chIsAnsi)
-                putchar(btReadChar);
-            else
-                printCharExtAnsi(btReadChar);
+            printChar(btReadChar);
 #endif
             uiNameAddress++;
         }

@@ -509,7 +509,7 @@ void CancelTransfer(void)
 }
 
 // This function will deal with file reception
-void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned char chAnsi)
+void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 {
 	unsigned char ret;
 	int iFile=0;
@@ -554,10 +554,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned 
                 ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 1);
 
             //Our nice animation to show we are not stuck
-            if (!chAnsi)
-                putchar('S');
-            else
-                printCharExtAnsi('S');
+            printChar('S');
+
             if (ret == 255) //Created a file, cool, let's move on
             {
                 // A key has been hit?
@@ -598,17 +596,8 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned 
                             }
                         }
 
-                        //Our nice animation to show we are not stuck
-                        if (!chAnsi)
-                        {
-                            putchar(8); //backspace
-                            putchar(advance[PktNumber%4]); // next char
-                        }
-                        else
-                        {
-                            printCharExtAnsi(8); //backspace
-                            printCharExtAnsi(advance[PktNumber%4]); // next char
-                        }
+                        printChar(8); //backspace
+                        printChar(advance[PktNumber%4]); // next char
 
                         ++PktNumber; //next packet
                         if (G)
@@ -671,10 +660,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned 
 		{
 			PktNumber = 1;
 			//Our nice animation to show we are not stuck
-			if (!chAnsi)
-                putchar('S');
-            else
-                printCharExtAnsi('S');
+            printChar('S');
 			// Request start of XMODEM 1K
 			ret = XYModemPacketReceive (&iFile, 'C', PktNumber, 0);
 			if (ret)
@@ -689,17 +675,10 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer, unsigned 
                         if (key == 0x1b) //esc?
                             break;
                     }
-					//Our nice animation to show we are not stuck
-					if (!chAnsi)
-					{
-                        putchar(8);
-                        putchar(advance[PktNumber%4]);
-					}
-					else
-                    {
-                        printCharExtAnsi(8);
-                        printCharExtAnsi(advance[PktNumber%4]);
-					}
+
+                    printChar(8);
+                    printChar(advance[PktNumber%4]);
+
 					++PktNumber;
 					ret = XYModemPacketReceive (&iFile, ACK, PktNumber, 0);
 				}

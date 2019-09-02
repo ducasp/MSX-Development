@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.11
+--   Revision 1.20
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -108,8 +108,8 @@ const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
                        "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.11 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.11 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.20 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.20 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_On[] = "\x1by5";
 const char ucCursor_Up[] = "\x1b[A";
 const char ucCursor_Down[] = "\x1b[B";
@@ -147,10 +147,8 @@ unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling
 
-extern	int 	DiskLoad( char* filename, unsigned int address, unsigned int runat );
-
 unsigned char negotiate(unsigned char *ucBuf, int iLen);
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort);
 void ParseTelnetData(unsigned char * ucBuffer);
-void SendCursorPosition();
+void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall;
 #endif // _TELNET_HEADER_INCLUDED

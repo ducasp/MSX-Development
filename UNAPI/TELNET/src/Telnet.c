@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.11
+--   Revision 1.20
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -118,7 +118,7 @@ unsigned char negotiate(unsigned char *ucBuf, int iLen)
             //every darn time you are sending a screen. This is why there is a command to
             //disable the download detection (which works for Syncrhonet BBSs just fine, and
             //since those are the majority nowadays, why this option default is ON)
-            XYModemGet(ucConnNumber, ucStandardDataTransfer, ucAnsi);
+            XYModemGet(ucConnNumber, ucStandardDataTransfer);
             return 0;
         }
         else
@@ -153,12 +153,13 @@ unsigned char negotiate(unsigned char *ucBuf, int iLen)
 // And we will return current cursor position
 // This is crucial for quite a few BBSs terminal window size detection routines
 // As well Synchronet BBSs that have avatars
-void SendCursorPosition()
+void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
 {
     unsigned char uchPositionResponse[12];
     unsigned char uchRow,uchColumn;
 
-    printGetCursorInfo(&uchRow,&uchColumn);
+    uchColumn = uiCursorPosition & 0xff;
+    uchRow = (uiCursorPosition >> 8) & 0xff;
     //return cursor position
     sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
     TxData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
@@ -190,11 +191,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
                 }
                 else
                 {
-                    //Ansi not supported, or not ESC code and not telnet command, keep moving
-                    if (ucAnsi)
-                        printCharExtAnsi(*chTmp);
-                    else
-                        putchar(*chTmp);
+                    printChar(*chTmp);
                     ++chTmp;
                 }
             break;
@@ -206,7 +203,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
                 {
                     ++chTmp; //skip current FF
                     ucState = TELNET_IDLE; //CMD finished
-                    printCharExtAnsi(0xff);
+                    printChar(0xff);
                 }
                 // Is it a two byte command? Just ignore, we do not react to those
                 else if ( (ucCmdCounter == 1) && (
@@ -364,17 +361,7 @@ int main(char** argv, int argc)
     if(ReadMSXtype()!=0) //>MSX-1
     {
         ucAnsi = 1; //ok, let's tell we are ANSI terminal
-        print ("Trying to load ANSI-DRV.BIN...\r\n");
-        if (0==DiskLoad("ANSI-DRVBIN",0xb000,0))
-        {
-            print ("ANSI-DRV.BIN loaded, initializing it...\r\n");
-            initExtAnsi((unsigned int)SendCursorPosition);
-        }
-        else
-        {
-            print ("Failed loading ANSI-DRV.BIN, check your files and try again...\r\n");
-            return 0;
-        }
+        initAnsi((unsigned int)SendCursorPosition);
     }
     else
     {
@@ -402,10 +389,10 @@ int main(char** argv, int argc)
         print (ucSWInfoANSI);
 
     // Time to check for UNAPI availability
-	if (!InitializeTCPIPUnapi(ucAnsi))
+	if (!InitializeTCPIPUnapi())
     {
         if (ucAnsi) //loaded ansi-drv.bin?
-            endExtAnsi();
+            endAnsi();
         return 0;
     }
 
@@ -437,7 +424,7 @@ int main(char** argv, int argc)
                 ucTxData = InputChar ();
 
                 if (ucTxData == 0x02) //CTRL + B - Start file download
-                    XYModemGet(ucConnNumber, ucStandardDataTransfer, ucAnsi);
+                    XYModemGet(ucConnNumber, ucStandardDataTransfer);
 #ifdef XYMODEM_UPLOAD_SUPPORT
                 else if (ucTxData == 0x13) //CTRL + S - Start file upload
                 {
@@ -472,12 +459,7 @@ int main(char** argv, int argc)
                     if (ucEcho)
                     {
                         if (ucTxData != 13)
-                        {
-                            if (ucAnsi)
-                                printCharExtAnsi(ucTxData);
-                            else
-                                putchar(ucTxData);
-                        }
+                            printChar(ucTxData);
                         else
                             print("\r\n");
 
@@ -506,7 +488,7 @@ int main(char** argv, int argc)
         while (ucTxData != 5); //If CTRL+E pressed, exit...
 
         if (ucAnsi) //loaded ansi-drv.bin?
-            endExtAnsi();
+            endAnsi();
 
         if (ucTxData == 5) //CTRL+E pressed?
             print("Closing connection...\r\n"); //Yes, so we are closing
@@ -523,7 +505,7 @@ int main(char** argv, int argc)
     else
     {
         if (ucAnsi) //loaded ansi-drv.bin?
-            endExtAnsi();
+            endAnsi();
         sprintf (chTextLine,"Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
         print (chTextLine);
     }
