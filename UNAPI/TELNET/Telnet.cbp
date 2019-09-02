@@ -22,6 +22,7 @@
 				</Compiler>
 				<Linker>
 					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="../fusion-c/lib/msx2ansi.lib" />
 					<Add library="../fusion-c/lib/fusion.lib" />
 					<Add library="../fusion-c/lib/asm.lib" />
 				</Linker>
