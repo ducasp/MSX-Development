@@ -1,3 +1,11 @@
+# TELNET BINARY PACK
+
+(c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+This pack includes TELNET as well as its readme file
+
+If you have a MSX2 or better, ANSI will work. It is automatic, don't worry.
+
 # TELNET v1.20
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
