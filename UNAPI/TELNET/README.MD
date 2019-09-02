@@ -1,6 +1,16 @@
-# TELNET v1.11
+# TELNET v1.20
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.20
+	- ANSI-DRV.BIN is no longer externally loaded. I've converted it into a
+	  SDCC library, which give us a few benefits, first, performance wise it
+	  is a little bit better as now functions are called using a fast calling
+	  convention that doesn't use stack... Second, you can place it anywhere
+	  on your path and it will not complain about not being able to load
+	  ANSI-DRV.BIN... Last but not least... Having a SDCC library available
+	  might get more developers involved in using this great screen mode for
+	  many different applications. :)
 
 # CHANGELOG v1.11
 
@@ -157,17 +167,17 @@ How is it different than TCPCON? Why not keep using it?
 	  YMODEM-G, including file batch in YMODEM/YMODEM-G
 	  
 As a result, ANSI redering is real fast, on an OCM running at turbo speed it
-will be faster (6 to 7s) than a MSX TURBO-R using built-in telnet client of 
-GR8NET to draw the MSX boot animation of HISPAMSX BBS. It also draws menus of
-ANSI BBSs really really fast at z80 turbo speeds. When using with regular z80 
-speeds it is very usable, taking a couple of seconds to draw ANSI menus and 
+will be faster (less than 6s) than a MSX TURBO-R using built-in telnet client 
+of GR8NET to draw the MSX boot animation of HISPAMSX BBS. It also draws menus 
+of ANSI BBSs really really fast at z80 turbo speeds. When using with regular 
+z80 speeds it is very usable, taking a couple of seconds to draw ANSI menus and
 13s to draw the MSX boot animation of HISPAMSX BBS (H/W accelerated adapters,
 OBSONET uses a lot of z80 resources so it is slower). 
 
-As a reference TCPCON with jANSI takes 35s (vs. 7s) to draw HISPAMSX boot at
+As a reference TCPCON with jANSI takes 35s (vs. 6s) to draw HISPAMSX boot at
 OCM turbo speed (and it is 85s vs. 13s at regular z80 speeds) on a MSX-SM with
 ESP8266. On BlueMSX using "OBSONET", HISPAMSX at regular z80 speeds TCPCON take
-150s vs 30s using this client (OBSONET uses lots of z80 CPU resources as it is
+150s vs 29s using this client (OBSONET uses lots of z80 CPU resources as it is
 not using TCP/IP hardware acceleration, DENYONET and GR8NET should have better
 results).
 
