@@ -1,6 +1,6 @@
-# MSX2ANI
+# MSX2ANSI
 
-MSX2ANI is based on ANSI-DRV.BIN, an amazing piece of software by Tobias Keizer!
+MSX2ANSI is based on ANSI-DRV.BIN, an amazing piece of software by Tobias Keizer!
 
 It is a very, very, very fast ANSI COLOR Text Rendering engine for MSX2 and beyond.
 
