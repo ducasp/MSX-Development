@@ -244,6 +244,11 @@ I've not tested it with other UNAPI adapters, but it should work fine. :)
 ***IMPORTANT COMPILATION NOTES***
 
 Remember to copy the files in fusion-c\lib and fusion-c\header to your fusion-c lib and header folders!
+You will need the following libraries:
+
+	- Konamiman's ASM.LIB ( https://www.konamiman.com/msx/sdcc/asmlib.zip )
+	- Oduvaldo & Tobias Keizer MSX2ANSI.LIB ( https://github.com/ducasp/MSX-Development/tree/master/SDCC/MSX2ANSI )
+
 I recommend using Code::Blocks, it is a full featured UI that will allow you to check references, etc.
 
 Redistribution and use of this source code or any derivative works, are
