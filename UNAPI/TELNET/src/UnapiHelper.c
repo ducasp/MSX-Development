@@ -2,7 +2,7 @@
 --
 -- UnapiHelper.c
 --   UNAPI Abstraction functions.
---   Revision 0.50
+--   Revision 0.60
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -36,6 +36,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "../../fusion-c/header/msx_fusion.h"
 #include "../../fusion-c/header/asm.h"
 #include "UnapiHelper.h"
@@ -148,6 +149,27 @@ unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsi
     do
     {
         helperRegs.Words.DE = (int)lpucData;
+        helperRegs.UWords.HL = uiDataSize;
+        helperRegs.Bytes.C = 0;
+        helperRegs.Bytes.B = ucConnNumber;
+
+        UnapiCall(&helperCodeBlock, TCPIP_TCP_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
+        if (helperRegs.Bytes.A == ERR_BUFFER)
+            UnapiBreath();
+    }
+    while (helperRegs.Bytes.A == ERR_BUFFER);
+
+    return helperRegs.Bytes.A;
+}
+
+unsigned char TxUnsafeData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize)
+{
+    if (uiDataSize>128)
+        return ERR_INV_PARAM;
+    memcpy (ucUnsafeDataTXBuffer,lpucData,uiDataSize);
+    do
+    {
+        helperRegs.Words.DE = (int)ucUnsafeDataTXBuffer;
         helperRegs.UWords.HL = uiDataSize;
         helperRegs.Bytes.C = 0;
         helperRegs.Bytes.B = ucConnNumber;

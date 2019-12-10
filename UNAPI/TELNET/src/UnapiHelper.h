@@ -2,7 +2,7 @@
 --
 -- UnapiHelper.h
 --   UNAPI Abstraction functions.
---   Revision 0.50
+--   Revision 0.60
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -73,6 +73,8 @@ enum TcpipErrorCodes {
     ERR_INV_OPER
 };
 
+__at 0xD500 unsigned char ucUnsafeDataTXBuffer[128];
+
 // UnapiBreath
 //
 // Some UNAPI adapters will work better if you do not check them again and leave
@@ -134,6 +136,15 @@ unsigned char TxByte (unsigned char ucConnNumber, unsigned char uchByte);
 //
 // Return ERR_OK if success
 unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize);
+
+// TXUnsafeData
+//
+// Will try to send uiDataSize bytes from lpucData in ucConnNumber
+// But will move data to high memory before doing so
+// Up to 128 bytes can be sent here
+//
+// Return ERR_OK if success
+unsigned char TxUnsafeData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize);
 
 // ResolveDNS
 //

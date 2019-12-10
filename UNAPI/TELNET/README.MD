@@ -1,6 +1,14 @@
-# TELNET v1.20
+# TELNET v1.21
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.21
+	- Now it is possible to connect to telnet servers hosted by Linux/BSD 
+	  daemons, this issue was first reported by PiterPunk and then by Xipepe,
+	  it was caused due to some strings used during telnet negotiations being
+	  stored on the first page of memory that sometimes is overriden with MSX
+	  BIOS. This could potentially solve issues where some MSX setups would 
+	  have issues loading this client.
 
 # CHANGELOG v1.20
 	- ANSI-DRV.BIN is no longer externally loaded. I've converted it into a

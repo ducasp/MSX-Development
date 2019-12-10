@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.20
+--   Revision 1.21
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -68,46 +68,36 @@
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
-unsigned char negotiate(unsigned char *ucBuf, int iLen)
+unsigned char negotiate(unsigned char *ucBuf)
 {
-    int i;
-
-	if (!ucSentWill)
-    {
-        //send WILL of what we are ready to negotiate
-        ucSentWill = 1;
-		TxData (ucConnNumber, ucClientWill, sizeof(ucClientWill));
-		// Need to process whatever host asked
-    }
-
     if (ucBuf[1] == DO && ucBuf[2] == CMD_WINDOW_SIZE) { //request of our terminal window size
         if (ucAnsi)
-            TxData (ucConnNumber, ucWindowSize1, sizeof(ucWindowSize1)); //80x25
+            TxUnsafeData (ucConnNumber, ucWindowSize1, sizeof(ucWindowSize1)); //80x25
         else
             if (!ucWidth40)
-                TxData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize)); //80x24
+                TxUnsafeData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize)); //80x24
             else
-                TxData (ucConnNumber, ucWindowSize0, sizeof(ucWindowSize0)); //40x24
+                TxUnsafeData (ucConnNumber, ucWindowSize0, sizeof(ucWindowSize0)); //40x24
         return 1;
     }
 	else if (ucBuf[1] == SB && ucBuf[2] == CMD_TTYPE) { //requesting Terminal Type list
         if (ucAnsi)
-            TxData (ucConnNumber, ucTTYPE2, sizeof(ucTTYPE2)); //xterm 16 colors
+            TxUnsafeData (ucConnNumber, ucTTYPE2, sizeof(ucTTYPE2)); //xterm 16 colors
         else
-            TxData (ucConnNumber, ucTTYPE3, sizeof(ucTTYPE3)); //dumb/unknown
+            TxUnsafeData (ucConnNumber, ucTTYPE3, sizeof(ucTTYPE3)); //dumb/unknown
         return 1;
     }
     else if (ucBuf[1] == SB && ucBuf[2] == CMD_TERMINAL_SPEED) { //requesting Terminal Speed
-        TxData (ucConnNumber, ucSpeed800K, sizeof(ucSpeed800K)); //lets say 800Kbps
+        TxUnsafeData (ucConnNumber, ucSpeed800K, sizeof(ucSpeed800K)); //lets say 800Kbps
         return 1;
     }
 	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_ECHO) { //Host is going to echo
 		ucEcho = 0;
-		TxData (ucConnNumber, ucEchoDo, sizeof(ucEchoDo)); //Ok host, you can echo, I'm not going to echo
+		TxUnsafeData (ucConnNumber, ucEchoDo, sizeof(ucEchoDo)); //Ok host, you can echo, I'm not going to echo
 		return 1;
 	}
 	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_TRANSMIT_BINARY) { //Host is going to send a file?
-		TxData (ucConnNumber, ucBinaryDo, sizeof(ucBinaryDo));
+		TxUnsafeData (ucConnNumber, ucBinaryDo, sizeof(ucBinaryDo));
 		if ((ucEnterHit)&&(ucAutoDownload))
         {
             //Some BBSs use transmit binary at start of telnet negotiations, thus why not do
@@ -126,24 +116,25 @@ unsigned char negotiate(unsigned char *ucBuf, int iLen)
 	}
 	else if (ucBuf[1] == WONT && ucBuf[2] == CMD_ECHO) { //Host is not going to echo
 		ucEcho = 1;
-		TxData (ucConnNumber, ucEchoDont, sizeof(ucEchoDont)); //Ok, don't echo, I'm doing it by myself
+		TxUnsafeData (ucConnNumber, ucEchoDont, sizeof(ucEchoDont)); //Ok, don't echo, I'm doing it by myself
 		return 1;
 	}
 
 	//if we are here, none of the above mentioned cases
-    for (i = 0; i < iLen; i++) {
-        if (ucBuf[i] == DO)
-        {
-            //we are willing to negotiate TTYPE and TERMINAL SPEED
-            if ( (ucBuf[i+1] == CMD_TTYPE) || (ucBuf[i+1] == CMD_TERMINAL_SPEED))
-                ucBuf[i] = WILL;
-            else //otherwise, not
-                ucBuf[i] = WONT;
-        }
-        else if (ucBuf[i] == WILL)
-            ucBuf[i] = DO;
+    if (ucBuf[1] == DO)
+    {
+        //we are willing to negotiate TTYPE and TERMINAL SPEED
+        if ( (ucBuf[2] == CMD_TTYPE) || (ucBuf[2] == CMD_TERMINAL_SPEED))
+            ucBuf[1] = WILL;
+        else //otherwise, not
+            ucBuf[1] = WONT;
     }
-	TxData (ucConnNumber, ucBuf, iLen);
+    else if (ucBuf[1] == WILL)
+        ucBuf[1] = DO;
+    else
+        return 1;
+
+	TxUnsafeData (ucConnNumber, ucBuf, 3);
 
 	return 1;
 }
@@ -162,7 +153,7 @@ void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
     uchRow = (uiCursorPosition >> 8) & 0xff;
     //return cursor position
     sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
-    TxData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
+    TxUnsafeData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
 }
 
 // This function will handle a received buffer from a TELNET connection. If
@@ -188,6 +179,13 @@ void ParseTelnetData(unsigned char * ucBuffer)
                     ucState = TELNET_CMD_INPROGRESS; // flag a command or sub is in progress
                     ucCmdCounter = 1;
                     ++chTmp;
+                    if (!ucSentWill)
+                    {
+                        //send WILL of what we are ready to negotiate
+                        ucSentWill = 1;
+                        TxUnsafeData (ucConnNumber, ucClientWill, sizeof(ucClientWill));
+                        // Need to process whatever host asked
+                    }
                 }
                 else
                 {
@@ -232,7 +230,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
                     {
                         ucState = TELNET_IDLE; //CMD finished
                         //Negotiate the sub option
-                        negotiate(ucRcvData, 3);
+                        negotiate(ucRcvData);
                     }
                 }
             break;
@@ -261,7 +259,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
                     ++chTmp; //skip SE
                     ucState = TELNET_IDLE; //CMD finished
                     //Negotiate the sub option
-                    negotiate(ucRcvData, 0);
+                    negotiate(ucRcvData);
                 }
                 // Was processing sub option, received IAC, but now it is not SE
                 else
@@ -439,18 +437,18 @@ int main(char** argv, int argc)
                     if (ucTxData == 13) // enter/CR ?
                     {
                         // Send CR and LF as well
-                        TxData (ucConnNumber, ucCrLf, 2);
+                        TxUnsafeData (ucConnNumber, ucCrLf, 2);
                         // Update flag that enter has been hit
                         ucEnterHit = 1;
                     }
                     else if (ucTxData == 28) // right?
-                        TxData (ucConnNumber, ucCursor_Forward, 3);
+                        TxUnsafeData (ucConnNumber, ucCursor_Forward, 3);
                     else if (ucTxData == 29) // left?
-                        TxData (ucConnNumber, ucCursor_Backward, 3);
+                        TxUnsafeData (ucConnNumber, ucCursor_Backward, 3);
                     else if (ucTxData == 30) // up?
-                        TxData (ucConnNumber, ucCursor_Up, 3);
+                        TxUnsafeData (ucConnNumber, ucCursor_Up, 3);
                     else if (ucTxData == 31) // down?
-                        TxData (ucConnNumber, ucCursor_Down, 3);
+                        TxUnsafeData (ucConnNumber, ucCursor_Down, 3);
                     else
                         // Send the byte directly
                         TxByte (ucConnNumber, ucTxData);

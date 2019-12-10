@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.20
+--   Revision 1.21
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -67,13 +67,13 @@
 #define CMD_TRANSMIT_BINARY 0
 #define CMD_ECHO 1
 #define CMD_SUPPRESS_GO_AHEAD 3
-#define CMD_TTYPE 24
-#define CMD_WINDOW_SIZE 31
-#define CMD_TERMINAL_SPEED 32
-#define CMD_REMOTE_FLOW_CONTROL 33
-#define CMD_LINE_MODE 34
-#define CMD_ENV_VARIABLES 36
-#define CMD_ENCRYPTION 38
+#define CMD_TTYPE 24 //0x18
+#define CMD_WINDOW_SIZE 31 //0x1f
+#define CMD_TERMINAL_SPEED 32 //0x20
+#define CMD_REMOTE_FLOW_CONTROL 33 //0x21
+#define CMD_LINE_MODE 34 //0x22
+#define CMD_ENV_VARIABLES 36 //0x24
+#define CMD_ENCRYPTION 38 //0x26
 
 enum TelnetDataParserStates {
     TELNET_IDLE = 0,
@@ -108,8 +108,8 @@ const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
                        "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.20 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.20 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.21 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.21 <\r\n (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_On[] = "\x1by5";
 const char ucCursor_Up[] = "\x1b[A";
 const char ucCursor_Down[] = "\x1b[B";
@@ -147,7 +147,7 @@ unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling
 
-unsigned char negotiate(unsigned char *ucBuf, int iLen);
+unsigned char negotiate(unsigned char *ucBuf);
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort);
 void ParseTelnetData(unsigned char * ucBuffer);
 void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall;
