@@ -1,0 +1,3441 @@
+* R+,S 14,Q-,G 0,B 8, U+
+
+.comment %
+
+ jANSI versie 1.00 - by JvdM/MJV
+ Copyright (C) MSX Software Team 1991
+ 
+ version 1.01 - by Oduvaldo Pavan Junior
+ ducasp@gmail.com
+ 
+ OPJ 13 Aug 2019
+ - Kinda reverted (MJV 14 juli), this fix for a single BBS is affecting many
+   actual BBSs. Many send commands to go down 255 lines and right 255 columns
+   and then check cursor position to determine screen size. End result is that
+   many BBSs will detect wrong number of lines/columns. Instead of ignoring a
+   digit if three or more comes, now it consider value 99 which is good for all
+   effects.
+ - If cursor is invisible ( ESCx5 ) will not tie black color with border and
+   disable sprites. This makes possible to render black on screen where the
+   background color is not black (i.e.: HISPAMSX MSX Boot Logo animation).
+ - If cursor is visible ( ESCy5 ) screen border will be always black. This is,
+   in my oppinion, a small price to pay to be able to have black rendered as
+   black when the backdrop is not black. Again, this allows HISPAMSX Boot logo
+   animation to be properly shown.
+
+ Wijzigingen / opmerkingen
+
+ MJV 3 mei 1991
+ - Initroutine leest CHR set uit ROM ipv uit VRAM. Hierdoor werkt ansi nu
+   ook perfect als de Kanji mode van DOS2 actief is tijdens de installatie
+   van de TSR. Dit is ook veiliger wanneer TL in de toekomst vanuit een
+   grafische 'windows' omgeving gaat werken, screen 0 hoeft dan niet actief
+   te zijn!
+ - `Smooth' scroll ingebouwd op de interrupt routine. Een keuze tussen
+   gewone en smooth scroll is natuurlijk het beste, eventueel via een extra
+   CMD commando onder BASIC instelbaar of via de ‚‚n of andere "Ansi" code.
+ - Scroll is iets versneld doordat er nog maar 12 beeldlijnen gewist worden
+ - Hook entry van CHGET is versneld. Indien gewoon screen 0 actief is wordt
+   er direct terug gesprongen, eventueel naar de volgende TSR.
+   Indien screen 7 en Ansi actief zijn, wordt een eventuele volgende TSR
+   niet uitgevoerd. Dit voorkomt dat bijvoorbeeld de Kanji-Routines de
+   geprinte karakters ook nog eens een keer gaan verwerken.
+ - Controle op dubbele installatie moet ingebouwd worden in de INIT routine.
+   Zie hiervoor de file SHIFT2.TSR
+
+ MJV 14 juli
+ - Enkele labels heb ik (mijns inziens) suggestievere namen gegeven
+   GLTNUM wordt aantGtl
+   MAKCYF wordt makGtl
+   POSADR wordt homeAdr
+ - makGtl geeft 1 terug indien een code begint met ";". Voorheen werd
+   zo'n extra ";" genegeerd maar het kan voorkomen bij een locate Y,X
+   opdracht. B.v.: ESC[;5H zet de cursor op X-coord 5 van de eerste regel.
+   Indien een parameter uit 3 cijfers bestaat (bv [315;40m), dan wordt
+   het derde cijfer genegeerd. Eigenlijk zou dat kleur 15 (wit) moeten zijn,
+   dat wordt nu dus 1 (rood), want de 5 wordt genegeerd. Deze code kwam ik
+   tegen in NeaBBS.
+ - Bij verlaten CHPUT-hook worden er niet meer teruggesprongen naar de
+   BIOS-ROM. Dit scheelt in de snelheid, en voorkomt dat de "[<"-codes
+   in screen 0 getoond worden.
+ - BS doet geen karakter-wis meer
+ - DEL doet wat BS deed, dus met wis
+ - Layout: TAB's en labellengte veranderd
+ - High light wordt direkt actief na ESC[1m
+ - EI instructie toegevoegd direct na "anStrt"
+   De BLIEP routine hing omdat er gewacht werd totdat er 4 interrupts
+   geweest waren, maar omdat MemMan altijd een DI doet, werd er eindeloos
+   gewacht.
+ - berAdr routine versneld, alle 16-bits berekeningen konden ook
+   door 8-bits instructies uitgevoerd worden.
+ - Cursorroutines aangebracht:
+   DispCsr, ShowCsr, MoveCsr, FreezeCsr & HideCsr
+ - Cursor is een sprite, spritetabellen staan helemaal onderaan VRAM pagina 1.
+   Er kunnen nog heleboel andere sprites bij, zoals muis-wijzers etc.
+   Je kunt van die extra sprites zelfs een klein menu'tje maken dat altijd
+   stil blijft staan, zelfs als het scherm scrollt. Handig in een communi-
+   catie pakket.
+ - Codes voor Cursor AAN+UIT: ESC-x5 en ESC-y5
+ - Codes voor Block en Line cursor: ESC x4 en ESC-y4
+ - En nog een heleboel kleine dingen - vooral commentaar - dat ik gewijzigd
+   heb tijdens spitwerk om het programma te kunnen doorgronden.
+
+MJV 3 aug (onder andere:-)
+ - Initroutine test of JANSI al geinstalleerd is
+ - berCrd routine doet waar mogelijk 8-bits berekenigen ipv 16 bits
+ - "homeAdr" wordt niet meer verhoogd door de "scroll" routine.
+   alle routines die HomeAdr gebruiken, berekenen zelf het huidige adres
+   aan de hand het VDP scroll-register 23 (V23Buf).
+ - SavScr en PakScr overnieuw geschreven. Ze houden rekening met sprites
+   in page 1. Er wordt geen CLS meer uitgevoerd door pakScr, hierdoor onstaat
+   er geen flikkering meer op het scherm. Paletkleuren worden ook hersteld.
+ - JIFFY systeem variabele wordt niet meer gewijzigd, zodat TIME etc.
+   goed blijven lopen. De teller IntCnt vervangt JIFFY.
+ - JANSI codes worden nu gegeven door ".". Het "@"-teken is reeds door
+   Ping-ANSI in gebruik en kan dus niet gebruikt worden.
+ - Bliep en DoeNiks aangepast
+ - LF na CR kan nu ook weer uitgeschakeld worden
+ - onderstreepcode, ESC "[4m"
+ - EscKlr en MakGtl worden aangeroepen voordat de ANSI-code wordt uitgevoerd
+ - ESC [1K wis tot aan csrpos, csrpos blijft behouden en VDP commando wordt
+   gebruikt in plaats van het afdrukken van spaties
+ - Active-vlag. In deze vlag wordt bijgehouden of JANSI al dan niet
+   actief is. Indien niet, dan worden alle gebufferde karakters direct
+   weer doorgegeven aan overige TSR's of de BIOS, via de standaardroutine
+   CHPUT.
+ - BIOS routines worden nu rechtstreeks aangeroepen, er mag namelijk
+   vanuit worden gegaan dat de BIOS-ROM reeds in pagina 0 is ingeschakeld.
+ - ESC "[#M" = Delete line toegevoegd, alsmede ESC "[#L" = Insert line.
+   Codes ontdekt in het Turbo-Pascal 3.0 installatie programma.
+ - ESC "[1J" aangepast en versneld
+ - "kill" routine schakelt indien nodig het tekstscherm weer in
+ - Driver routine, om vanuit een comm. pakket in ‚‚n aanroep een string of
+   tekst-blok op het scherm te zetten.
+   Codes voor "wacht op toets" voordat CLS uitgevoerd wordt. Ook codes voor
+   "meer j/n" etc, handig bij off-line bekijken van een tekst.
+
+MJV 8 Okt 1991
+ - Hooks H.DSPC en H.ERAC aangekoppeld zodat de cursor ook zichtbaar is
+   onder DOS1 wanneer de cursor niet permanent ingeschakeld is (CSRSW == 0)
+ - Indien IBM karakterset actief is, worden ASCII-codes tussen 0 en 16 als
+   gewone karakters afgedrukt, behalve wanneer het een scherm-stuurcode
+   betreft.
+ - Cursorkleur instelbaar (Esc[14;<kleur>.
+
+MJV 22 Okt 1991
+ - Esc[=#n en Esc[?#l worden genegeerd
+
+ Moet nog:
+ - ANSI codes voor cursor aan/uit (Esc[=7h en Esc[=7l ?).
+ - Driverroutine om MSX-toetsen om te zetten in ANSI-strings
+ - hooks aankoppelen voor gebruik in de Basic command mode (ver toekomst):
+   DSPFNK, ENAFNK, TOTEXT, CHGET, PINLIN, QINLIN, INLIN
+%
+
+blanc	equ	#20
+cDown	equ	#1f
+cLeft	equ	#1d
+clrHom	equ	#0c
+cRight	equ	#1c
+cUp	equ	#1e
+home	equ	#0b
+bs	equ	#08
+cr	equ	#0d
+esc	equ	#1b
+lf	equ	#0a
+cls	equ	#0c
+tab	equ	#09
+del	equ	#7f
+
+rdSlt	equ	#0C
+calSlt	equ	#1C
+
+linLen	equ	#F3B0	; scherm-breedte
+putPnt	equ	#F3F8	; keybuf einde
+getPnt	equ	#F3FA	; keybuf start
+expTbL	equ	#FCC1	; Slotadres van BIOS-ROM
+subPag	equ	#FAF7	; slot-ID van SUB-ROM -1
+hChpu	equ	#FDA4	; Character put hook
+hDispCsr	equ	#fda9	; Display cursor hook
+hEraCsr	equ	#fdae	; Erase cursor hook
+hTimi	equ	#FD9F	; Interrupt hook
+scrMod	equ	#FCAF	; scherm mode
+oldScr	equ	#FCB0	; tekstscherm mode
+
+extBio	equ	#FFCA	; MemMan aanroep entry
+getID	equ	62	; Get TSR ID functie
+
+
+; TSR file header
+;
+	db	"MST TSR",13,10     ; File herkennings naam
+	db	"MST jANSI   ",26   ; unieke ID naam
+	dw	#0001	; Header file versie: MemMan 2.1 en >
+	dw	code	; Code start-adres
+	dw	init	; Init adres
+	dw	kill	; Kill adres
+	dw	talk	; Interactie adres
+	dw	codLen	; Lengte Code
+	dw	iniLen	; Lengte init-code
+
+
+; Aanvang ML-code
+;
+code	equ	$	; TSR Base address
+
+
+; MSX-BIOS entries
+;
+; Altijd via inter-slot call, omdat in page 0 DOS-RAM soms actief is wanneer
+;  JANSI via het driver-entry wordt aangeroepen.
+;
+disScr:	ld	ix,#41	; scherm uit
+	jr	calBios
+enaScr:	ld	ix,#44	; scherm aan
+	jr	calBios
+chgMod:	ld	ix,#5F	; screen zetten
+	jr	calBios
+chget:	ld	ix,#9f	; haal toets
+	jr	calBios
+chput:	ld	ix,#a2	; druk karakter af
+	jr	calBios
+beep:	ld	ix,#c0	; biepje
+	jr	calBios
+toText:	ld	ix,#d2	; naar originele tekstscherm
+	jr	calBios
+kilBuf:	ld	ix,#156	; wis toetsenbordbuffer
+
+; Inter-slot call naar MSX-BIOS
+;
+; In: IX=Aanroepadres
+;
+calBios:	ld	iy,(expTbl-1)
+	call calSlt
+	ei
+	ret
+
+
+; SUB-ROM entries
+;
+iniPlt	equ	#141	; initieer palet
+rstPlt	equ	#145	; schrijf palet weg
+
+; CALSUB
+;
+; In:  IX = Aan te roepen adres in SUB-ROM
+;      AF, HL, DE, BC afhankelijk van de aan te roepen routine
+;
+; Uit: AF, HL, DE, BC afhankelijk van de aangeroepen routine
+;
+; Wijzigt: IX, IY, AF', BC', DE', HL'
+;
+; Roept vanuit MSX-DOS een routine aan in het MSX2 SUB-ROM.
+; Deze routine werkt samen met alle disk-ROM's.
+;
+; De NMI hook wordt afgebogen naar de onderstaande routine, die op
+; op de stack wordt gepushed. Vervolgens wordt vanuit MSX-DOS een
+; een inter-slot call uitgevoerd naar de NMI-routine in de BIOS.
+; Dit is mogelijk omdat de NMI nooit gebruikt wordt onder MSX-DOS.
+;
+; +0    inc  sp		;Verwijder returnadres naar BIOS
+; +1    inc  sp		; routine NMI
+; +2    ld   ix,<sub-ROM entry>	;Gewenste SUB-ROM adres in IX laden
+; +6    nop			;Opvulling vanwege 16-bits `push hl'
+; +7    jp   EXTROM	;Roep SUB-ROM aan
+;
+nmi	equ	0066h	;BIOS-entry `Non-Maskable Interrupt'
+extRom	equ	#15f	; Entryadres Extended BIOS ROM
+h_nmi	equ	0FDD6h	;Hook voor NMI
+;
+calSub:	exx		;Bewaar dataregisters in de schaduw
+	ex	af,af'
+	ld	hl,extRom	;Push de volgende instructies op stack:
+	push hl	; JP EXTROM
+	ld	hl,0C300h	; NOP
+	push hl
+	push ix	; LD IX,<entry>
+	ld	hl,021DDh
+	push hl
+	ld	hl,03333h	; INC SP
+	push hl	; INC SP
+	ld	hl,0
+	add	hl,sp	;HL=SP, wijst naar start van routine
+	ld	a,0C3h	;JP-opcoden en startadres van de routine
+	ld	(h_nmi),a	; in de NMI hook invullen
+	ld	(h_nmi+1),hl
+	ex	af,af'              ;Herstel dataregisters
+	exx
+	ld	ix,nmi	;Roep NMI-hook aan via het NMI entry
+	call calBios	; in de BIOS. Via de NMI hook wordt
+			; de EXTROM routine aangeroepen.
+	ld	hl,10	;Verwijder de routine weer van de
+	add	hl,sp	; stack
+	ld	sp,hl
+	ret		;Klaar
+
+
+
+; *** De jANSI-driver Module ***
+;
+
+; adressen/parameters/flags
+;
+vReg1	equ	#F3DF+1	; VDP register back-up  (0 t/m 7)
+vReg5	equ	#F3DF+5
+vReg6	equ	#F3DF+6
+vReg7	equ	#F3DF+7
+
+vReg8	equ	#FFDF+8	; VDP register back-up  (8 t/m 45)
+vReg9	equ	#FFDF+9
+vReg11	equ	#FFDF+11
+vReg14	equ	#FFDF+14
+vReg23	equ	#FFDF+23
+
+positY	equ	#F3DC	; coordinaten
+positX	equ	#F3DD
+
+csrSw	equ	#FCA9	; cursor display switch
+cStyle	equ	#FCAA	; cursor style, 0=block cursor
+
+; Constanten
+;
+jansiVer	equ	#0100	;Versie 1.0
+debugVer	equ	#0	;Versie 1.00
+maxScroll	equ	25	;Aantal regels wachten voor "meer J/N"
+charMSX	equ	0	;MSX Karakterset = 0
+charIBM	equ	1	;IBM Karakterset = 1
+
+
+; Aanroep adres driver met in A karaktercode
+;
+anStrt:	ei		; interrupts weer aan
+	ex	af,af'              ; bewaar A in A', voor collega op HCHPU
+	ld	a,(busy)	; al bezig?
+	or	a
+	jr	z,ansDrv	; Nee, => Verwerk Ansi karakter
+exit:	xor	a	; Nee, zet 0 in A' (geen TSR hookstop)
+	ex	af,af'              ; want de ansi driver is nu niet actief
+	ret
+
+ansDrv:	ex	af,af'              ; Haal karakter terug in A
+	call charDecode	; ANSI karakter verwerken
+
+	pop	ix	; Haal return adres naar Manager
+	pop	hl	; Weg: return adres naar BIOS
+	pop	af	; Herstel registers
+	pop	bc
+	pop	de
+	pop	hl
+
+	ex	af,af'              ; Bewaar AF in AF'
+	ld	a,1	; hook-stop vlag in A', want de stack is
+	ex	af,af'              ;  gewijzigd - de overige TSR's zouden
+	jp	(ix)	;  daarop vast kunnen lopen
+
+
+; prtAnsBuf
+;
+; Indien JANSI nog niet geinitialiseerd is, worden ANSI-reeksen
+;  door deze routine verwerkt
+;
+prtAnsBuf:	ld	a,(driverCall)	; Aanroep gepleegd via driver-entry?
+	or	a
+	jr	nz,prtEndBuf	;  Ja, => Alleen buffers resetten
+
+	ld	a,1	; vlag: deze codes niet nogmaals
+	ld	(busy),a	;  onderscheppen
+	ld	a,ESC
+	call chput	; druk eerst ESC+"[" af
+	ld	a,'['
+	call chput
+
+	ld	de,ansBuf	; vervolgens de gebufferde codes
+prtBufLp:	ld	hl,(ansAdr)	;  afdrukken
+	scf		; AnsAdr wijst naar einde + 1
+	sbc	hl,de	; laatste code?
+	ld	a,(de)	;	haal code in [A]
+	jr	z,prtEndBuf	;  ja, => klaar
+	call chput	;  nee, afdrukken
+	inc	de	; naar volgende code
+	jr	prtBufLp
+
+prtEndBuf:	ld	b,a	; laatste kar wordt gedaan door noDriver
+	call escKlr	; reset Esc en ANSI buffer
+	jr	noDriver
+
+
+; prtEsc
+;
+; Stuur ESC + vervolgcode door indien JANSI niet actief is
+;
+; in: B = Vervolgcode
+;
+prtEsc:	call escKlr	; reset Esc en ANSI buffer
+
+	ld	a,(driverCall)	; Aanroep gepleegd via driver-entry?
+	or	a
+	ret	nz	;  Ja, => Terug naar driverfunctie
+
+	ld	a,1	; zorg ervoor dat de ESC niet
+	ld	(busy),a	;  onderschept wordt
+	ld	a,ESC
+	call chput	; ESC doorgeven
+			; loopt door in NoDriver
+
+; noDriver
+;
+; Indien JANSI nog niet geinitialiseerd is, worden niet-escape karakters
+;  door deze routine verwerkt
+;
+; In: B=Karakter
+;
+noDriver:	ld	a,(driverCall)	; Aanroep gepleegd via driver-entry?
+	or	a
+	ret	nz	;  Ja, => Terug naar driverfunctie
+
+	pop	hl	; verwijder "call charDecode" adres
+	xor	a
+	ld	(busy),a	; karakter-test mag weer
+	ex	af,af'              ; Vlag: voer volgende TSR uit
+	ld	a,b	; kar. doorgeven in A
+	ret
+
+
+; charDecode
+;
+; Decodeert het karakter dat zojuist via H.CHPU is onderschept
+;
+charDecode:	ld	b,a	; bewaar karakter even
+
+	ld	a,(escVlg)
+	or	a	; ESC/ANSI vervolg-code ?
+	jp	z,noSeqence	;  nee, => controleer gewone kar's
+	dec	a
+	jp	z,wasEsc	; test 1e karakter na ESC
+	dec	a
+	jp	z,wasAns	; test character na ESC "["
+
+	ld	c,a	; escapevlag naar C
+
+	call isActive	; ANSI driver actief?
+	jr	z,prtEsc	;  Nee, => Stuur ESC+code door
+
+	dec	c	; zet rij ?
+	jp	z,zetRij
+	dec	c	; zet kolom ?
+	jp	z,zetKol
+	dec	c	; x-code?
+	jp	z,getXCode
+	dec	c	; y-code?
+	jp	z,getYCode
+	ret
+
+noSeqence:	ld	a,b
+	cp	esc	; ESC-code ?
+	jp	z,doeEsc
+
+	call isActive	; JANSI init-code al ontvangen? ("[.")
+	jr	z,noDriver	;  Nee, => Stuur char door
+
+isTGrp:	ld	a,(grpVlg)	; grafisch karakter ?
+	or	a
+	jp	z,gewoon	; Nee, gewoon
+	xor	a
+	ld	(grpVlg),a
+	ld	a,b	; haal ASCII grafisch karakter
+	sub	64	; maak juiste code
+	jp	putKar	; naar scherm
+
+gewoon:	ld	a,b
+
+	cp	del	; DELete?
+	jp	z,doeDEL
+
+	cp	blanc	; gewoon of code karakter ?
+	jp	nc,putKar
+
+	; Code lager dan #20
+
+	cp	cr	; Carriage Return ?
+	jp	z,doeCR
+	cp	lf	; Line-Feed ?
+	jp	z,doeLF
+	cp	cRight	; cursor-code ?
+	jp	z,code28
+	cp	cLeft
+	jp	z,code29
+	cp	cUp
+	jp	z,code30
+	cp	cDown
+	jp	z,code31
+	cp	clrHom	; Clear screen ?
+	jp	z,newCls
+	cp	home	; Home cursor ?
+	jp	z,zetHom
+	cp	tab	; Tabulator ?
+	jp	z,doeTab
+	cp	7	; Beep ?
+	jp	z,beep
+	cp	bs	; Backspace ?
+	jp	z,doeBS
+	or	a	; Null-karakter?
+	ret	z	;  Ja, => Dat doet niets
+
+	ld	a,(charMode)	; Haal huidige karakterset instelling
+	cp	charMSX	; MSX Set?
+	ld	a,b	;     Herstel karcode in [A]
+	jr	nz,putIBMGraph	;  Nee, => Druk karakter af (IBM)
+
+	cp	1	; Ja, is het een grafische header?
+	ret	nz	;  Nee, => Dan niets afdrukken
+	ld	(grpVlg),a	; Zet vlag: Header gezien
+	ret
+
+putIBMGraph:	cp	10h	; Grafisch IBM karakter?
+	jp	c,putKar	;  Ja, => Rechtstreeks afdrukken
+	ret		; Codes van 10H-1FH doen niets
+
+
+; isActive
+;
+; Controleer of JANSI geinitialiseerd is, en of screen 7 nog aan staat
+;
+; Uit: NZ = Actief, alles Ok
+;       Z = Niet actief
+;
+; Wijzigt: AF, HL, DE
+;
+isActive:	ld	a,(active)	;ANSI driver actief?
+	or	a
+	ret	z	; Nee, => nokken
+	ld	a,(scrMod)
+	cp	7	;Screen 7 nog actief?
+	jr	nz,wrongScreen
+	or	a	;Vlag NZ zetten
+	ret		;Ok
+wrongScreen:	push bc
+	call rstOld	;Restore screen, deactiveer JANSI-driver
+	pop	bc
+	xor	a	;Vlag Z
+	ret
+
+
+; NewCls
+;
+; schoon het scherm
+;
+newCls:	ld	a,(driverCall)	;Driver string-dump?
+	or	a
+	jr	z,noClsWait	; Nee, => Geen pauze voor CLS
+
+	ld	a,(skipCls)	;CLS-karakters negeren?
+	or	a
+	ret	nz	; Ja, => Snel klaar
+
+	ld	a,(waitCls)	;Wachten voor een CLS-commando?
+	or	a
+	jr	z,noClsWait	; Nee, => Geen pauze
+
+	ld	a,(allowCls)	;CLS toegestaan?
+	or	a
+	jr	nz,noClsWait	;  Ja, => Geen pauze
+
+	ld	a,1	; Nee, zet CLS-komt vlag
+	ld	(clsComes),a
+	ret		;CLS nog niet uitvoeren
+
+noClsWait:	call disScr
+
+	di		; voorkom dat de int. vReg23 verandert
+	ld	a,(v23buf)	; haal werkwaarde van scroll
+	ld	(vReg23),a	; fysieke waarde gelijk aan werkwaarde
+	ld	c,23+#80	; en maakt dat hard
+	call wrtVdp	; voorkom naijlen op de interrupt+doe EI
+
+	ld	hl,0	; alle VRAM opschonen
+	ld	(xCrd),hl
+	ld	(yCrd),hl
+	ld	h,2	; HL -> 512
+	ld	de,256
+	call wisBlk
+	ld	a,(bakCol)
+	ld	(bdrCol),A	; BDR = achtergrond
+	call zetBdr
+	ld	a,(knpMot)	; als mag knipper uit (sneller)
+	or	a
+	jr	nz,clsOut	; knipper staat nog aan
+	ld	(knpSta),a
+
+clsOut:	call enaScr	; Enable screen display
+
+	ld	hl,scrollCnt	; zet aantal gescrollde regels op max-1
+	ld	(hl),maxScroll - 1	;  dus bij volgende scroll "meer j/n"
+
+zetHom:	ld	hl,#0101	; positie op HOME
+	ld	(positY),hl
+
+	jp	showCsr	; verplaats cursor naar nieuwe pos.
+
+
+; zetBdr
+;
+; Maak de borderkleur hard
+;
+; In: A=Kleur (0-14)
+;
+zetBdrBackup:	db	0
+zetBdr:	ld	(zetBdrBackup),a
+	ld	a,(csrSw)
+	or	a
+	ld	a,(zetBdrBackup)
+	jr	z,zetBdrClr
+	xor a ; cursor on, border must be black, otherwise black won't be black
+zetBdrClr:	
+	ld	b,a	; zet borderkleur voor o.a.
+	call shft4	; wissen bovenste lijn
+	or	b
+	ld	(bdrDiB),a
+	and	#0f
+	ld	(vReg7),a
+	ld	c,7+#80	; activeer borderkleur
+	jp	wrtVdp
+
+bdrDiB:	db	0
+
+
+; berAdr
+;
+; Bereken VRAM-adres voor positie POSITX,POSITY en zet in adrBuf
+;
+berAdr:	ld	hl,(homeAdr)	; haal VRAM adres van pos 1,1
+	ld	a,(v23buf)
+	add	a,h	; scroll offset erbij tellen
+	ld	h,a
+
+	ld	a,(positY)
+	dec	a	; maak nul-based, line 0 ?
+	jr	z,telXOp	; ja, => alleen een extra X-offset
+
+	rlca 	; *2
+	rlca 	; *4
+	rlca 	; *8 lijnen per regel
+
+	add	a,h	; optellen bij "home" regel
+	ld	h,a	; bewaar Y-coord van de regel
+
+telXOp:	ld	a,(positX)	; kijk naar X
+	dec	a	; maak X tussen 0 en 79
+	jr	z,storePosAdr	; als X=0 dan klaar
+
+	ld	b,a	; 1 keer in B
+	add	a,a	; A keer 2
+	add	a,b	; is 3*(X-1)
+	add	a,l	; adres van X=1 erbij
+	ld	l,a	; bewaar X-offset
+
+storePosAdr:	ld	(adrBuf),hl	; bewaar VRAM-adres
+	ret
+
+
+; Zet karakter op scherm
+;
+; In: [A] = Karakter
+;
+putKar:	call berPat	; maak patroon
+	call berAdr	; haal VRAM-adres
+
+	ld	a,(driverCall)
+	or	a	;Aanroep via het driver-entry?
+	jr	z,leaveClsFlag	; Nee, => Cls-mag vlag niet beinvloeden
+
+	xor	a	;Zet vlag: Eerst pauze voordat
+	ld	(allowCls),a	; een CLS uitgevoerd wordt
+
+leaveClsFlag: ld	bc,#2098	; 8 bytes versturen
+	ld	hl,matrix	; vanuit patroonmatrix
+	ld	de,(adrBuf)	; naar VRAM adres
+
+	di		; Adresregisters veilig stellen
+
+	ld	a,d	; zet VRAM schrijf-adres naar DE
+	and	%11000000	; alleen 7 en 6 'aan'
+	rlca
+	rlca 	; 7 en 6 nu 1 en 0
+	ld	(vReg14),a	; opslaan in systeem geheugen
+	out	(#99),a	; data
+	ld	a,14 + #80	; naar reg 14
+	out	(#99),a
+
+	ld	a,d
+	and	%00111111	; reset bit 7 en 6
+	or	%01000000	; set bit 6 voor write
+	ld	d,a	; bewaren voor volgende 7 lijnen
+
+putLineLp:	ld	a,e	; vReg14 wijzigt niet binnen een regel
+	out	(#99),a	; schrijf low VRAM addres byte
+	ld	a,d
+	out	(#99),a	; write high VRAM addres byte
+
+	outi 	; Schrijf 3 bytes (6 pixels)
+	outi
+	outi
+
+	inc	d	; naar volgende lijn (=+256)
+
+	djnz putLineLp	; 8 keer (8 lijnen per regel)
+
+	ei		; loopt door in NextPos
+
+
+; zet coordinaten 1 karakter verder
+;
+nextPos:	ld	hl,positX
+	ld	a,(hl)
+	inc	(hl)	; 1 naar rechts
+	cp	80
+	jp	nz,moveCsr
+	ld	(hl),1	; naar volgende regel
+	dec	hl	; HL = PositY
+	ld	a,(hl)
+	inc	(hl)	; omlaag
+	cp	25
+	jp	nz,moveCsr
+	dec	(hl)	; kan niet, scroll
+	jp	scroll
+
+
+; Maak array matrix[8,3]
+;
+matrix:	ds	8*3,0
+
+
+; haal patroon-adres van ASCII karakter in Accu
+;
+berPat:	cp	176	; IBM ?
+	jp	c,patMSX
+	ld	de,(karAdr)
+	sub	176
+	jp	patIBM
+patMSX:	ld	de,msxKar
+patIBM:	ld	h,0
+	ld	l,a
+	add	hl,hl	; code keer 8
+	add	hl,hl
+	add	hl,hl
+	add	hl,de	; adres patroon in HL
+	ld	de,matrix
+	ld	b,7	; 7 rijtjes
+mtxLus:	ld	a,(hl)
+	rlca
+	rlca
+	ld	c,a
+	call fndByt
+	ld	a,c
+	rlca
+	rlca
+	ld	c,a
+	call fndByt
+	ld	a,c
+	rlca
+	rlca
+	call fndByt
+	inc	hl
+	djnz mtxLus
+
+	ld	a,(uLine)	; onderstrepen?
+	or	a
+	ld	a,(hl)	;	haal laatste (8e) lijn
+	jr	z,putLastLine
+	cpl		;  ja, inverteer 8e lijn
+putLastLine:	rlca
+	rlca
+	ld	c,a
+	call fndByt
+	ld	a,c
+	rlca
+	rlca
+	ld	c,a
+	call fndByt
+	ld	a,c
+	rlca
+	rlca
+
+fndByt:	exx
+	and	%00000011
+	ld	hl,diBit0
+	ld	d,0
+	ld	e,a
+	add	hl,de
+	ld	a,(hl)
+	exx
+	ld	(de),a
+	inc	de
+	ret
+
+
+; scroll
+;
+; scroll scherm 1 regel omhoog
+;
+v23Buf:	db	0	; HOME lijn ofwel rol-offset
+
+scroll:	ld	bc,#011a	; 26e+27e regel weg
+	call berCrd
+	ld	hl,80*6	; anderhalve regel van 8 rijtjes
+	ld	de,8+4	;  van 80 bij 6
+	ld	a,#ff
+	ld	(bdrVlg),a	; zet vlag voor border-kleur
+	call wisBlk	; wis bovenste lijn
+	xor	a
+	ld	(bdrVlg),a	; reset border-vlag
+
+	ld	hl,v23Buf	; scroll via reg. 23 (=VDP24)
+	ld	a,(hl)
+	add	a,8	; 8 lijnen is ‚‚n regel
+	ld	(hl),a	; bewaar, interrupt doet de rest
+
+	ld	a,(scrollVlag)	; haal scrollmode
+	or	a
+	ld	a,(hl)	; haal werkwaarde van scrolloffset
+	jr	z,doeHardScroll	; hard scroll => direct VDP invullen
+
+	di		; register 23 even met rust laten
+
+	ld	hl,(vReg23)	; haal huidige waarde van register 23
+	sub	l	; A=aantal lijnen dat nog scrollen moet
+	jr	nc,noOverf	;  NC => Geen overflow
+	neg		; wel overflow, maak getal positief
+
+noOverf:	cp	6*8	; ijlen we nu 6 regels achter?
+	jr	c,noHurry	;  Nog niet, => Scroll rustig verder
+
+	ld	a,l	;  Ja, even opschieten, max. vijf regels
+	add	a,8	; schuif een complete regel door
+doeHardScroll:ld	(vReg23),a
+	ld	c,23+#80	; en schrijf weg
+	call wrtVdp
+
+noHurry:	ei		; scrollen mag weer
+
+	ld	a,(driverCall)
+	or	a	;Aanroep via het driver-entry?
+	jp	z,moveCsr	; Nee, => Scroll-teller niet beinvloeden
+
+	ld	hl,scrollCnt	; verhoog het aantal gescrollde regels
+	inc	(hl)
+
+	jp	moveCsr	; cursorpositie updaten
+
+bdrVlg:	db	0	; -1 indien boderkleur bij blokwis
+
+
+; wrtVdp
+;
+; schrijf naar VDP-reg C, de data in A wijzigt A
+; topbit register C moet al geset zijn om schrijven aan te geven
+;
+wrtVdp:	di
+	out	(#99),a	; data weg
+	ld	a,c
+	out	(#99),a	; registernummer weg
+	ei
+	ret
+
+
+; bereken VDP-coordinaten bij huidige positie
+;
+berCurCrd:	ld	bc,(positY)
+
+; bereken VDP-coordinaten bij posit X;Y in BC
+;
+berCrd:	ld	h,0
+	dec	b
+	ld	l,b	; HL = A = B = X-coord.
+	jr	z,addHomeX	; was 1?
+
+	ld	a,b
+	add	a,a	; *2
+	add	a,b	; *3 (dit past nog in 8 bits)
+	ld	l,a
+	add	hl,hl	; *6 (dit moet in 16 bits, max 512 dots)
+
+addHomeX:	ld	a,(homeAdr)	; Haal offset van kolom 1
+	add	a,a	; *2 pixels per byte
+	add	a,l	; optellen bij x-coord
+	ld	l,a
+	ld	a,h
+	adc	a,0
+	ld	h,a
+	ld	(xCrd),hl	; Bewaar X-coord.
+
+	ld	a,c	; Y in HL
+	dec	a
+	jr	z,addHomeY
+
+	add	a,a	; *2
+	add	a,a	; *4
+	add	a,a	; *8
+
+addHomeY:	ld	hl,(homeAdr)	; H=Coord. van eerste regel
+	add	a,h	; Toevoegen
+
+	ld	hl,(v23buf)	; er is mogelijk gescrolled
+	add	a,l	; offset erbij
+
+	ld	(yCrd),a	; Y-coord altijd 8-bits
+	ret
+
+
+; vul (wis) blok met BAKCLR
+;
+; in: HL=X-dots;DE=Y-dots;coordinaten in (X/YCRD)
+;
+wisBlk:	ld	a,(yCrd)	; waar nu
+	add	a,e	; Y erbij, test op scroll-overslag
+	jr	nc,wegBlk	;  => Kan in 1 actie
+	jr	z,wegBlk
+	ld	c,a	; C = aantal lijnen overschot
+	push bc	; opslaan voor scheermesje twee
+	ld	a,e	; totaal aantal lijnen
+	sub	c	; min het aantal lijnen voor zometeen
+	ld	e,a	; levert het aantal lijnen voor nu
+	call wegBlk	; wis blok
+	pop	de	; E = Aantal overige lijnen
+	ld	d,0	; high byte = 0
+	ld	bc,0	; wis vanaf (x,0)
+	ld	(yCrd),bc
+
+wegBlk:	ld	c,17+#80	; 1'e doelregister zetten
+	ld	a,36
+	call wrtVdp	; nu auto-ophoging
+	ld	c,#9b	; schrijf-poort
+	ld	a,(xCrd)	; haal positie X
+	out	(c),a	; DX 1-7
+	ld	a,(xCrd+1)	; DX 8
+	out	(c),a
+	ld	a,(yCrd)	; haal positie Y
+	out	(c),a	; DY 1-7
+	ld	a,(yCrd+1)
+	out	(c),a	; DY 8-9
+	out	(c),l	; NX
+	out	(c),h
+	out	(c),e	; NY
+	out	(c),d
+	ld	a,(bdrVlg)	; borderkleur ?
+	or	a	; zie vlag
+	ld	a,(diBit0)	; zet op back-color
+	jp	z,wisEen	; spring door
+	ld	a,(bdrDiB)	; zet op BDR-color
+wisEen:	out	(c),a	; kleur-dibit weg
+	xor	a	; reg. 45 kan leeg door
+	out	(c),a
+	ld	a,%11000000	; commando VDP -> VRAM
+	out	(c),a
+
+
+; wacht op VDP ready
+;
+statLs:	call pakSta
+	and	1	; CE klaar ?
+	jr	nz,statLs
+	ret
+
+
+; Haal Command-execute status van VDP op
+;
+pakSta:	di
+	ld	a,2	; register 2
+	out	(#99),a
+	ld	a,#8F	; zet in register 15
+	out	(#99),a
+	nop		; timing wait
+	nop
+	in	a,(#99)	; haal waarde
+	ld	b,a
+	xor	a	; zet reg 16 weer op status nul
+	out	(#99),a
+	ld	a,#8F
+	out	(#99),a
+	ld	a,b
+	ei
+	ret
+
+
+; Routines voor controle-tekens e.d.
+;
+lfVlag:	db	0
+
+
+; Doe een CR
+;
+doeCR:	ld	a,1	; X-coordinaat op 1
+	ld	(positX),a
+	ld	a,(lfVlag)	; ook LF geven ?
+	or	a
+	jp	z,moveCsr
+
+
+; Doe een linefeed
+;
+doeLF:	ld	a,(positY)	; Y coordinaat ophogen
+	cp	25
+	jp	z,scroll	; scroll zonodig
+	inc	a
+	ld	(positY),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; Doe een TAB
+;
+doeTab:	ld	a,(positX)
+	add	a,8
+	and	%11111000	; Volgende 8-voud
+	inc	a	; +1
+	cp	81
+	jr	c,tabOk
+	ld	a,80
+tabOk:	ld	(positX),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; BS (8): Naar links zonder wis (hoort zo volgens MSX & PC standaard)
+;
+doeBS:	ld	a,(positX)	; al links ?
+	dec	a
+	jp	nz,code29
+	ld	a,(positY)	; al boven ?
+	dec	a
+	ret	z	; ja, => niet bewegen
+	ld	(positY),a	; nee, wrap naar vorige regel
+	ld	a,80
+	ld	(positX),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; DEL (127): Doe Back Space met wis (hoort zo volgens MSX standaard)
+;
+doeDel:	call freezeCsr	; zet cursor stil
+	ld	a,(positX)	; al links ?
+	dec	a
+	jr	nz,delNoWrap
+	ld	a,(positY)	; al boven ?
+	dec	a	; zet op einde vorige regel
+	jp	z,showCsr	; ja, cursor mag weer
+	ld	(positY),a
+	ld	a,80
+	ld	(positX),a
+	ld	a,blanc	; print spatie
+	call putKar
+	ld	a,(positY)	; en weer terug daar
+	dec	a
+	ld	(positY),a
+	ld	a,80
+	ld	(positX),a
+	jp	showCsr	; verplaats cursor naar nieuwe pos.
+delNoWrap:	call code29	; 1 links
+	ld	a,blanc
+	call putKar	; spatie
+	call code29	; weer 1 links
+	jp	showCsr	; verplaats cursor naar nieuwe pos.
+
+
+; verwerk cursortoets-codes
+
+; 1 rechts
+;
+code28:	ld	hl,positX
+	inc	(hl)
+	ld	a,(hl)
+	cp	81	; al uiterst rechts ?
+	jp	nz,moveCsr	;  Nee, => verplaats cursor
+	dec	(hl)	; Ja, terug naar pos. 80
+	ld	a,(positY)	; Haal regelnummer
+	cp	25	; Onderste regel?
+	ret	z	;  Ja, => Cursor laten staan
+	ld	(hl),1	;  nee, naar uiterst links
+			; en een regel omlaag
+
+; 1 omlaag
+;
+code31:	ld	a,(positY)
+	cp	25	; al onderaan ?
+	ret	z
+	inc	a
+	ld	(positY),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; 1 links
+;
+code29:	ld	hl,positX
+	dec	(hl)
+	jp	nz,moveCsr	; Niet uiterst links => verplaats cursor
+	inc	(hl)	; Wel uiterst links, herstel csr.
+	ld	a,(positY)	; Haal regelnummer
+	dec	a	; Bovenste regel?
+	ret	z	;  Ja, => Cursor staan laten
+	ld	(hl),80	;  Nee, naar uiterst rechts
+			;  van de vorige regel
+
+; 1 omhoog
+;
+code30:	ld	a,(positY)
+	dec	a	; al boven ?
+	ret	z
+	ld	(positY),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; VT52 cursor links/rechts
+;
+; Geen line wrap
+;
+VT52Right:	ld	hl,positX
+	ld	a,(hl)
+	cp	80	; al uiterst rechts ?
+	ret	z	;  Ja, => Doe niets
+	inc	(hl)	;  Nee, verplaats cursor naar rechts
+	jp	moveCsr
+
+VT52Left:	ld	hl,positX
+	dec	(hl)	; Verplaats cursor naar links
+	jp	nz,moveCsr	; Niet uiterst links, => Ok
+	inc	(hl)	; Zet cursor terug op positie 1
+	ret
+
+
+; verwerk ESC-codes
+;
+doeEsc:	ld	a,1	; geef ontvangst ESC aan
+	ld	(escvlg),a
+	ret
+
+
+; reset ESC-vlag
+;
+; Wijzigt: A, HL
+;
+escKlr:	xor	a	; ESC verwerking afgerond
+	ld	(escVlg),a
+	ld	hl,ansBuf
+	ld	(ansAdr),hl
+	ret
+
+
+; Verwerk code direct na ESC
+;
+wasEsc:	ld	a,b	; haal char.
+	cp	"["                 ; ANSI ?
+	jp	z,doeAns
+
+	call isActive	; ANSI driver actief?
+	jp	z,prtEsc	;  nee, => Stuur ESC-code door
+
+	call escKlr	; ESC-vlag naar nul
+
+	ld	a,b	; Haal karaktercode in [A]
+
+	cp	"A"                 ; 1 omhoog ?
+	jr	z,code30
+	cp	"B"                 ; 1 omlaag ?
+	jr	z,code31
+	cp	"C"                 ; 1 rechts ?
+	jr	z,VT52Right
+	cp	"D"                 ; 1 links ?
+	jr	z,VT52Left
+
+	cp	"Y"                 ; POSIT-codes komende ?
+	jp	z,zetPst
+
+	cp	"x"                 ; Diverse codes met "x" komende ?
+	jp	z,zetEscX
+
+	cp	"y"                 ; Codes met "y"?
+	jp	z,zetEscY
+
+	cp	"l"                 ; regel wissen ?
+	jp	z,escKL
+
+	cp	"K"                 ; rest regel wissen
+	jp	z,escK
+
+	cp	"J"                 ; tot einde scherm wissen ?
+	jp	z,escJ
+
+	cp	"E"                 ; CLS ?
+	jp	z,newCLS
+
+	cp	"j"                 ; CLS ?
+	jp	z,newCLS
+
+	cp	"H"                 ; HOME ?
+	jp	z,zetHom
+
+	cp	"L"                 ; regel invoegen ?
+	jp	z,escL
+
+	cp	"M"                 ; regel verwijderen ?
+	jp	z,escM
+
+	ret		; onbekend maakt onbemind ...
+
+
+; Maak klaar voor POSIT codes
+;
+zetPst:	ld	a,3	; ESC Y gehad
+	ld	(escVlg),a
+	ret
+
+
+; Maak klaar voor X-codes
+;
+zetEscX:	ld	a,5	; ESC x gehad
+	ld	(escVlg),a
+	ret
+
+
+; Haal code na ESC "x"
+;
+getXCode:	xor	a	; hebben het hierna gehad
+	ld	(escVlg),a
+	ld	a,b	; haal karakter
+	cp	'5'
+	jp	z,hideCsr	; x5 = hide cursor
+	cp	'4'
+	jp	z,blockCsr	; x4 = set block cursor
+	ret		; onbekend, negeren
+
+
+; Haal code na ESC-y
+;
+getYCode:	xor	a	; hebben het hierna gehad
+	ld	(escVlg),a
+	ld	a,b	; haal karakter
+	cp	'5'
+	jp	z,dispCsr	; y5 = display cursor
+	cp	'4'
+	jp	z,lineCsr	; y4 = set underline cursor
+	ret		; onbekend, negeren
+
+
+; Maak klaar voor Y-codes
+;
+zetEscY:	ld	a,6	; ESC y gehad
+	ld	(escVlg),a
+	ret
+
+
+; Zet lijn voor ESC Y yx
+;
+zetRij:	ld	a,b	; watte ?
+	sub	31	; blanc = 1
+	ret	z	; 0 kan dus niet
+	cp	26	; < 26 ?
+	ret	nc
+	ld	(positY),a	; zet nieuwe Y positie
+	ld	a,4	; geef vlag voor 'kolom komt'
+	ld	(escVlg),a
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; zet kolom voor ESC Y yx
+;
+zetKol:	xor	a	; hebben het hierna gehad
+	ld	(escVlg),a
+	ld	a,b	; nou, laat maar zien
+	sub	31	; bereken kolom
+	ret	z	; nul bestaat niet
+	cp	81	; = < 80 ?
+	ret	nc
+	ld	(positX),a	; zet nieuwe X positie
+	jp	moveCsr	; verplaats cursor naar nieuwe pos.
+
+
+; code ESCM: wis cursorlijn, rest scherm omhoog
+;
+escM:	ld	a,1	; naar begin regel
+	ld	(positX),a
+	call moveCsr	; verplaats cursor naar nieuwe pos.
+	ld	a,(positY)	; waar zijn we nu ?
+	cp	12	; Regel 2..11 wissen?
+	jr	c,moveUpperLine	;  Ja, => Verplaats bovenliggende regels
+
+	cp	25	; al op laatste regel ?
+	jr	z,escKL	; dan alleen maar die (25) wissen
+
+	inc	a	; 1'e source-regel
+	ld	(srcLine),a	; dus hooguit 25
+uprLus:	ld	a,(srcLine)	; haal source
+	ld	h,a	; bewaar voor MOVLIN
+	dec	a	; doel eentje minder (regel hoger)
+	ld	l,a	; bewaar voor MOVLIN
+	add	a,2	; volgende source
+	ld	(srcLine),a	; Bewaar die
+	push af	; ook op stack
+	call movLin	; COPY line in H naar L
+	pop	af	; next terug
+	cp	26	; klaar met lus ?
+	jp	nz,uprLus	; zonee, nog 's
+	ld	c,25	; laatste (25) regel wissen
+	jr	delLine
+
+
+; moveUpperLine
+;
+; Verwijder een regel tussen 1 en 12. De bovenliggende regels worden 1
+; regel omlaag geschoven waarna een hardwarematige scroll het scherm
+; snel omhoog draait.
+;
+; In: A=De te verwijderen regel
+;
+moveUpperLine:cp	1	; Bovenste schermregel wissen?
+	jr	z,clearScroll	;  Ja, => Scroll hardwarematig
+
+	push af	; bewaar huidige regel
+
+	ld	l,a	; L = bestemmingsregel voor move
+	ld	h,a
+	dec	h	; H = Bronregel = bestemming-1
+	call movLin	; copy line
+
+	pop	af	; Haal huidige regelnummer
+	dec	a	; 1 regel omhoog
+	jr	moveUpperLine	; verplaats volgende regel
+
+clearScroll:	ld	c,1	; Wis bovenste regel
+	call delLine	; Nodig omdat regel 0 ook getoond wordt
+	jp	scroll	; En scroll hardwarematig omhoog
+
+
+; code ESCL: voeg regel tussen, rest scherm omlaag (incl. nu-regel).
+;
+srcLine:	db	0	; vlag voor hudige source-regel
+
+escL:	ld	a,1	; positie wordt 1;Y
+	ld	(positX),a
+	call moveCsr	; verplaats cursor naar nieuwe pos.
+	ld	a,(positY)	; waar nu ?
+	cp	25	; al op laatste regel ?
+	jp	z,escKL	; dan alleen maar die (25) wissen
+	ld	a,24	; 1'e source-regel
+	ld	(srcLine),a
+dwrLus:	ld	a,(srcLine)	; haal source regel
+	push af	; bewaar die
+	ld	h,a	; in H voor MOVLIN
+	inc	a	; doel 1 verder
+	ld	l,a	; in L voor MOVLIN
+	sub	2	; -2 voor nu-source -1
+	ld	(srcLine),a	; volgende source-regel
+	call movLin	; copy
+	pop	af	; laatste copy-line terug
+	ld	hl,positY
+	cp	(hl)	; klaar ?
+	jr	nz,dwrLus	; nee, => volgende regel
+			; wis huidige regel
+
+
+; Wis hele huidige regel, cursor laten staan
+;
+escKl:	ld	bc,(positY)
+delLine:	ld	b,1
+	call berCrd
+	ld	hl,80*6
+	ld	de,8
+	jp	wisBlk
+
+
+; Wis rest regel, cursor laten staan
+;
+escK:	call berCurCrd	; bereken huidige X/Y coordinaten
+	ld	hl,(positY)
+	ld	a,81
+	sub	h	; A=Aantal te wissen karakters
+
+	ld	b,a	; omrekenen in aantal pixels
+	add	a,a	; *2
+	add	a,b	; *3 (dit past nog in 8 bits)
+	ld	h,0
+	ld	l,a
+	add	hl,hl	; *6 (dit moet in 16 bits, max 512 dots)
+	ld	de,8	; 8 lijnen wissen
+	jp	wisBlk
+
+
+; Wis vanaf cursor tot einde scherm
+;
+escJ:	call escK	; wis rest 1'e
+
+	ld	bc,(positY)
+	ld	a,25
+	sub	c	; bereken aantal regels tot einde scherm
+	ret	z	; nul => Klaar
+	push af
+	inc	c	; Wis vanaf volgende regel tot laatste
+	ld	b,1	; X=1
+	call berCrd
+	ld	hl,80*6	; lengte van blok = 80 chars
+	pop	af	; aantal regels
+	add	a,a	; *8 lijnen per regel
+	add	a,a
+	add	a,a
+	ld	d,0	; hoogte van blok = DE lijnen
+	ld	e,a
+	jp	wisBlk	; wissen met achtergrondkleur
+
+
+; Is het een (ASCII) getal ?
+; in:   A = karakter
+; uit:  carry gezet indien niet
+;
+isCijf:	cp	"0"
+	ret	c
+	cp	"9"+1
+	ccf
+	ret
+
+
+; Is het een ANSI-parameter?
+; in:  A = karakter
+; uit: carry gezet indien niet
+;
+isAnsiParam:	call isCijf	;Cijfer?
+	ret	nc	; Ja, => Is parameter (NC)
+	cp	';'                 ;Scheidingsteken?
+	ret	z	; Ja, => Is parameter (NC)
+	scf		; Nee, is einde ansi-string (C)
+	ret
+
+
+; haal en test of er getal is gekomen maakt dit 1 als niet
+;
+tstGtl:	ld	hl,(gtlAdr)	;Pointer naar 1e getal
+	ld	a,(hl)
+	or	a	;Nul?
+	ret	nz
+	inc	a	; Ja, wordt ‚‚n.
+	ret
+
+
+; Verwerk eventuele ASCII getallen/cijfers
+; zet aantal gevonden getallen in "aantGtl" en getallen in GTLBUF
+;
+ansAdr:	dw	 ansBuf	; zetadres
+ansBuf:	ds	 30	; buffer voor string na de "["
+aantGtl:	db	 0	; aantal getallen
+gtlAdr:	dw	 gtlBuf	; adres van te doen getal
+gtlBuf:	ds	 8	; buffer voor omgezette getallen
+
+makGtl:	xor	a	; nul getallen gelezen
+	ld	(aantGtl),a
+	ld	hl,ansBuf
+	ld	de,gtlBuf
+	ld	(gtlAdr),de
+	ld	(de),a	; default=0, belangrijk voor "tstGtl"!
+
+cyfLus:	ld	a,(hl)	; haal cijfer
+	call isCijf	; cijfer?
+	jr	c,nulCyf	; nee, => kijk of het een losse ";" is
+
+	sub	"0"                 ; maak 'echt'
+	ld	c,a	; bewaar eenheden
+
+	inc	hl	; hoog wijzer op
+	ld	a,(hl)	; wat dan?
+	call isCijf  ; 2 cijfers?
+	jr	c,eenCyf	; nee, => tientallen zijn 0
+
+	inc	hl	; naar volgende ";"
+
+	sub	"0"                 ; 0-based maken
+	ld	b,c	; haal tientallen in B
+	ld	c,a	; eenheden moeten naar C
+
+	ld	a,b	; haal tientallen
+	add	a,a	; *2
+	add	a,a	; *4
+	add	a,b	; *5
+	add	a,a	; *10
+	jr	tweeCyf
+
+eenCyf:	xor	a	; tientallen zijn 0
+tweeCyf:	add	a,c	; enkelvoud erbij
+	ld	(de),a	; getal opslaan
+
+nextCyf:	ld	a,(aantGtl)
+	inc	a	; aantal aanpassen
+	ld	(aantGtl),a
+	
+; Fact is that there are BBSs that send three characters as row/columns,
+; so, if this is the case, set to 99
+	jr	skipExtraCyf
+extraCifFound:
+	ld	a,99
+	ld	(de),a
+;skipExtraCyf: ld	a,(hl)	; haal volgende karakter
+;	inc	hl
+
+skipExtraCyf: ld	a,(hl)	; haal volgende karakter
+	inc	hl
+
+	call isCijf	; komt er nog een derde cijfer?
+	jr	nc,extraCifFound	; ja, => negeren, niet standaard ansi
+
+	cp	";"                 ; volgt er nog een parameter?
+	ret	nz	; nee, => Klaar
+
+	inc	de	; naar volgende getal
+	jr	cyfLus	; ontleden
+
+nulCyf:	cp	";"                 ; volgt er een volgende getal?
+	ret	nz	; nee, => Klaar
+	ld	a,1	; losse ";", positie 1, nodig
+	ld	(de),a	;  voor ansi-H
+	jr	nextCyf	; test volgende cijfer
+
+
+; Zet vlag: "[" na ESC gehad
+;
+doeAns:	ld	a,2
+	ld	(escVlg),a
+	ret
+
+
+; Ophalen van de ANSI-string
+;
+wasAns:	ld	hl,(ansAdr)	; teken in buffer
+	ld	(hl),b
+	inc	hl
+	ld	(ansAdr),hl
+
+	ld	a,b
+	call isAnsiParam	; Parameter?
+	ret	nc	;  Ja, => Nog niet einde code-string
+
+	cp	"."                 ; JANSI-code?
+	jr	z,ansiJan	;  Ja, => Commando uitvoeren
+
+	call isActive	; JANSI al geactiveerd?
+	jp	z,prtAnsBuf	;  Nee, => Stuur ansibuffer door
+
+	ld	a,b	; Haal karakter
+	cp	'='                 ; '=' en '?' gaan vooraf aan stuurcodes
+	jp	z,setMode	;  voor ANSI.SYS op IBM PC's. De code
+	cp	'?'                 ;  die hierna volgen zijn "nh" of "nl",
+	jp	z,setMode	;  beide worden genegeerd
+
+	push bc	; bewaar karaktercode
+
+	call makGtl	; zet parameters in getal-buffer
+	call escKlr	; reset Escape-vlaggen
+
+	pop	af	; herstel letter
+
+	cp	"H"                 ; positioneer ?
+	jp	z,ansiH
+	cp	"f"
+	jp	z,ansiH
+	cp	"R"
+	jp	z,ansiH
+
+	cp	"m"                 ; kleur manupilatie ?
+	jp	z,ansiKM
+
+	cp	"s"                 ; bewaar positie ?
+	jp	z,ansiKS
+
+	cp	"u"                 ; herstel positie ?
+	jp	z,ansiku
+
+	cp	"A"                 ; CUP's ?
+	jp	z,ansiA
+
+	cp	"B"                 ; CDOWN's ?
+	jp	z,ansiB
+
+	cp	"C"                 ; CRIGHT's ?
+	jp	z,ansiC
+
+	cp	"D"                 ; CLEFT's ?
+	jp	z,ansiD
+
+	cp	"J"                 ; scherm-code ?
+	jp	z,ansiJ
+
+	cp	"K"                 ; regel-code ?
+	jp	z,ansiK
+
+	cp	"M"                 ; verwijder regel?
+	jp	z,ansiM
+
+	cp	"L"
+	jp	z,ansiL	; invoegen regel?
+
+	ret		;  => onbekende code
+
+
+; ansiJan
+;
+; Verwerkt speciale "."-JANSI codes
+;
+ansiJan:	call makGtl	; zet parameters in GtlBuf
+
+	ld	a,(gtlBuf)	; haal waarde 1e parameter
+	or	a	; init Jansi?
+	jr	z,doInit	;  ja, => Mag altijd worden uitgevoerd
+
+	call isActive	; is Jansi wel geinitieerd?
+	jp	z,prtAnsBuf	; nee, => stuur buffer door
+
+doInit:	call escKlr	; ESC-vlaggen resetten
+
+	ld	a,(gtlBuf)	; haal waarde 1e parameter, default = 0
+	cp	aantJCodes	; te hoge waarde?
+	ret	nc	;  ja, => niet uitvoeren
+
+	add	a,a	; bereken index in jump table
+	ld	e,a
+	ld	d,0	; DE = tabeloffset
+
+	ld	a,(aantGtl)	; haal aantal parameters
+	or	a	; nul?
+	jr	z,getJanAddr	;  ja, => kan code niet verwijderen
+	dec	a	;  nee, verwijder de JANSI-code
+	ld	(aantGtl),a
+	ld	hl,(gtlAdr)	; naar volgende parameter
+	inc	hl
+	ld	(gtlAdr),hl
+	jr	nz,getJanAddr	; => AantGtl niet nul
+	ld	(hl),0	; geen parms meer, zet default = 0
+
+getJanAddr:	ld	hl,jansiTab	; tabel met JANSI-routine adressen
+	add	hl,de	; HL wijst naar startadres
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)	; haal startadres in HL
+	ld	l,a
+	jp	(hl)	; naar routine
+
+jansiTab:	dw	initAns	; 0 = init JANSI
+	dw	rstOld	; 1 = restore screen 0
+	dw	zetMSX	; 2 = MSX karset
+	dw	zetIBM	; 3 = IBM karset
+	dw	zetLF	; 4 = LF na CR aan/uit
+	dw	savScr	; 5 = huidige scherm naar buffer
+	dw	pakScr	; 6 = buffer naar scherm
+	dw	linMov	; 7 = Kopieer regel
+	dw	doeBlp	; 8 = Bliepjes
+	dw	knpTyd	; 9 = Knippertijd aanpassen
+	dw	chgPlt	;10 = palet wijzigen
+	dw	chgBdr	;11 = borderkleur wijzigen
+	dw	doeNiks	;12 = doe x seconden niks
+	dw	setScroll	;13 = Set hard/smooth scroll
+	dw	setCsrCol	;14 = Cursorkleur instellen
+
+aantJCodes	equ	($-jansiTab) / 2	; aantal JANSI codes
+
+
+; Haal getal op in A en pas aanwijzer aan
+;
+; Wijzigt: HL, A
+;
+pakGtl:	ld	hl,(gtlAdr)
+	ld	a,(hl)
+	inc	hl
+	ld	(gtlAdr),hl
+	ret
+
+
+; Initialiseer
+;
+; Code: ESC "[0." of ESC "[."
+;
+initAns:	ld	a,7
+	call chgMod	; schakel schermmode 7 in
+	call disScr	; schakel schermweergave uit
+	call zetPlt	; zet de ANSI-kleuren
+	call iniSprite	; initialiseer cursor-sprite
+
+	ld	hl,8*256+8	; VRAM-adres van pos 1,1
+	ld	(homeAdr),hl
+
+	xor	a	; 1'e lijn
+	ld	(knpSta),a	; knipper uit
+	ld	(knpMot),a
+	ld	(lfVlag),a	; geen LF na CR
+	ld	(scrollVlag),a	; hard scroll
+	ld	(v23buf),a	; werkwaarde van scroll register = 0
+	ld	(cStyle),a	; blok cursor
+
+	ld	a,(vReg8)
+	and	11011101B	; enable sprites, kleur 0=palet
+	ld	(vReg8),a
+	ld	c,8+#80
+	call wrtVdp	; maak dat hard
+
+	call zetIBM	; IBM karakterset
+	call resetCol	; zet wit op zwart
+	call diBit	; zet VDP-bytes
+	call dispCsr	; cursor actief maken
+	call newCls	; schoon scherm
+	ld	a,1	; driver en interrupt routine actief
+	ld	(active),a
+	ret
+
+
+; Reset naar screen 0
+;
+; Code: ESC "[1."
+;
+rstOld:	xor	a
+	ld	(knpSta),a	; knipper uit
+	ld	(active),a	; jANSI-driver niet meer actief
+	ld	(v23Buf),a
+	ld	(vReg23),a
+
+	call hideCsr	; cursor uit
+	ld	c,23+#80	; reset scroll register
+	call wrtVdp
+	call toText	; terug naar originele tekstscherm
+	ld	ix,iniPlt	; kleuren terug
+	call calSub
+	ld	ix,rstPlt
+	call calSub
+	ld	a,(vReg8)
+	and	11111101B	; enable sprites
+	or	00100000B	; color 0 = transparent
+	ld	(vReg8),a	; zet in system RAM
+	ld	c,8+#80
+	jp	wrtVdp	; schrijf in register 8
+
+
+; ZetMSX
+;
+; Schakelt de MSX karakterset in
+;
+; Code: Esc[2.
+;
+zetMSX:	ld	a,charMSX	; Type = MSX
+	ld	hl,msxKar + 176*8	; zet (KARADR)
+	jr	zetCharMode
+
+
+; ZetIBM
+;
+; Schakelt de IBM karakterset in
+;
+; Code: Esc[3.
+;
+zetIBM:	ld	a,charIBM	; Type = IBM
+	ld	hl,ibmKar
+zetCharMode:	ld	(charMode),a	; Bewaar huidige chr. set
+	ld	(karAdr),hl
+	ret
+
+
+; Zet LF na CR aan/uit
+;
+; Code: ESC "[4;vlag."
+;
+; Vlag = 0: Geen LF na CR
+; Vlag = 1: Wel LF na CR
+;
+zetLf:	call pakGtl	; haal vlag, default=0 (uit)
+	cp	2
+	ret	nc	; boven 2 gereseveerd voor toekomst
+	ld	(lfVlag),a
+	ret
+
+
+; savScr
+;
+; Copieer page 0 naar page 1
+;
+; Code: ESC "[5."
+;
+savScr:	ld	hl,(positY)	; bewaar positie
+	ld	(posSav),hl
+
+	ld	hl,palet
+	ld	de,pltSav	; bewaar palet
+	ld	bc,2*16
+	ldir
+
+	ld	hl,attrTab         ; Bewaar voor- en achtergrond kleuren
+	ld	de,attrTabSav      ;  en overige attributen van Esc[m
+	ld	bc,attrTabLen
+	ldir
+
+	ld	hl,(knpFor)	; bewaar knipper voor- en achtergrond
+	ld	(knpForSav),hl	;  kleuren
+	ld	a,(knpSta)	; knipper status (interrupt) behouden
+	ld	(knpSav),a
+
+	ld	bc,#0101	; copieer vanaf pos 1,1
+	call berCrd	; bereken coordinaten van die positie
+	ld	hl,256	; Naar page 1, vanaf Y = 0
+	ld	(yDest),hl
+	ld	e,25*8	; 25 regels
+	jp	copyPage	; verhuizen naar page 1
+
+
+; PakScr
+;
+; Copieer page 1 naar page 0
+;
+; Code: ESC "[6."
+;
+pakScr:	xor	a	; scrollregister terugstellen
+	ld	(v23buf),a	; dat rekent makkelijker
+	ld	(vReg23),a
+	ld	c,23+#80
+	call wrtVdp
+
+	ld	hl,attrTabSav	; Herstel voor- en achtergrond kleuren
+	ld	de,attrTab	;  en overige attributen van Esc[m
+	ld	bc,attrTabLen
+	ldir
+	call diBit	; Nieuwe kleurbytes berekenen
+
+	ld	hl,pltSav	; herstel palet
+	ld	de,palet
+	ld	bc,2*16
+	ldir
+	call zetPlt	; hard maken
+
+	ld	hl,(knpForSav)	; herstel knipper voor- en achtergrond
+	ld	(knpFor),hl	;  kleuren
+
+	ld	a,(knpSav)	; eventuele knipperingen herstellen
+	ld	(knpSta),a
+
+	ld	hl,(posSav)	; Csr positie terug
+	ld	(positY),hl
+	call showCsr	; cursor daar naar toe en inkleuren
+
+	ld	hl,0
+	ld	(yCrd),hl	; wis lege ruimte boven regel 1
+	ld	d,h
+	ld	hl,(homeAdr)
+	ld	e,h	; DE = aantal lege lijnen tot pos 1,1
+	ld	h,d	; H=0
+	sla	l	; *2 pixels per byte
+	ld	(xCrd),hl	; pixelnr. van X-positie 1
+
+	ld	hl,80*6	; 1 regel = 80 kars, zes breed
+	ld	a,#ff
+	ld	(bdrVlg),a	; zet vlag voor border-kleur
+	call wisBlk	; wis bovenste lijnen
+
+	ld	a,(homeAdr+1)	; haal startlijn
+	add	a,25*8	; naar laatste tekstlijn + 1
+	ld	(yCrd),a
+	ld	b,a
+	ld	a,212
+	sub	b	; zoveel lijnen tot onderkant scherm
+	ld	d,0
+	ld	e,a	; wis lege ruimte onderaan scherm
+	call wisBlk	; wis onderste lijnen
+	xor	a
+	ld	(bdrVlg),a	; reset border-vlag
+
+	ld	hl,256	; bron Y=page 1
+	ld	(yCrd),hl
+	ld	a,(homeAdr)	; Haal adres van X=1
+	add	a,a	; *2 pixels per byte
+	ld	h,0
+	ld	l,a
+	ld	(xCrd),hl	; bron X=Pos 1
+	ld	hl,(homeAdr+1)	; Haal adres van Y=1
+	ld	h,0	; X offset eruit filteren
+	ld	(yDest),hl	; bestemming Y=Regel 1
+
+	ld	e,25*8	; 25 regels
+	call copyPage	; verhuizen naar page 1
+	xor	a
+	ld	(yCrd+1),a	; hoge byte van Y-crd moet in page 0
+
+	ret		; en nokken
+
+
+; LinMov
+;
+; copy regel x naar y
+;
+; Code: ESC "[7;x;y."
+;
+linMov:	ld	a,(aantGtl)
+	cp	2
+	ret	nz
+	call pakGtl
+	push af
+	call pakGtl
+	ld	l,a
+	pop	af
+	ld	h,a
+	jp	movLin
+
+
+; Geef bliepje
+;
+; Code: "[8;tijd."
+;
+; Tijd = Eenheden van 1/5 seconde.
+;
+doeBlp:	call tstGtl	; Haal aantal bliepjes, default = 1
+	ld	b,a
+bliepLp:	call bliep	; Alternatief geluidje
+	djnz bliepLp
+	ret
+
+
+; positief geluidje
+;
+bliep:	xor	 a	; interruptteller op 0
+	ld	 (intCnt),a
+	ld	 a,7
+	out	 (#A0),a
+	ld	 a,%10111111	; alles uit
+	out	 (#a1),a
+	ld	 a,0
+	out	 (#a0),a
+	ld	 a,230	; frequentie kanaal A LSB
+	out	 (#a1),a
+	ld	 a,1
+	out	 (#a0),a
+	ld	 a,0	; MSB
+	out	 (#a1),a
+	ld	 a,8
+	out	 (#a0),a
+	ld	 a,14	; amplitude (geluids-sterkte)
+	out	 (#a1),a
+	ld	 a,13
+	out	 (#a0),a
+	ld	 a,15	; vorm envelope /|____
+	out	 (#a1),a
+	ld	 a,7
+	out	 (#a0),a
+	ld	 a,%10111110	; toon A aan
+	out	 (#a1),a
+blpLus:	ld	 a,(intCnt)	; laat horen
+	cp	 11
+	jr	 c,blpLus	; wacht 11 interrupts (+/- 0.2 seconde)
+	ld	 a,7
+	out	 (#a0),a
+	ld	 a,%10111111	; geluid uit
+	out	 (#a1),a
+	ret
+
+
+; Zet knipper-tijden
+;
+; Code: ESC "[9;voorgrondtijd;achtergrondtijd."
+;
+; Tijden zijn in eenheden van ‚‚n vijftigste seconde. Max = 255.
+;
+knpTyd:	ld	a,(aantGtl)
+	or	a	; is er wel wat ?
+	ret	z
+	call pakGtl	; haal voorgrond aan-tijd
+	ld	(timFor),a
+	ld	a,(aantGtl)	; twee waarden binnen ?
+	cp	2
+	ret	nz
+	call pakGtl	; haal achtergrond aan-tijd
+	ld	(timBak),a
+	ld	a,2
+	ld	(knpTlr),a	; Direct omschakelen naar andere tijden
+	ret
+
+
+; chgPlt
+;
+; Wijzig de paletkleuren
+;
+; Code: ESC "[10;kleurnummer;rood;groen;blauw."
+;
+chgPlt:	ld	a,(aantGtl)	; aantal moet 4 zijn
+	cp	4	; check
+	ret	nz	; zoniet, nokken
+	call pakGtl	; haal kleur-nummer
+	cp	15	; legaal ?
+	ret	nc
+	ld	hl,palet	; start palet in HL
+	add	a,a	; kleur keer 2 voor adres
+	ld	d,0	; ofset in DE
+	ld	e,a
+	add	hl,de	; bereken adres keuze
+	push hl
+	call pakGtl	; haal rood
+	call chkClr	; wel < 8 ?
+	ld	e,a
+	call pakGtl	; haal groen
+	call chkClr	; wel < 8 ?
+	ld	d,a
+	call pakGtl	; haal blauw
+	call chkClr	; wel < 8 ?
+	ld	b,a
+	pop	hl	; schrijf-adres
+	ld	a,e	; rood in hoge nibble
+	call shft4
+	or	b	; blauw in lage nibble
+	ld	(hl),a
+	inc	hl
+	ld	a,d	; groen in 2'e byte
+	ld	(hl),a
+	jr	zetPlt	; maak hard
+
+chkClr:	cp	8	; geen kleur dan nokken
+	ret	c
+	pop	hl
+	ret
+
+
+; Zet de ANSI kleuren
+;
+zetPlt:	xor	a	; zet palet register op klr 0
+	ld	c,16+#80
+	call wrtVDP
+
+	ld	hl,palet	; zet nieuw palet
+	ld	c,#9a
+	ld	b,32
+	otir
+	ret
+
+
+; Andere border-kleur
+;
+; Code: ESC "[11;kleur."
+;
+chgBdr:	call pakGtl	; haal borderkleur, default = 0
+	cp	15	; alleen 0-14 is toegestaan
+	ret	nc
+	jp	zetBdr
+
+
+; doeNiks
+;
+; Doe even niets
+;
+; Code: ESC "12;vijfde seconden."
+;
+wPar:	dw	0
+
+doeNiks:	call tstGtl	; haal wachttijd, default = 1
+	ld	b,a	; wacht-seconden in B
+	ld	hl,0
+	ld	(intCnt),hl	; Interruptteller op nul
+	ld	de,10	; 1/5 seconde, op 50Hz
+	ld	a,(vReg9)
+	bit	1,a	; 60 Hz?
+	jr	nz,calcInts	;  Nee, => Bereken wachttijd
+	ld	de,12	;  ja, aantal interrupts voor 1/5 sec.
+
+calcInts:	add	hl,de	; Bereken aantal int's wachttijd
+	djnz calcInts
+
+	ld	(wPar),hl
+
+wLus:	ld	hl,(wPar)	; draai even loos
+	ld	de,(intCnt)	; haal huidige aantal interrupts
+	or	a
+	sbc	hl,de	; genoeg?
+	ret	c	;  ja, => klaar
+	jr	wLus
+
+
+; Zet Scrollmode
+;
+; Code: ESC "[13;vlag."
+;
+; Vlag = 0: Hard scroll (default)
+; Vlag = 1: Smooth scroll
+;
+setScroll:	call pakGtl	; haal vlag, default=0 (uit)
+	cp	2
+	ret	nc	; boven 2 gereseveerd voor toekomst
+	ld	(scrollVlag),a
+	ld	a,(v23Buf)	; werkwaarde scrolloffset invullen
+	ld	(vReg23),a	;  in scrollregister
+	ld	c,23+#80	; nodig bij overgang van smoothscroll
+	jp	wrtVdp	;  naar hardscroll
+
+
+; setCsrCol
+;
+; Instellen cursorkleur
+;
+; Code: Esc[14;kleur.
+;
+; Kleur: 0-14
+;
+setCsrCol:	call pakGtl	;Haal vlag, default=0 (zwart)
+	cp	15
+	ret	nc	;Wit kan niet high-lighted zijn bij ons
+	ld	(csrCol),a	;Vul de cursorkleur in
+	jp	showCsr	;Stel de nieuwe spritekleur in
+
+
+; ansiKM
+;
+; voer de "Esc[m" parameters uit
+;
+ansiKM:	ld	a,(aantGtl)	; A = Aantal parameters
+	or	a	; Default = Reset colors
+	push af
+	call z,resetCol
+	pop	af
+mLus:	jp	z,diBit	; Klaar, => Bereken kleurbytes
+	call doeKm	; voer parameter uit
+	ld	hl,aantGtl
+	dec	(hl)	; verlaag aantal parameters
+	jr	mLus
+
+
+; verander kleur van getal in A
+;
+doeKM:	call pakGtl	; haal getal
+	or	a
+	jp	z,resetCol	; resetten
+	cp	1
+	jp	z,zetHlt	; oplichtend
+	cp	4
+	jp	z,zetOnder	; onderstrepen
+	cp	5
+	jp	z,knip	; knipperend
+	cp	7
+	jp	z,invers
+	cp	8	; FOR=BAK ?
+	jp	z,noDisp
+	cp	30	; legaal ?
+	ret	c
+	cp	40	; voor- of achter-grond ?
+	ld	hl,forCol
+	jp	c,verFor
+	ld	hl,bakCol
+	sub	40
+	cp	8
+	ret	nc
+	jp	clrOk
+verFor:	sub	30
+	cp	8
+	ret	nc
+	ld	b,a
+	ld	a,(hLight)
+	or	a	; helder ?
+	ld	a,b
+	jr	z,clrOk
+	cp	7	; helder wit?
+	jr	z,clrOk	; => kan niet, is knipperkleur
+	add	a,8
+clrOk:	ld	(hl),a	; zet kleur weg
+	ret
+
+
+; code ESC[0m: wit op zwart + reset
+;
+resetCol:	ld	hl,#07
+	ld	(forCol),hl
+	xor	a
+	ld	(hLight),a
+	ld	(knpMot),a
+	ld	(uLine),a
+	ret
+
+
+; code ESC[1m: Zet kleuren op helder
+;
+zetHlt:	ld	a,1
+	ld	(hLight),a	; high light aanzetten
+	ld	hl,forCol
+	ld	a,(hl)	; haal voorgrondkeur
+	cp	7	; reeds high lighted of wit?
+	ret	nc
+	add	a,8	; nee, maak high light
+	ld	(hl),a
+	ret
+
+
+; zetOnder
+;
+; Code: ESC "[4m"
+;
+zetOnder:	ld	a,1
+	ld	(uLine),a	; zet ondersteepvlag
+	ret
+
+
+; code ESC[5m: Knipperen op aan zetten
+;
+knip:	ld	a,1
+	ld	(knpMot),a
+	ret
+
+
+; code ESC[7m: Inverteer voor- en achtergrondkleur
+;
+invers:	ld	a,(bakCol)
+	push af
+	ld	a,(forCol)	;Haal voorgrondkleur
+	res	3,a	;Highlight offset eraf (kleur 8 wordt 0)
+	ld	(bakCol),a	;Achtergrond nooit high lighted
+	pop	af
+	ld	(forCol),a	;Oude achtergrond is nieuwe voorgrond
+	ld	a,(hLight)	;High light stand achtief?
+	or	a
+	jr	nz,zetHlt	; Ja, => Maak voorgrond Helder
+	ret
+
+
+; code ESC[8m: Maak FOR gelijk aan BAK
+;
+noDisp:	ld	a,(bakCol)
+	ld	(forCol),a
+	ret
+
+
+; creeer 4 kleur-mogelijkheden
+
+diBit0:	db	0
+diBit1:	db	0
+diBit2:	db	0
+diBit3:	db	0
+
+; diBit
+;
+; Bereken de vier mogelijke combinaties van voor- en achtergrond kleuren
+;  die in de twee pixels van ‚‚n VRAM byte gecodeerd kunnen worden
+;
+diBit:	ld	a,(knpMot)	; knipper aan ?
+	or	a
+	jp	z,diBitC
+	call zetKnp
+diBitC:	ld	bc,(forCol)
+	ld	a,b
+	call shft4
+	or	b	; 00 = BB
+	ld	(diBit0),a
+	and	%11110000
+	or	c	; 01 = BF
+	ld	(diBit1),a
+	ld	a,c
+	call shft4
+	or	c	; 11 = FF
+	ld	(diBit3),a
+	and	%11110000
+	or	b	; 10 = BF
+	ld	(diBit2),a
+	ret
+
+shft4:	add	a,a
+	add	a,a
+	add	a,a
+	add	a,a
+	ret
+
+; Bewaren positie ESC[s
+
+pstBuf:	dw	#0101	; bewaarbuffer voor positie
+
+ansiKS:	ld	hl,(positY)	; haal huidige positie
+	ld	(pstBuf),hl	; en bewaar die
+	ret
+
+
+; Herstel bewaarde positie
+;
+ansiKU:	ld	hl,(pstBuf)	; haal bewaarde positie
+	ld	(positY),hl	; en zet die
+	jp	moveCsr
+
+
+; setMode
+;
+; Code: Esc[=#l of Esc[?#n
+;
+; De codes na "=" en "?" worden automatisch genegeerd
+;
+setMode:	ld	hl,(ansAdr)	;Haal naar ANSI-code buffer
+	dec	hl	;Verwijder de "=" of het "?"
+	ld	(ansAdr),hl	;Straks komt in buffer Esc[#l of Esc[#n
+	ret		; en die codes worden genegeerd
+
+
+; Cursorbesturing
+;
+ansiA:	call tstGtl	; haal parameter
+	ld	b,a	; b=aantal omhoog
+	ld	hl,positY
+	ld	a,(hl)
+	sub	b	; doe dat
+	jr	c,toTop
+	jr	z,toTop
+toNewPos:	ld	(hl),a
+	jp	moveCsr
+toTop:	ld	a,1
+	jr	toNewPos
+
+
+ansiB:	call tstGtl
+	ld	hl,positY
+	add	a,(hl)	; omlaag
+	cp	26
+	jr	c,toNewPos
+	ld	a,25
+	jr	toNewPos
+
+
+ansiC:	call tstGtl
+	ld	hl,positX
+	add	a,(hl)	; naar rechts
+	cp	81
+	jr	c,toNewPos
+	ld	a,80
+	jr	toNewPos
+
+ansiD:	call tstGtl
+	ld	b,a	; b=aantal links
+	ld	hl,positX
+	ld	a,(hl)
+	sub	b	; doe dat
+	jr	c,toLeft
+	jr	z,toLeft
+	jr	toNewPos
+toLeft:	ld	a,1
+	jr	toNewPos
+
+
+; Positioneer-codes  ESC[H, R of f
+;
+ansiH:	ld	a,(aantGtl)
+	or	a	; alleen letter ?
+	jp	z,zetHom	; dan snel gebeurd
+	ld	b,a	; bewaar aantal parameters
+	call pakGtl	; haal Y-coordinaat
+
+           ;; ld	c,1	; ** regel 0 mag wel
+           ;; cp	c	; regelnr < 1?
+           ;; jr	c,setYPosC	;  Ja, => Wordt 1
+
+	ld	c,25
+	cp	26	; regelnr > 26?
+	jr	nc,setYPosC	;  Ja, => wordt 25
+	ld	c,a
+setYPosC:	ld	a,c
+	ld	(positY),a	; Nieuw regelnummer vastleggen
+
+	ld	a,b
+	cp	1	; slechts 1 parameter?
+	call nz,pakGtl	; nee, haal ook x-coord
+
+	ld	c,1
+	cp	c	; kolom < 1?
+	jr	c,setXPosC	;  Ja, => Wordt 1
+	ld	c,80
+	cp	81	; regelnr > 80?
+	jr	nc,setXPosC	;  Ja, => wordt 80
+	ld	c,a
+setXPosC:	ld	a,c
+	ld	(positX),a	; x-coord invullen
+	jp	moveCsr	; verplaats cursor
+
+
+; Scherm-wis codes
+;
+; Code: ESC "[#J"
+;
+ansiJ:	call pakGtl	; haal parameter, default = 0
+	or	a	; wis tot einde scherm?
+	jp	z,escJ	;  Ja, => Doe dat
+	dec	a	; wis van home tot csr. pos?
+	jr	z,clrScrToCsr
+	dec	a	; CLS ?
+	jp	z,newCls
+	ret		; andere codes onbekend
+
+
+; Wis vanaf home tot aan cursor
+;
+clrScrToCsr:	call clrLnToCsr	; wis van begin regel tot cursor
+
+	ld	a,(positY)
+	dec	a	; cursor op regel 1?
+	ret	z	;  ja, => Klaar
+	push af	; bewaar aantal te wissen regels
+	ld	bc,#0101	; Wis vanaf home
+	call berCrd
+	ld	hl,80*6	; lengte van blok = 80 chars
+	pop	af	; aantal regels
+	add	a,a	; *8 lijnen per regel
+	add	a,a
+	add	a,a
+	ld	d,0	; hoogte van blok = DE lijnen
+	ld	e,a
+	jp	wisBlk	; wissen met achtergrondkleur
+
+
+; Regel-wis codes ESC[#K
+;
+ansiK:	call pakGtl	; haal param, default = 0
+	or	a	; ESC[0K ?
+	jp	z,escK	; wis rest regel CBS
+	dec	a	; 1 = wis tot regelstart
+	jr	z,clrLnToCsr
+	dec	a	; ESC[2K ?
+	jp	z,escKl	; wis hele regel CBS
+	ret		; overige codes onbekend
+
+
+; Wis tot aan cursor-positie
+;
+clrLnToCsr:	ld	bc,(positY)	; B=X; C=Y
+	dec	b	; X=1?
+	ret	z	;  Ja, => Klaar
+	ld	b,1	; bereken coord. X=1
+	call berCrd
+
+	ld	a,(positX)	; tot cursor wissen dus
+	dec	a	; zeveel tekens wissen
+	ld	b,a
+	add	a,a	; *2
+	add	a,b	; *3
+	ld	h,0
+	ld	l,a
+	add	hl,hl	; *6 pixels per teken
+	ld	de,8	; 8 lijnen hoog
+	jp	wisBlk	; laat VDP het klusje opknappen
+
+
+; Regels verwijderen, met scroll-up
+;
+; Code: ESC "[#M"
+;
+ansiM:	call tstGtl	;Haal aantal, default = 1
+delLineLp:	push af
+	call escM	;Doe MSX-code: ESC "M"
+	pop	af
+	dec	a
+	jr	nz,delLineLp
+	ret
+
+
+; Regels invoegen, met scroll-down
+;
+; Code: ESC "[#L"
+;
+ansiL:	call tstGtl	;Haal param, default = 1
+insLineLp:	push af
+	call escL	;Doe MSX-code: ESC "L"
+	pop	af
+	dec	a
+	jr	nz,insLineLp
+	ret
+
+
+; CopyPage
+;
+; Copieert een rechthoek alleen over Y-As, lekker snel
+;
+; In: (xCrd)	= Bron X
+;     (yCrd)	= Bron Y
+;     (yDest) = Dest Y
+;         E	= aantal lijnen (NY)
+;
+copyPage:	ld	a,(yCrd)	; waar nu
+	add	a,e	; Y erbij
+	jr	nc,doCopyY	; rol-overslag ?
+	jr	z,doCopyY	; nee, => in 1 keer copi‰ren
+
+	push af	; bewaar overschot
+
+	ld	b,a	; haal overschot in B
+	ld	a,e	; totaal aantal in A
+	sub	b	; totaal-overschot = rest
+	ld	e,a	; zoveel lijnen moeten nu gekopieerd
+
+	call doCopyY	; copieer blok
+	ld	hl,(yDest)	; bestemmingslijn ophogen
+	ld	d,0
+	add	hl,de	; want [DE] regels hebben we al gedaan
+	ld	(yDest),hl
+
+	pop	af	; haal overschot
+	ld	e,a	; nu de rest van de regels wissen
+	xor	a	; de rest begin op Y=0
+	ld	(yCrd),a
+
+doCopyY:	ld	c,17+#80	; 1'e doelregister zetten
+	ld	a,34
+	call wrtVdp	; nu auto-ophoging
+	ld	c,#9b	; schrijf-poort
+
+	ld	hl,(yCrd)	; haal bron Y
+	out	(c),l	; SY
+	out	(c),h
+	ld	hl,(xCrd)	; haal bron/dest X
+	out	(c),l	; DX
+	out	(c),h
+	ld	hl,(yDest)
+	out	(c),l	; DY
+	out	(c),h
+	xor	a
+	out	(c),a	; NX doet niet mee
+	out	(c),a
+	out	(c),e	; NY (aantal lijnen)
+	out	(c),a	; NY hoog=0
+	out	(c),a	; dummy
+	out	(c),a	; blok loopt van linksboven naar r.onder
+	ld	a,%11100000	; commando VRAM -> VRAM, y-only
+	out	(c),a
+	jp	statLS	; wacht op VDP ready
+
+
+; copy regel H naar regel L
+;
+movLin:	ld	a,34	; reg17 op 1'e doelreg
+	ld	c,17+#80
+	call wrtVdp
+	push hl
+	ld	b,1
+	ld	c,h
+	call berCrd
+	ld	c,#9B
+	ld	hl,(yCrd)
+	out	(c),l	; SY
+	out	(c),h
+	pop	hl
+	ld	b,1
+	ld	c,l
+	call berCrd
+	ld	c,#9B
+	ld	hl,(xCrd)
+	out	(c),l	; DX
+	out	(c),h
+	ld	hl,(yCrd)
+	out	(c),l	; DY
+	out	(c),h
+	out	(c),a	; NX = dummy
+	out	(c),a
+	ld	a,8
+	out	(c),a	; NY=8
+	xor	a
+	out	(c),a
+	out	(c),a	; dummy
+	out	(c),a	; arg = 0
+	ld	a,%11100000	; VRAM to VRAM, y-only
+	out	(c),a
+	jp	statLs
+
+
+; dispCsrEntry
+;
+; Entry vanaf de display-cursor-hook. Zet de cursor aan tijdens CHGET.
+;
+dispCsrEntry: ei		; Interrupts mogen
+	call isActive	; ANSI driver actief?
+	jr	z,nextCsrHook	;  Nee, => Niets doen
+	call doShowCsr	;  Ja, toon cursor zonder check
+quitCsrHook:	ld	a,1	; Vlag: Niet volgende TSR uitvoeren
+	ex	af,af'
+	ret		; Terug naar TSR-Manager
+
+
+; eraCsrEntry
+;
+; Entry vanaf de erase-cursor-hook. Zet de cursor uit na CHGET.
+;
+eraCsrEntry:	ei		; Interrupts mogen
+	call isActive	; ANSI driver actief?
+	jr	z,nextCsrHook	;  Nee, => Niets doen
+	call hideCsr	;  Ja, verwijder cursor
+	jr	quitCsrHook	; Nokken met cursorroutines
+
+nextCsrHook:	sub	a	;Vlag: Voer volgende TSR uit
+	ex	af,af'
+	ret		; Terug naar TSR-Manager
+
+
+; iniSprite
+;
+; Initialiseer het spritegeheugen in pagina 1
+;
+iniSprite:	ld	a,(vReg8)
+	or	00000010B	; disable sprites
+	ld	(vReg8),a
+	ld	c,8+#80
+	call wrtVdp	; maak dat hard
+
+	ld	a,(vReg1)
+	and	%11111100	; 8*8 sprite, normal size
+	ld	(vReg1),a
+	ld	c,1+#80
+	call wrtVdp
+
+	; Wis adresgebied 1F400-1FFFF, daar komt sprite info
+
+	ld	c,17+#80	; 1'e doelregister zetten
+	ld	a,36
+	call wrtVdp	; nu auto-ophoging
+	ld	c,#9B	; schrijf-poort
+	xor	a	; X=0
+	out	(c),a	; DX 0-7
+	out	(c),a	; DX 8
+	ld	b,242	; Y=242
+	out	(c),b	; DY 0-7
+	ld	b,1	; in pagina 1
+	out	(c),b	; DY 8-9
+	out	(c),a	; NX(l)=0
+	ld	b,2
+	out	(c),b	; NX(h)=2 (=512 dots)
+	ld	b,14
+	out	(c),b	; NY(l)=14 lines
+	out	(c),a	; NY(h)=0
+	out	(c),a	; alles op `kleur' 0
+	out	(c),a	; dir=van linksboven naar rechtsonder
+	ld	a,%11000000	; commando VDP -> VRAM
+	out	(c),a
+	call statLs	; wacht op VDP ready
+
+	ld	a,%00111111	; sprite pattern table = #1F800-#1FFFF
+	ld	c,6+#80
+	ld	(vReg6),a
+	call wrtVdp
+
+	ld	a,%11101111	; sprite attribute table = #1F600-#1F680
+	ld	c,5+#80	; dus color table wordt #1F400-#1F5FF
+	ld	(vReg5),a
+	call wrtVdp
+	ld	a,%11
+	ld	c,11+#80
+	ld	(vReg11),a
+	call wrtVdp
+
+	ld	a,7	; VRAM segment = 7
+	ld	hl,#3800+5	; Naar 6e lijn van sprite 0
+	call nStWrt	; Set VDP write address
+
+	ld	a,%11100000	; cursor = 3 dikke pixels breed
+	out	(#98),a	; cursor wordt 2 streepjes hoog
+	nop
+	nop
+	out	(#98),a
+	ret
+
+
+; blockCsr
+;
+; Toont een blok-cursor
+;
+blockCsr:	xor	a
+	ld	(cStyle),a
+	jr	showCsr	; dat tonen
+
+
+; lineCsr
+;
+; Toont een lijn-cursor
+;
+lineCsr:	ld	a,-1
+	ld	(cStyle),a
+	jr	showCsr	; dat tonen
+
+
+; dispCsr
+;
+; Schakel cursor permanent in
+;
+dispCsr:
+	; OPJ - Restore sprites and using the border as black
+	push bc
+	xor	a
+	call zetBdr;
+	ld	a,(vReg8)
+	and	11011101B	; use black as border color and enable sprites
+	ld	(vReg8),a
+	ld	c,8+#80
+	call wrtVdp	; maak dat hard
+	pop	bc
+	; End of OPJ changes
+	ld	a,-1
+	ld	(csrSw),a	; enable cursor switch
+			; loopt door in showCsr
+
+; showCsr
+;
+; Ontdooi de cursor en verplaats naar huidige pos
+;
+showCsr:	ld	a,(csrSw)	; Cursor aan?
+	or	a
+	ret	z
+	xor	a
+	ld	(freezeFl),a	; evt. bevriezing opheffen
+
+doShowCsr:	ld	a,7	; VRAM segment = 7
+	ld	hl,#3400 + 5	; Adres #3400, 6e lijn van pattern 0
+	call nStWrt	; Set VDP write address
+
+	ld	hl,(csrCol)	; haal cursor kleur in L
+	ld	a,(cStyle)	; haal cursor style
+	or	a	; blok?
+	ld	a,l
+	jr	z,showBlock	; Ja, => bovenste lijn is zichtbaar
+	xor	a	; Nee, bovenste lijn is transparant
+showBlock:	or	%00100000	; Vlag: geen botsdetect
+	out	(#98),a	; stel cursorkleur in
+	ld	a,l	; Onderste lijn altijd gekleurd
+	nop
+	out	(#98),a
+	jr	doeMoveCsr	; verplaatsen
+
+
+; moveCsr
+;
+; Verplaats de cursor naar PositX,PositY
+;
+moveCsr:	ld	a,(csrSw)	; Cursor aan?
+	or	a
+	ret	z
+	ld	a,(freezeFl)	; cursor bevroren op huidige pos?
+	or	a
+	ret	nz
+
+doeMoveCsr:	ld	a,7	; VRAM segment = 7
+	ld	hl,#3600	; Adres #3600, attribute table
+	call nStWrt	; Set VDP write address
+
+	ld	c,#98	; C=VDP data write port
+	ld	hl,(homeAdr)	; haal VRAM adres van pos 1,1
+	ld	a,(v23buf)
+	add	a,h	; scroll offset erbij tellen
+	ld	h,a
+
+	ld	a,(positY)
+	cp	1	; line 1 ?
+	jr	z,moveY	; ja, => alleen een extra X-offset
+
+	dec	a	; maak tussen 1 en 24
+	rlca 	; *2
+	rlca 	; *4
+	rlca 	; *8 lijnen per regel
+
+	add	a,h	; optellen bij "home" regel
+	ld	h,a	; bewaar Y-coord van de regel
+
+moveY:	inc	h	; niet op veelvoud van 8, y=216 mag niet
+	out	(c),h	; zet Y-coord in attribute table
+
+	ld	a,(positX)	; kijk naar X
+	cp	1	; als X=1 dan klaar
+	jr	z,moveX
+
+	dec	a	; X tussen 1 en 79
+	ld	b,a	; 1 keer in B
+	add	a,a	; A keer 2
+	add	a,b	; is 3*(X-1)
+	add	a,l	; adres van X=1 erbij
+	ld	l,a	; bewaar X-offset in L
+
+moveX:	out	(c),l	; zet X-coord
+	ret
+
+
+; hideCsr
+;
+; Maak de cursor transparant
+;
+hideCsr:	ld	a,7	; VRAM segment = 7
+	ld	hl,#3400 + 5	; Adres #3400, 6e lijn van pattern 0
+	call nStWrt	; Set VDP write address
+	xor	a	; cursor doorzichtig maken
+	out	(#98),a	; stel cursor kleur in
+	ld	(csrSw),a	; Delay + vlag cursor niet meer actief
+	out	(#98),a	; 2e cursorlijn ook transparant
+	; OPJ ok, without the sprite cursor, let's use black as black, not border
+	; as black. This will make possible to render black when screen color/border
+	; is not black. Also disable the sprites, as the cursor sprite will mess
+	; with the screen
+	push bc
+	ld	a,(vReg8)
+	or	00100010B	; use black as black and not border color disable sprites
+	ld	(vReg8),a
+	ld	c,8+#80
+	call wrtVdp	; maak dat hard
+	; restore border color to background
+	ld	a,(bakCol)
+	call	zetBdr;
+	pop	bc
+	;OPJ end of changes
+	ret
+
+
+; freezeCsr
+;
+; Zet de cursor stil
+;
+freezeCsr:	ld	a,-1
+	ld	(freezeFl),a
+	ret
+
+
+
+; nStWrt
+;
+; Zet VDP schrijfklaar op adres A:HL
+;
+; In: A = Segmentnr. (0..7)
+;     HL= Adres (0..#3fff)
+;
+nStWrt:	ld	c,14+#80
+	ld	(vReg14),a
+	call wrtVdp	; segmentnr. naar reg. 14
+	di
+	ld	c,#99
+	out	(c),l	; low adresbyte
+	set	6,h	; set bit 6: VDP write
+	out	(c),h	; high byte+write flag
+	ei
+	ret
+
+
+; knipperen
+;
+zetKnp:	ld	hl,(forCol)	; haal voor- en achtergrondkleuren
+	ld	(knpFor),hl
+	ld	a,15	; FORCOL is 15 (knipperkleur)
+	ld	(forCol),a
+	ld	a,-1	; knipper interrupt actief
+	ld	(knpSta),a
+	ret
+
+; interrupt
+;
+; interrupt verwerkingsroutine, hangt aan H.TIMI
+;
+interrupt:	push af	; bewaar VDP statusbyte (van MAIN ROM)
+
+	ld	a,(active)	; haal status
+	or	a	; actief?
+	jr	z,exitInt	;  => Nee
+
+	ld	hl,(intCnt)
+	inc	hl	; verhoog aantal getelde interrupts
+	ld	(intCnt),hl
+
+	call doeKnp	; regel knipper
+	call doScrol	; regel scroll
+
+exitInt:	xor	a
+	ex	af,af'
+	pop	af
+	ret
+
+doScrol:	ld	hl,(v23buf)	; haal gewenste waarde van scroll-lijn
+	ld	a,(vReg23)	; haal huidige waarde
+	cp	l	; scroll register al ok?
+	ret	z	;  Ja, => Niet scrollen
+	inc	a	;  Nee, scroll 1 lijn omlaag
+	ld	(vReg23),a	; hier invullen
+	ld	c,23+#80	; en schrijf weg
+	jp	wrtVdp
+
+doeKnp:	ld	a,(knpSta)	; moet knip ?
+	or	a
+	ret	z
+
+	ld	hl,knpTlr	;Verlaag de knipper teller
+	dec	(hl)	;Nul bereikt?
+	ret	nz	; Nee, => Wacht nog even met knipper
+
+	ld	a,(timFor)	; teller op voorgrondkleurtijd
+	ld	(hl),a
+
+	ld	a,(knpfor)
+	ld	d,a	; voorgrondkleur in D
+
+	ld	a,(watKnp)
+	inc	a	; Wissel voor/achtergrondkleur (bit 0)
+	ld	(watKnp),a
+	rra		; Voorgrondkleur tonen?
+	jp	c,zetKlr	;  Ja, => Stel kleur in
+
+	ld	a,(timBak)	; zet achtergrondkleur teller
+	ld	(hl),a
+
+	ld	a,(knpBak)	; zet achtergrond-kleur
+	ld	d,a	;  in D
+
+zetKlr:	ld	a,15	; palet op 15
+	ld	c,16+#80
+	call wrtVdp
+	ld	hl,palet	; adres palet
+	ld	a,d	; nodig kleur-nummer
+	add	a,a	; keer 2 voor adres
+	ld	d,0
+	ld	e,a
+	add	hl,de	; offset bij DE
+	ld	a,(hl)
+	out	(#9a),a	; blauw weg
+	inc	hl
+	ld	a,(hl)
+	out	(#9a),a	; groen/rood weg
+	ret
+
+
+; Kill code adres
+;
+kill:	call isActive	; zijn we nog steeds actief?
+	jp	nz,rstOld	;  Ja, => dan gauw alles uitschakelen
+	ret
+
+
+; Driverroutine, kan worden aangeroepen via "tsrCall (63)"
+;
+; In: A = Functiecode
+;     HL, DE = Parameters voor functie
+;
+talk:	ei		; MemMan heeft DI gedaan, nu opheffen
+	cp	aantDCodes	; te hoge waarde?
+	ret	nc	;  ja, => niet uitvoeren
+
+	add	a,a	; bereken index in jump table
+	ld	c,a
+	ld	b,0	; BC = tabeloffset
+
+	push hl	; Bewaar HL
+	ld	hl,driverTab	; tabel met Driver-routine adressen
+	add	hl,bc	; HL wijst naar startadres
+	ld	a,(hl)
+	inc	hl
+	ld	h,(hl)	; haal startadres in HL
+	ld	l,a
+	ex	(sp),hl	; Startadres op stack, herstel parameter
+	ret		; naar driverfunctie
+
+
+; Tabel met jump-adressen voor driverfuncties
+;
+driverTab:	dw	getVer	; 0 = Haal versienummer
+	dw	getSta	; 1 = Haal Jansi status
+	dw	iniDmp	; 2 = Initialiseer more Y/N
+	dw	dmpStr	; 3 = Dump tekststring
+
+aantDCodes	equ	($ - driverTab) / 2 ; Aantal codes in drivertabel
+
+
+; GetVer, driverfunctie 0
+;
+; Uit: H.LB=Versienummer
+;
+getVer:	ld	hl,jansiVer	;Huidige versie = H.L
+	ld	b,debugVer	;Debugversie
+	ret
+
+
+; GetSta, driverfunctie 1
+;
+; Uit: HL=Status vlaggen
+;      Bit 0:     1 = Jansi geinitialiseerd
+;      Bit 1..15  Gereserveerd, altijd 0
+;
+getSta:	ld	hl,(active)	;Haal active vlag in [L]
+	ld	h,0	;Highbyte altijd 0 in deze versie
+	ret
+
+
+; iniDmp, driverfunctie 2
+;
+; Initialiseer "dmpStr" functie
+;
+; In: HL = Bit-vlaggen voor "dmpStr"
+;
+;      [HL] : Bit	Functie
+;            --------------------------------------------
+;	 0	1 = Keer terug bij ieder vol scherm
+;	 1	1 = Keer terug voor ieder CLS-commando
+;	 2	1 = Negeer CLS-commando's
+;	 3	1 = Voer key-board scan uit
+;          4..15	Gereserveerd, altijd 0
+;
+iniDmp:	ld	de,waitMore	;Adres van 1e vlagbyte
+	ld	b,4	;Zoveel vlaggen onderzoeken
+chkFlagsLp:	xor	a	;Vlag-byte op 0 zetten
+	rr	l	;Schuif vlag in carry
+	rla		;Schuif vlag in vlagbyte
+	ld	(de),a	;Bewaar vlagbyte
+	inc	de	;Naar volgende vlagbyte
+	djnz chkFlagsLp	;Onderzoek volgende vlag
+
+	ld	hl,positY	;Huidige cursorregel
+	ld	a,maxScroll	;Maximum aantal regels
+	sub	(hl)	;A=Aantal wat al gescrolled is
+	inc	a	;Regel 1 levert maxScroll - 1
+	ld	(scrollCnt),a
+
+	xor	a	;Reset de "cls komt" vlag
+	ld	(clsComes),a
+	inc	a	;Het eerste karakter mag een CLS
+	ld	(allowCls),a	; zijn zonder dat een melding volgt
+	ret
+
+
+; dmpStr, driverfunctie 3
+;
+; Druk tekststring af
+;
+; In:   HL = Startadres van de string (boven adres #7FFF)
+;       DE = Lengte van de string
+;
+; Uit:  Indien klaar:     A = 0
+;		       DE = 0
+;
+;       Indien CLS komt:  A = 1
+;		       DE = Aantal karakters dat nog afgedrukt moet worden
+;		       HL = Startadres volgende karakter
+;
+;       Indien scherm vol:A = 2
+;		       DE = Aantal karakters dat nog afgedrukt moet worden
+;		       HL = Startadres volgende karakter
+;
+;       Toets ingedrukt:  A = 3
+;		       DE = Aantal karakters dat nog afgedrukt moet worden
+;		       HL = Startadres volgende karakter
+;
+dmpStr:	ld	a,h	;Haal hoge adresbyte
+	cp	#80	;Lager dan #8000?
+	ret	c	; Ja, => Daar kunnen we nu niet bij
+
+	ld	a,1	;Vlag: Aanroep komt van driver-routine
+	ld	(driverCall),a	; dus niet van CHPUT
+
+dmpStrLp:	ld	a,d	;Nog een karakter?
+	or	e
+	jr	z,dmpStrDone	; Nee, => Klaar
+
+	ld	a,(waitMore)	;"meer j/n" vlag gezet?
+	or	a
+	jr	z,noMoreChk	; Nee, => Niet testen op scherm vol
+
+	ld	a,(scrollCnt)	;Haal aantal gescrollde regels
+	cp	maxScroll	;Scherm vol geschreven?
+	jr	nc,dmpStrScrFull	; Ja, => Geef melding "meer j/n"
+
+noMoreChk:	push hl	;Bewaar pointer + teller
+	push de
+
+	ld	a,(hl)	;Haal karakter
+	call charDecode	;Decoderen / afdrukken
+
+	pop	de
+	pop	hl
+
+	ld	a,(clsComes)	;Was het karakter een CLS?
+	or	a
+	jr	nz,dmpStrWaitCls	; Ja, => Dan eerst pauze
+
+	inc	hl	;Pointer ophogen
+	dec	de	;Teller verlagen
+
+	ld	a,(keyScan)	;Check key-board?
+	or	a
+	jr	z,dmpStrLp	; Nee, => Volgende karakter
+
+	push hl	;	Bewaar karakterpointer
+	ld	hl,(getPnt)	; Ja, kijk of toets is ingedrukt
+	ld	bc,(putPnt)
+	or	a
+	sbc	hl,bc	;Vergelijk toetsenbordbuffer pointers
+	pop	hl
+	jr	z,dmpStrLp	;Gelijk, => Volgende karakter
+
+	jr	dmpStrKbHit	;Ongelijk, => Toets ingedrukt
+
+
+; Geef uitvoerparameters terug na "DmpStr"
+;
+dmpStrDone:	ld	b,0	;Klaar: Return A = 0
+	jr	dmpStrExit
+
+dmpStrWaitCls:ld	(hl),cls	;CLS alvast in de buffer zetten
+	xor	a	;Reset de "cls komt" vlag
+	ld	(clsComes),a
+	inc	a	;Bij de volgende aanroep mag direct
+	ld	(allowCls),a	; de CLS afgedrukt worden
+
+	ld	b,a	;CLS volgt: Return A = 1
+	jr	dmpStrExit
+
+dmpStrScrFull:ld	a,1	;Aantal gescrollde regels
+	ld	(scrollCnt),a	; alvast weer op 1 stellen
+	ld	b,2	;Scherm vol: Return A = 2
+	jr	dmpStrExit
+
+dmpStrKbHit:	ld	b,3	;Op toets gemept, test ^S, ^C enzo
+
+dmpStrExit:	xor	a	;Reset "driver-aanroep" vlag
+	ld	(driverCall),a
+	ld	a,b	;Exitcode naar [A]
+	ret
+
+
+; Variabelengebied
+;
+freezeFl:	db	0	; -1 indien cursor niet mag mee-bewegen
+yCrd:	dw	0	; VDP-coordinaten
+xCrd:	dw	0
+
+adrBuf:	dw	0	; werkbuffer voor positie
+
+karAdr:	dw	ibmKar	; base adres in patterntable
+
+escVlg:	db	0	; ESC actief
+scrollVlag:	db	0	; Hard / smooth scroll
+
+; Attributen van Esc[m
+;
+attrTab	equ	$	; Tabel met attributen van Esc[m
+forCol:	db	0	; gebruikskleuren
+bakCol:	db	0
+bdrCol:	db	0
+csrCol:	db	14	; Cursor = licht magenta
+uLine:	db	0	; Wel / niet onderstrepen
+hLight:	db	0	; High light aan/uit
+knpMot:	db	0	; Knippermode
+attrTabLen	equ	$-attrTab	; Lengte van attributentabel
+
+; Opslag van huidige instellingen door SavScr
+;
+posSav:	dw	0	; csr. positie
+yDest:	dw	0	; bestemminsregel (> 255 = page 1)
+attrTabSav:	ds	attrTabLen,0	; Esc[m attributen opslag
+pltSav:	ds	2*16,0	; kleurpaletten opslag
+knpSav:	db	0	; knipper status opslag
+knpForSav:	db	0	; knipper voorgrondkleur opslag
+knpBakSav:	db	0	; knipper achtergrondkleur opslag
+
+
+; Interruptroutine variabelen
+;
+knpSta:	db	0	; actie-vlag voor interrupt routine
+watKnp:	db	0	; kleur-indicator
+knpTlr:	db	1	; tijd-teller
+knpFor:	db	0	; voorgrondkleur van kniperrende tekst
+knpBak:	db	0	; achtergrondkleur van kniptekst
+timFor:	db	20	; aantijd voorgrond-kleur
+timBak:	db	15	; aantijd achtergrond-kleur
+
+intCnt:	dw	0	; interrupt teller
+
+
+; Nog meer variabelen
+;
+charMode:	db	charIBM	; Default characterset = IBM
+grpVlg:	db	0	; Grafische MSX header (chr$(1)) gezien
+
+busy:	db	0	; 1 = CHPUT niet onderscheppen
+active:	db	0	; 1 = JANSI driver actief
+driverCall:	db	0	; 1 = Aanroep via "tsrCall"
+
+scrollCnt:	db	0	; Aantal regels na laatste "meer j/n"
+allowCls:	db	0	; 1 = CLS mag worden afgedrukt
+clsComes:	db	0	; 1 = Af te drukken kar. was CLS
+
+waitMore:	db	0	; 1 = Pauzeer bij ieder vol scherm
+waitCls:	db	0	; 1 = Pauzeer voor ieder CLS commando
+skipCls:	db	0	; 1 = Negeer CLS-commando's
+keyScan:	db	0	; 1 = Scan keyboard bij DmpStr
+
+homeAdr:	dw	8*256+8	; VRAM-adres van pos 1,1;  highbyte=Y
+
+.comment %
+		  Kleur           Rood    Groen   Blauw
+	   ----------------------------------------------------
+	    0: zwart	0       0       0
+	    1: rood	5       0       0
+	    2: groen	1       4       1
+	    3: bruin	3       2       0
+	    4: blauw	1       2       5
+	    5: magenta	5       1       4
+	    6: cyaan	1       4       5
+	    7: wit	7       7       7
+	    8: grijs	4       4       4
+	    9: helder rood	7	2	2
+	   10: licht groen	3	7	3
+	   11: licht geel	6	6	0
+	   12: licht blauw	2	3	7
+	   13: helder magenta	7	2	5
+	   14: helder cyaan	3	7	7
+
+
+%
+; Palet tabel 	(GRB)	kleur:		nummer:
+;
+palet:	dw	#000	; zwart		(0)
+	dw	#050	; rood		(1)
+	dw	#411	; groen		(2)
+	dw	#230	; bruin		(3)
+	dw	#215	; blauw		(4)
+	dw	#154	; magenta	(5)
+	dw	#415	; cyaan		(6)
+	dw	#777	; wit		(7)
+	dw	#444	; grijs		(8)
+	dw	#272	; lrood		(9)
+	dw	#733	; lgroen 	(10)
+	dw	#660	; lgeel		(11)
+	dw	#327	; lblauw 	(12)
+	dw	#275	; lmagenta	(13)
+	dw	#737	; lcyaan 	(14)
+	dw	#777	; knipperkleur	(15)
+
+
+; Pattern data voor MSX Graphics (copy uit MSX-ROM)
+;
+msxKar:	ds	256*8,0	; MSX-ROM karakterset
+
+; Pattern data voor IBM-graphics (ASCII 176-255)
+;
+ibmKar:	db	#22,#88,#22,#88
+	db	#22,#88,#22,#88
+	db	"U",#aa,"U",#aa
+	db	"U",#aa,"U",#aa
+	db	#DD,"w",#DD,"w"
+	db	#DD,"w",#DD,"w"
+	db	#18,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#F8,#18,#18,#18
+	db	#18,#18,#F8,#18
+	db	#F8,#18,#18,#18
+	db	"f","f","f","f"
+	db	#E6,"f","f","f"
+	db	#00,#00,#00,#00
+	db	#FE,"f","f","f"
+	db	#00,#00,#F8,#18
+	db	#F8,#18,#18,#18
+	db	"f","f",#E6,#06
+	db	#E6,"f","f","f"
+	db	"f","f","f","f"
+	db	"f","f","f","f"
+	db	#00,#00,#FE,#06
+	db	#E6,"f","f","f"
+	db	"f","f",#E6,#06
+	db	#FE,#00,#00,#00
+	db	"f","f","f","f"
+	db	#FE,#00,#00,#00
+	db	#18,#18,#F8,#18
+	db	#F8,#00,#00,#00
+	db	#00,#00,#00,#00
+	db	#F8,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#1F,#00,#00,#00
+	db	#18,#18,#18,#18
+	db	#FF,#00,#00,#00
+	db	#00,#00,#00,#00
+	db	#FF,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#1F,#18,#18,#18
+	db	#00,#00,#00,#00
+	db	#FF,#00,#00,#00
+	db	#18,#18,#18,#18
+	db	#FF,#18,#18,#18
+	db	#18,#18,#1F,#18
+	db	#1F,#18,#18,#18
+	db	"f","f","f","f"
+	db	"g","f","f","f"
+	db	"f","f","g","`"
+	db	#7F,#00,#00,#00
+	db	#00,#00,#7F,"`"
+	db	"g","f","f","f"
+	db	"f","f",#E7,#00
+	db	#FF,#00,#00,#00
+	db	#00,#00,#FF,#00
+	db	#E7,"f","f","f"
+	db	"f","f","g","`"
+	db	"g","f","f","f"
+	db	#00,#00,#FF,#00
+	db	#FF,#00,#00,#00
+	db	"f","f",#E7,#00
+	db	#E7,"f","f","f"
+	db	#18,#18,#FF,#00
+	db	#FF,#00,#00,#00
+	db	"f","f","f","f"
+	db	#FF,#00,#00,#00
+	db	#00,#00,#FF,#00
+	db	#FF,#18,#18,#18
+	db	#00,#00,#00,#00
+	db	#FF,"f","f","f"
+	db	"f","f","f","f"
+	db	#7F,#00,#00,#00
+	db	#18,#18,#1F,#18
+	db	#1F,#00,#00,#00
+	db	#00,#00,#1F,#18
+	db	#1F,#18,#18,#18
+	db	#00,#00,#00,#00
+	db	#7F,"f","f","f"
+	db	"f","f","f","f"
+	db	#FF,"f","f","f"
+	db	#18,#18,#FF,#18
+	db	#FF,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#F8,#00,#00,#00
+	db	#00,#00,#00,#00
+	db	#1F,#18,#18,#18
+	db	#FF,#FF,#FF,#FF
+	db	#FF,#FF,#FF,#FF
+	db	#00,#00,#00,#00
+	db	#FF,#FF,#FF,#FF
+	db	#F0,#F0,#F0,#F0
+	db	#F0,#F0,#F0,#F0
+	db	#0F,#0F,#0F,#0F
+	db	#0F,#0F,#0F,#0F
+	db	#FF,#FF,#FF,#FF
+	db	#00,#00,#00,#00
+	db	#00,#00,"v",#DC
+	db	#CC,#DC,"v",#00
+	db	"<","f","|","f"
+	db	"f","|","`","`"
+	db	"~","f","`","`"
+	db	"`","`","`",#00
+	db	#00,#00,#FE,"l"
+	db	"l","l","f",#00
+	db	#FE,#C6,"`","0"
+	db	"`",#C6,#FE,#00
+	db	#00,#00,#00,"~"
+	db	#D8,#D8,"p",#00
+	db	#00,#00,"f","f"
+	db	"f","|","`",#C0
+	db	#00,#00,"~",#18
+	db	#18,#18,#0C,#00
+	db	"~",#18,"<","f"
+	db	"f","<",#18,"~"
+	db	"8","l",#C6,#FE
+	db	#C6,"l","8",#00
+	db	"|",#C6,#C6,#C6
+	db	#C6,"l",#EE,#00
+	db	"<","f","0","|"
+	db	#C6,#C6,"|",#00
+	db	#00,#00,"f",#DB
+	db	#DB,#DB,"f",#00
+	db	#03,#06,"<","f"
+	db	"f","<","`",#C0
+	db	#1E,"0","`","~"
+	db	"`","0",#1E,#00
+	db	"<","f","f","f"
+	db	"f","f","f",#00
+	db	#00,"~",#00,"~"
+	db	#00,"~",#00,#00
+	db	#18,#18,"~",#18
+	db	#18,#00,"~",#00
+	db	"0",#18,#0C,#18
+	db	"0",#00,"~",#00
+	db	#0C,#18,"0",#18
+	db	#0C,#00,"~",#00
+	db	#0E,#1B,#18,#18
+	db	#18,#18,#18,#18
+	db	#18,#18,#18,#18
+	db	#18,#18,#D8,"p"
+	db	#00,#18,#00,"~"
+	db	#00,#18,#00,#00
+	db	#00,"r",#9C,#00
+	db	"r",#9C,#00,#00
+	db	#00,"<","f","f"
+	db	"<",#00,#00,#00
+	db	#00,#00,#00,#18
+	db	#18,#00,#00,#00
+	db	#00,#00,#00,#00
+	db	#18,#00,#00,#00
+	db	#07,#07,#0C,#0C
+	db	#98,#D8,"p","0"
+	db	"x","l","l","l"
+	db	"l",#00,#00,#00
+	db	"8","l",#18,"0"
+	db	"|",#00,#00,#00
+	db	#00,#00,"x","x"
+	db	"x","x",#00,#00
+	db	#00,#00,#00,#00
+	db	#00,#00,#00,#00
+
+
+; Lengte code
+;
+codLen	equ	$-code	; totale lengte
+
+
+; Initroutine
+;
+; Lees uit ROM ipv VRAM, in de toekomst is het mogelijk dat TL via een
+; luxere (grafische) windows-omgeving werkt, de karakterset is dan niet
+; meer in het VRAM aanwezig!!!
+;
+init:	ld	hl,tIdName	; HL=pointer naar TSR-Name
+	ld	d,"M"               ; kijk of deze TSR al bestaat
+	ld	e,getID
+	call extBio
+	jr	nc,double	; TSR bestaat al, => Error
+
+	ld	hl,4	; Lees Adres van karaktertabel uit ROM
+	call rdBios
+	ld	e,a	; Bewaar low-byte
+	call rdBios
+	ld	d,a
+	ex	de,hl	; Adres van karakterset in HL
+
+	ld	bc,256*8	; Lees zoveel bytes
+	ld	de,msxKar	; In die buffer
+
+rdChrLp:	call rdBios	; Lees een lijntje
+	ld	(de),a	; Bewaar in buffer
+	inc	de
+	dec	bc
+	ld	a,b	; Doorgaan totdat we 256 gehad hebben
+	or	c
+	jr	nz,rdChrLp
+
+	ld	a,2	; alle vlaggen nul
+	ld	de,tIntro
+	ret
+
+rdBios:	push de
+	push bc
+	ld	a,(0fcc1h)	;Slot-ID van MAIN-ROM
+	call rdSlt	;Lees een byte uit main-rom
+	pop	bc
+	pop	de
+	inc	hl	;Naar volgende adres
+	ret
+
+double:	ld	a,cr	; Vervang de afsluitende 0 achter de
+	ld	(intrEnd),a	;  intro-tekst in CR, zodat de
+	ld	de,tIntro	;  foutmelding ook getoond wordt
+	ld	a,3	; Vlag: Toon intro & Stop installatie
+	ret		; Abort
+
+tIdName:	db	"MST jANSI   "      ; ID-naam voor dubbel-check
+
+tIntro:	db	"jANSI version 1.01 - by Oduvaldo (ducasp@gmail.com)",cr,lf
+	db	"Copyright (C) MSX Software Team 1991 v1.00 (C) Oduvaldo 2019",cr,lf,lf
+intrEnd	db	0
+	db	"jANSI is already installed",cr,lf,lf,0
+
+iniLen	equ	$-init	; lengte init code
+
+
+; Hook data
+;
+tHooks:	dw	hookLn	; lengte hook code
+
+	dw	hTimi	; Timer interrupt
+	dw	interrupt
+
+	dw	hChpu	; Character put hook
+	dw	anStrt	; Sprongadres hook
+
+	dw	hDispCsr	; Display cursor
+	dw	dispCsrEntry
+
+	dw	hEraCsr	; Erase cursor
+	dw	eraCsrEntry
+
+hookln	equ	$-tHooks	; lengte hook tabel
+
+	end		; JANSI.GEN
+

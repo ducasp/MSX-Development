@@ -1,11 +1,49 @@
+/*
+--
+-- UnapiHelper.c
+--   UNAPI Abstraction functions.
+--   Revision 0.50
+--
+-- Requires SDCC and Fusion-C library to compile
+-- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- All rights reserved.
+--
+-- Redistribution and use of this source code or any derivative works, are
+-- permitted provided that the following conditions are met:
+--
+-- 1. Redistributions of source code must retain the above copyright notice,
+--    this list of conditions and the following disclaimer.
+-- 2. Redistributions in binary form must reproduce the above copyright
+--    notice, this list of conditions and the following disclaimer in the
+--    documentation and/or other materials provided with the distribution.
+-- 3. Redistributions may not be sold, nor may they be used in a commercial
+--    product or activity without specific prior written permission.
+-- 4. Source code of derivative works MUST be published to the public.
+--
+-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+-- TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+-- PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+-- CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+-- EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+-- PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+-- OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+-- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+-- OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+-- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+--
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "../../fusion-c/header/msx_fusion.h"
 #include "../../fusion-c/header/asm.h"
 #include "UnapiHelper.h"
+#include "print.h"
 
 unapi_code_block helperCodeBlock;
 Z80_registers helperRegs; //auxiliary structure for asm function calling
+char chHelperString[128];
 
 void UnapiBreath()
 {
@@ -22,13 +60,13 @@ unsigned char InitializeTCPIPUnapi ()
     uint uiNameAddress;
     int i;
 #ifdef UNAPIHELPER_VERBOSE
-    printf("Looking for UNAPI Implementations...\r\n");
+    print("Looking for UNAPI Implementations...\r\n");
 #endif
 	i = UnapiGetCount("TCP/IP");
     if(i==0)
     {
 #ifdef UNAPIHELPER_VERBOSE
-        printf("Error, no TCP/IP Unapi found...\r\n");
+        print("Error, no TCP/IP Unapi found...\r\n");
 #endif
         uchRet = 0;
     }
@@ -37,7 +75,7 @@ unsigned char InitializeTCPIPUnapi ()
         uchRet = 1;
         UnapiBuildCodeBlock(NULL, 1, &helperCodeBlock);
 #ifdef UNAPIHELPER_VERBOSE
-        printf("Implementation name: ");
+        print("Implementation name: ");
 #endif
         UnapiCall(&helperCodeBlock, UNAPI_GET_INFO, &helperRegs, REGS_NONE, REGS_MAIN);
         btVersionMain = helperRegs.Bytes.B;
@@ -51,12 +89,13 @@ unsigned char InitializeTCPIPUnapi ()
                 break;
             }
 #ifdef UNAPIHELPER_VERBOSE
-            putchar(btReadChar);
+            printChar(btReadChar);
 #endif
             uiNameAddress++;
         }
 #ifdef UNAPIHELPER_VERBOSE
-        printf(" v%u.%u\r\n", btVersionMain, btVersionSec);
+        sprintf(chHelperString," v%u.%u\r\n", btVersionMain, btVersionSec);
+        print(chHelperString);
 #endif
     }
 
@@ -106,12 +145,18 @@ unsigned char TxByte (unsigned char ucConnNumber, unsigned char uchByte)
 
 unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize)
 {
-    helperRegs.Words.DE = (int)lpucData;
-    helperRegs.UWords.HL = uiDataSize;
-    helperRegs.Bytes.C = 0;
-    helperRegs.Bytes.B = ucConnNumber;
+    do
+    {
+        helperRegs.Words.DE = (int)lpucData;
+        helperRegs.UWords.HL = uiDataSize;
+        helperRegs.Bytes.C = 0;
+        helperRegs.Bytes.B = ucConnNumber;
 
-    UnapiCall(&helperCodeBlock, TCPIP_TCP_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
+        UnapiCall(&helperCodeBlock, TCPIP_TCP_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
+        if (helperRegs.Bytes.A == ERR_BUFFER)
+            UnapiBreath();
+    }
+    while (helperRegs.Bytes.A == ERR_BUFFER);
 
     return helperRegs.Bytes.A;
 }
@@ -119,7 +164,8 @@ unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsi
 unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
 {
 #ifdef UNAPIHELPER_VERBOSE
-    printf("Resolving host (%s)...\r\n",uchHostString);
+    sprintf(chHelperString,"Resolving host (%s)...\r\n",uchHostString);
+    print(chHelperString);
 #endif
     helperRegs.Words.HL = (int)uchHostString;
     helperRegs.Bytes.B = 0;
@@ -128,13 +174,16 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
     {
 #ifdef UNAPIHELPER_VERBOSE
         if(helperRegs.Bytes.A == ERR_NO_NETWORK)
-            Print("No network connection available\n");
+            print("No network connection available\r\n");
         else if(helperRegs.Bytes.A == ERR_NO_DNS)
-            Print("There are no DNS servers configured\n");
+            print("There are no DNS servers configured\r\n");
         else if(helperRegs.Bytes.A == ERR_NOT_IMP)
-            Print("This TCP/IP UNAPI implementation does not support resolving host names.\nSpecify an IP address instead.\n");
+            print("This TCP/IP UNAPI implementation does not support resolving host names.\nSpecify an IP address instead.\r\n");
         else
-            printf("Unknown error when resolving the host name (code %i)\r\n", helperRegs.Bytes.A);
+        {
+            sprintf(chHelperString,"Unknown error when resolving the host name (code %i)\r\n", helperRegs.Bytes.A);
+            print(chHelperString);
+        }
 #endif
         return helperRegs.Bytes.A;
     }
@@ -151,19 +200,22 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
     {
 #ifdef UNAPIHELPER_VERBOSE
         if(helperRegs.Bytes.B == 2)
-            Print("DNS server failure\n");
+            print("DNS server failure\r\n");
         else if(helperRegs.Bytes.B == 3)
-            Print("Unknown host name\n");
+            print("Unknown host name\r\n");
         else if(helperRegs.Bytes.B == 5)
-            Print("DNS server refused the query\n");
+            print("DNS server refused the query\r\n");
         else if(helperRegs.Bytes.B == 16 || helperRegs.Bytes.B == 17)
-            Print("DNS server did not reply\n");
+            print("DNS server did not reply\r\n");
         else if(helperRegs.Bytes.B == 19)
-            Print("No network connection available\n");
+            print("No network connection available\r\n");
         else if(helperRegs.Bytes.B == 0)
-            Print("DNS query failed\n");
+            print("DNS query failed\r\n");
         else
-            printf("Unknown error returned by DNS server (code %i)\r\n", helperRegs.Bytes.B);
+        {
+            sprintf(chHelperString,"Unknown error returned by DNS server (code %i)\r\n", helperRegs.Bytes.B);
+            print(chHelperString);
+        }
 #endif
     }
     else
@@ -206,7 +258,8 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
         paramsBlock[9] = 0;
         paramsBlock[10] = 0; //bit 1 set means passive, bit 1 set means resident
 #ifdef UNAPIHELPER_VERBOSE
-        printf("OK, opening %u.%u.%u.%u:%u\r\n", paramsBlock[0], paramsBlock[1], paramsBlock[2], paramsBlock[3],iPort);
+        sprintf(chHelperString,"OK, opening %u.%u.%u.%u:%u\r\n", paramsBlock[0], paramsBlock[1], paramsBlock[2], paramsBlock[3],iPort);
+        print(chHelperString);
 #endif
         helperRegs.UWords.HL = (int)paramsBlock; //conn info goes there
         UnapiCall(&helperCodeBlock, TCPIP_TCP_OPEN, &helperRegs, REGS_MAIN, REGS_MAIN);
@@ -215,11 +268,14 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
         {
 #ifdef UNAPIHELPER_VERBOSE
             if(uchRet == ERR_NO_FREE_CONN)
-                Print("No free TCP connections available\n");
+                print("No free TCP connections available\r\n");
             else if(uchRet == ERR_CONN_EXISTS)
-                Print("There is a resident TCP connection which uses the same IP/Port combination\n");
+                print("There is a resident TCP connection which uses the same IP/Port combination\r\n");
             else
-                printf("Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
+            {
+                sprintf(chHelperString,"Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
+                print(chHelperString);
+            }
 #endif
         }
         else
