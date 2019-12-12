@@ -1,6 +1,11 @@
-# TELNET v1.21
+# TELNET v1.22
 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.22
+	- Reporting terminal as ANSI. Tried xterm 16 colors for a test and forgot
+	  to revert to ANSI. Using xterm could be bad if connecting to a host that
+	  is xterm aware, as this client do not implement xterm emulation
 
 # CHANGELOG v1.21
 	- Now it is possible to connect to telnet servers hosted by Linux/BSD 
