@@ -40,8 +40,17 @@ serial interface. That is the interface specification:
 -- bit 0 - does fifo rx buffer have data?
 -- bit 1 - is data transmission in progress?
 -- bit 2 - is fifo rx buffer full?
--- bit 6 - 0 if in interrupt with 128 bytes of data or more, 1 if free (avoid open bus confusion)
+-- bit 6 - 0 if in interrupt with 128 bytes of data or more, 1 if free (avoid 
+   open bus confusion)
 -- bit 7 - 0 if in interrupt, 1 if free (avoid open bus confusion)
+
+# NOTE
+
+Yeah, I know, it is not the leanest, cutest piece of z80 code you are going to 
+find. But, since the 16KB of memory is already allocated and won't be used for
+anything else, I tried to make the code faster at expense of size and perhaps
+legibility... It might get better, probably it can even be a little faster, who
+knows? :)
 
 All source code and binaries: 
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
