@@ -2,10 +2,10 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.21
+--   Revision 1.23
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -330,6 +330,7 @@ int main(char** argv, int argc)
 	unsigned char ucPort[6]; //will hold the port that the server accepts connections
     unsigned char ucAliveConnCount = 0; //when this is 0, check if connection is alive
     char chTextLine[128];
+    unsigned char ucCursorSave;
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
@@ -337,6 +338,8 @@ int main(char** argv, int argc)
     uiGetSize = 0;
     // For now, let's say we do not have ANSI
 	ucAnsi = 0;
+	//save cursor status
+	ucCursorSave = ucCursorDisplayed;
 
 	// Telnet Protocol Flags
     // Flag that indicates that a SUB OPTION reception is in progress
@@ -352,6 +355,8 @@ int main(char** argv, int argc)
 		// If invalid parameters, just show some instructions
 		print(ucSWInfo);
 		print(ucUsage);
+		//restore cursor status
+        ucCursorDisplayed = ucCursorSave;
 		return 0;
 	}
 
@@ -391,6 +396,8 @@ int main(char** argv, int argc)
     {
         if (ucAnsi) //loaded ansi-drv.bin?
             endAnsi();
+        //restore cursor status
+        ucCursorDisplayed = ucCursorSave;
         return 0;
     }
 
@@ -415,8 +422,9 @@ int main(char** argv, int argc)
             //UNAPI Breathing just in case adapter need it
             UnapiBreath();
 
+            ucTxData = Inkey ();
             // A key has been hit?
-            if (KeyboardHit())
+            if (ucTxData)
             {
                 // Get the key
                 ucTxData = InputChar ();
@@ -508,7 +516,8 @@ int main(char** argv, int argc)
         print (chTextLine);
     }
 
-    print(ucCursor_On);
+    //restore cursor status
+    ucCursorDisplayed = ucCursorSave;
 
 	return 0;
 }
