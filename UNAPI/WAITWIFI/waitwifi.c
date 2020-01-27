@@ -3,10 +3,10 @@
 -- waitwifi.c
 --   Wait up to 10 seconds for the first TCP-IP UNAPI implementation to be connected.
 --   Useful for WiFi modules that need time to connect after UNAPI is loaded.
---   Revision 0.10
+--   Revision 0.11
 --
 -- Requires SDCC and Fusion-C library
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
+-- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -40,7 +40,7 @@
 #include "fusion-c/header/asm.h"
 
 __at 0xFC9E unsigned int TickCount;
-
+unsigned char uchMessage[255];
 #define _TERM0 0
 
 enum TcpipUnapiFunctions {
@@ -81,7 +81,7 @@ enum TcpipErrorCodes {
     ERR_INV_OPER
 };
 
-const char strPresentation[] = "UNAPI TCP Wait Connection Tool\r\n(c)2019 Oduvaldo Pavan Junior\r\nducasp@gmail.com\r\n\r\n\r\n";
+const char strPresentation[] = "UNAPI TCP Wait Connection Tool v0.11\r\n(c)2020 Oduvaldo Pavan Junior\r\nducasp@gmail.com\r\n\r\n\r\n";
 
 Z80_registers regs;
 int i;
@@ -92,6 +92,40 @@ unapi_code_block codeBlock;
 //every second
 __at 0xFC9E unsigned int TickCount;
 
+// This print function has been copied from HGET / Konamiman
+// Using it as fusion-c Print uses bios calls, and do not work with PUT9000
+// That hooks the dos call.
+void print(char* s) __z88dk_fastcall
+{
+    __asm
+    push    ix
+loop:
+    ld  a,(hl)
+    or  a
+    jr  z,end
+    ld  e,a
+    ld  c,#2
+    push    hl
+    call    #5
+    pop hl
+    inc hl
+    jr  loop
+end:
+    pop ix
+    __endasm;
+}
+
+void printChar(char c) __z88dk_fastcall
+{
+    __asm
+    push    ix
+    ld  e,l
+    ld  c,#2
+    call    #5
+    pop ix
+    __endasm;
+}
+
 void PrintImplementationName()
 {
     byte readChar;
@@ -99,7 +133,7 @@ void PrintImplementationName()
     byte versionSec;
     uint nameAddress;
 
-    printf("Implementation name: ");
+    print("Implementation name: ");
 
     UnapiCall(&codeBlock, UNAPI_GET_INFO, &regs, REGS_NONE, REGS_MAIN);
     versionMain = regs.Bytes.B;
@@ -113,19 +147,12 @@ void PrintImplementationName()
         if(readChar == 0) {
             break;
         }
-        putchar(readChar);
+        printChar(readChar);
         nameAddress++;
     }
 
-    printf(" v%u.%u\r\nWaiting it to have connection state OPEN...\r\n", versionMain, versionSec);
-}
-
-void Terminate(char* errorMessage)
-{
-    if(errorMessage != NULL)
-        printf("\r\n%s\r\n", errorMessage);
-
-    DosCall(_TERM0, &regs, REGS_NONE, REGS_NONE);
+    sprintf(uchMessage," v%u.%u\r\nWaiting it to have connection state OPEN...\r\n", versionMain, versionSec);
+    print(uchMessage);
 }
 
 int main (char** argv, int argc)
@@ -141,17 +168,20 @@ int main (char** argv, int argc)
     else
         TimeLeap = 0;
 
-    Print(strPresentation);
+    print(strPresentation);
 
     i = UnapiGetCount("TCP/IP");
     if(i==0)
-        Terminate("No TCP/IP UNAPI implementations found");
+    {
+        print("No TCP/IP UNAPI implementations found");
+        return 1;
+    }
 
     UnapiBuildCodeBlock(NULL, 1, &codeBlock);
 
     i = 0;
     PrintImplementationName();
-    PrintChar('W');
+    printChar('W');
     do
     {
         //Check if timeout expired
@@ -159,7 +189,7 @@ int main (char** argv, int argc)
         {
             if (TickCount>TimeOut)
             {
-                printf ("Time-out and not connected!\r\n");
+                print("Time-out and not connected!\r\n");
                 break;
             }
         }
@@ -174,8 +204,8 @@ int main (char** argv, int argc)
         }
 
         //Our nice animation to show we are not stuck
-        PrintChar(8); //backspace
-        PrintChar(advance[i%4]); // next char
+        printChar(8); //backspace
+        printChar(advance[i%4]); // next char
         ++i;
         //Check Connection
         UnapiCall(&codeBlock, TCPIP_NET_STATE, &regs, REGS_NONE, REGS_MAIN);
@@ -183,9 +213,13 @@ int main (char** argv, int argc)
     while (regs.Bytes.B != 2);
 
     if (regs.Bytes.B == 2)
-        printf ("Connected!\r\n");
+    {
+        print("Connected!\r\n");
+        return 0;
+    }
     else
-        printf ("Not connected...\r\n");
-
-    return 0;
+    {
+        print("Not connected...\r\n");
+        return 1;
+    }
 }

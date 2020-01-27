@@ -5,7 +5,7 @@
 --   Revision 1.23
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
