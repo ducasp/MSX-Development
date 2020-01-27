@@ -1,3 +1,10 @@
+# WAITWIFI v0.11
+
+Changed the routines that print to screen from the ones in fusion-c to the one
+based on Konamiman print routine in HGET. Fusion-C printf and Print uses BIOS
+calls that do not allow redirection of output. This version now allows to be 
+used in silent mode by redirecting its output to NUL: WAITWIFI > NUL
+
 # WAITWIFI v0.1
 
 This is a small utility. I've found a need for it while developing an UNAPI 
@@ -11,7 +18,7 @@ any other UNAPI (i.e.: I have SNTP.COM to update my MSX clock every boot).
 It will wait up to 10 seconds until the installed TCP/IP UNAPI implementation
 state goes to CLOSED. Once it goes to closed or time-out occurs, it will quit.
 
-WAITWIFI (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+WAITWIFI (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
 All code can be re-used, re-written, derivative work can be sold, as long as 
 the source code of changes is made public as well.
