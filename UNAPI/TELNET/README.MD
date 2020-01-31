@@ -1,6 +1,12 @@
-# TELNET v1.22
+# TELNET v1.23
 
-(c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.23
+	- Changed the way to handle keyboard input, Fusion-C removed support for
+	  the method I've used before.
+	- Compiled with the new MSX2ANSI library, it fixes quite a few issues seen
+	  while acessing Linux or Busybox telnet servers.
 
 # CHANGELOG v1.22
 	- Reporting terminal as ANSI. Tried xterm 16 colors for a test and forgot

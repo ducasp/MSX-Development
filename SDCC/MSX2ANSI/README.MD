@@ -17,8 +17,15 @@ As an usage example, check my TELNET terminal source code:
 
 https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
 
+# MSX2ANSI v1.1
+
+Fixed CSI J behavior when no parameter / 0 was choosen
+Added CSI 1 J and CSI 2 J support
+Fixed behavior when no parameters were given (it was not always correct)
+Added CSI n P support for Linux telnet daemons
+
 All source code and binaries: 
 (c)Tobias Keizer (original version of ANSI-DRV.BIN)
-(c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com (modified version, adding sprite cursor and fixing a few bugs and adding some features, remember, all hard work on the rendering engine was done by Toby!)
+(c)2019 - 2020 Oduvaldo Pavan Junior - ducasp@gmail.com (modified version, adding sprite cursor and fixing a few bugs and adding some features, remember, all hard work on the rendering engine was done by Toby!)
 
 All code can be re-used, re-written, as long as the source code of changes is made public as well and the original authors are credited.
