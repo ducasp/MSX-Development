@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.0
+; MSX2ANSI ANSI V9938 Library v.1.1
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -12,6 +12,13 @@
 ; Non-comercial usage is free as long as you publish your code changes and give
 ; credits to the original authors
 ;
+; Changelog:
+;
+; v1.1: 
+; Added ESC[J behavior when no parameter / 0 was choosen (delete from cursor on)
+; Added ESC[1J (delete from cursor up to top of screen) and fixed ESC[2J support 
+; Fixed behavior when no parameters were given (it was not always correct)
+; Added ESC[nP support for Linux telnet daemons
 
 	.area _CODE
 
@@ -243,7 +250,8 @@ Parameters.END:
 	LD	(#Parameters.TRM),A			; SAVE TERMINATING CHAR
 	LD	A,C
 	OR	A
-	JR	Z,Parameters.OMT			; OMITTED VALUE
+	;JR	Z,Parameters.OMT			; OMITTED VALUE
+	JR	Z,Parameters.SETOMT
 	CP	#1
 	JR	Z,Parameters.RD1			; READ ONE DIGIT
 	CP	#2
@@ -253,9 +261,10 @@ Parameters.END:
 Parameters.ERR:	
 	XOR	A
 	JP	PrintText.RLP
-Parameters.OMT:	
-	INC	A
-	JR	Parameters.SET
+;Parameters.OMT:	
+	;If ommited, why 1 parameter?? Should be 0 parameters...
+	;INC	A
+	;JR	Parameters.SET	
 Parameters.RD1:	
 	LD	A,(#Parameters.PST)
 	SUB	#48
@@ -301,7 +310,8 @@ Parameters.SET:
 	LD	(#Parameters.PPT),DE
 	LD	A,(#Parameters.PCT)		; PARAMETER COUNT
 	INC	A
-	LD	B,A
+Parameters.SETOMT:		
+	LD	B,A	
 	LD	(#Parameters.PCT),A
 	LD	A,(#Parameters.TRM)		; TERMINATING CHARACTER
 	CP	#';'
@@ -341,6 +351,8 @@ Parameters.SET:
 	JP	Z,ANSI_SGR
 	CP	#'n'
 	JP	Z,ANSI_CGP
+	CP	#'P'
+	JP	Z,ANSI_DCH
 
 	JP	Parameters.ERR
 
@@ -369,6 +381,7 @@ ANSI_CGP.END:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
+
 ANSI_CUP:						; ANSI Cursor Position
 	LD	A,B
 	OR	A
@@ -380,6 +393,7 @@ ANSI_CUP:						; ANSI Cursor Position
 	LD	(#CursorCol),A
 ANSI_CUP.ROW:	
 	LD	A,(#Parameters.PRM+0)
+ANSI_CUP.ROW1:	
 	DEC	A
 	LD	(#CursorRow),A
 	JR	ANSI_CUP.RET
@@ -512,12 +526,22 @@ ANSI_RCP:						; ANSI Restore Cursor Position
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
-
+ANSI_DCH:						; ANSI Delelete Characters
+	LD	A,B
+	OR	A
+	JR	NZ,ANSI_DCH.GP
+	; Default is delete one char if no number is given
+	INC	A
+	JP	V9938_DelChr
+ANSI_DCH.GP:	
+	LD	A,(#Parameters.PRM+0)	; Load parameter, number of characters to delete
+	JP	V9938_DelChr
+	
 
 ANSI_ED:						; ANSI Erase in display
 	LD	A,B
 	OR	A
-	JR	Z,ANSI_ED.ED2
+	JR	Z,ANSI_ED.ED0 			; Default is delete from current position on
 	LD	A,(#Parameters.PRM+0)
 	CP	#0
 	JR	Z,ANSI_ED.ED0
@@ -526,13 +550,13 @@ ANSI_ED:						; ANSI Erase in display
 	CP	#2
 	JR	Z,ANSI_ED.ED2
 ANSI_ED.ED0:	
-	LD	HL,(#EndAddress)
-	JP	PrintText.RLP
+	JP	V9938_ErDis0
 ANSI_ED.ED1:	
-	LD	HL,(#EndAddress)
-	JP	PrintText.RLP
+	JP	V9938_ErDis1
 ANSI_ED.ED2:	
 	CALL	V9938_ClearScreen
+	; Usually should end-up here, but MS-DOS ANSI.SYS legacy place cursor on top left after ED
+	; Norm is cursor should be where it was, but, no one follows it, thanks to MS :D
 	XOR	A
 	LD	(#CursorRow),A
 	LD	(#CursorCol),A
@@ -544,10 +568,12 @@ ANSI_ED.ED2:
 
 
 ANSI_EL:						; ANSI Erase in Line
-	DEC	HL
-	DEC	HL
-	LD	A,(HL)
-	CP	#'['
+	;DEC	HL
+	;DEC	HL
+	;LD	A,(HL)
+	;CP	#'['
+	LD	A,B
+	OR	A
 	JP	Z,V9938_ErLin0
 	LD	A,(#Parameters.PRM+0)
 	CP	#1
@@ -559,10 +585,12 @@ ANSI_EL:						; ANSI Erase in Line
 
 
 ANSI_IL:
+	; TODO: Missing Handling of inserting lines from current
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 ANSI_DL:
+	; TODO: Missing Handling of deleting lines from current
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
@@ -571,7 +599,9 @@ ANSI_DL:
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
 	OR	A
-	JR	Z,ANSI_SGR.RET
+	;JR	Z,ANSI_SGR.RET
+	; OPJ: Zero parameters -> Reset attributes
+	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	LD	DE,#Parameters.PRM
 ANSI_SGR.RLP:	
 	PUSH	BC
@@ -1234,10 +1264,171 @@ V9938_ClearScreen:
 	OUT	(C),A	; CMD	
 	RET
 
+	; Observing Windows 10 terminal behavior as well as XTERM, Del Char only deletes characters in the same line
+	; Lines below are left untouched even if # of chars to delete surpass the # of chars in the line, and it does
+	; not shift lines below up. 
+V9938_DelChr:
+	LD	C,A					; Number of characters to delete in C
+	LD	A,(#CursorCol)		;
+	LD	B,A					; Cursor column in B
+	ADD	A,C					; Lets Check if cursor pos + deleted characters equals or exceed a line limit
+	CP	#79					; So, if 78 (79 columns) or less, will carry
+	JP	NC,V9938_ErLin0		; If no carry, no need to move blocks, we can just use a line deletion that will be way faster
+	; If here cursor pos + deleted characters less than a line, so we need to do the following:
+	; - Calculate the size of the block to move (End of screen - (Cursor Position + Deleted Chars))
+	; - Move the block
+	; - Erase # of Deleted Chars after the end of the block
+	LD	A,#80
+	SUB	A,B					; Ok, how many characters do we have including the one in cursor?
+	SUB	A,C					; And this is how many characters we need to copy to cursor position
+	INC A					;
+	PUSH	AF				; Save this, we will use it later to delete characters by fake positioning cursor @ cursor pos + moved characters +1 and deleting from there to the end of line :)
+	LD	B,A					; B contains character width of block being moved
+	ADD	A,A
+	ADD	A,B					; Multiply it by 3, number of "double pixels" (6 pixel width, 3 double pixels width)
+	ADD	A,A					; And now double it to adjust lsb not considered
+	LD	(#HMMM_CMD.NXL),A	; Store as NX lower byte
+	LD	A,#0x00				; Probably will be 0 NX higher byte
+	JR	NC,V9938_DelChr.NXH	; But if carry, means it is 1
+	INC	A					; If carry, NXh is 1
+V9938_DelChr.NXH:	LD	(#HMMM_CMD.NXH),A	; Store it
+	LD	A,#0x08
+	LD	(#HMMM_CMD.NYL),A
+	; No need to change NYH, always 0
+	LD	A,(#CursorCol)
+	LD	B,A
+	ADD	A,A
+	ADD	A,B					; Just adjust to count of "double pixels", HMMM function will handle DXH and shifting it
+	LD	(#HMMM_CMD.DXL),A	; Destination is current cursor position
+	LD	D,A					; Save A in D
+	LD	A,C					; Now source is what is in D + 3 times what is in C
+	LD	B,A
+	ADD	A,A
+	ADD	A,B					; A contains 3xdeleted characters
+	ADD A,D					; + cursor position, this is the position of source X :D
+	LD	(#HMMM_CMD.SXL),A	; Source is current cursor position + deleted characters
+	LD	A,(#CursorRow)		; Current cursor line
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A					; Multiply it by 8, it is the first line of that character line (8 pixels high character)
+	LD	(#HMMM_CMD.DYL),A	; This is the Y destination
+	LD	(#HMMM_CMD.SYL),A	; As well as the Y source
+	CALL	DO_HMMM			; All set, let's move
+	POP	BC					; What we need to Add to Cursor is restored in B
+	LD	A,(#CursorCol)		; Current Cursor Column
+	ADD	A,B					; Our fake cursor position
+	JP	V9938_ErLin0.1		; Erase Line, but using what is in A, our fake cursor position, and return to processing after done
 
+	
+	
+V9938_DelChr.SL:	LD	HL,(#EndAddress)
+	JP	PrintText.RLP	
+
+V9938_ErDis0:
+	LD	A,(#CursorCol)
+	LD	B,A
+	ADD	A,A
+	ADD	A,B
+	LD	(#HMMV_CMD.DXL),A	; DX = Number of column * 3 (this mode has doubled pixels in X axis)
+	LD	B,A
+	LD	A,#240				; We draw up to 240 double-pixels (6 pixels wide characters * 80 columns)
+	SUB	A,B					; Except the  pixels data up to the cursor position
+	ADD	A,A					; And now double  it
+	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
+	LD	A,#0x00				; Probably will be 0 NX higher byte
+	JR	NC,V9938_ErDis0.NXH	; But if carry, means it is 1
+	INC	A					; If carry, NXh is 1
+V9938_ErDis0.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
+	LD	A,(#CursorRow)		; Now get the row / line
+	ADD	A,A					; 8 pixels height each character, multiply it per 8
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
+	LD	A,#0x08				
+	LD	(#HMMV_CMD.NYL),A	; To clear a single line it is 8 pixels height number of dots height
+	XOR	A
+	LD	(#HMMV_CMD.DYH),A	; DYH and NYH 0
+	LD	(#HMMV_CMD.NYH),A
+	CALL	DO_HMMV			; Aaaand.... Clear!
+	; Now, do we need to clear below cursor?
+	LD	A,(#CursorRow)		; Let's see how many pixels we need to fill
+	LD	B,A					; Now get the row / line in B
+	LD	A,#24				; Up to 25 lines, 0 is first, 24 is the 25th line
+	SUB	A,B					; Let's check how many extra lines need to be cleared
+	JR	Z,V9938_ErDis0.SL	; If last line, done
+	; Not last, so multiply it per 8
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.NYL),A	; To clear remaining lines it is 8 pixels height multiplied by number of lines
+	XOR	A				
+	LD	(#HMMV_CMD.DYH),A	; DYH and NYH and DXL 0
+	LD	(#HMMV_CMD.NYH),A	;
+	LD	(#HMMV_CMD.DXL),A	; 
+	LD	A,#0xE0				; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
+	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
+	LD	A,#1				;
+	LD	(#HMMV_CMD.NXH),A	; Store NX higher byte
+	LD	A,(#CursorRow)		; Now get the row / line
+	INC	A					; Next line
+	ADD	A,A					; 8 pixels height each character, multiply it per 8
+	ADD	A,A					;
+	ADD	A,A					;	
+	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
+	CALL	DO_HMMV			; Aaaand.... Clear!	
+V9938_ErDis0.SL:	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+
+V9938_ErDis1:
+	XOR	A
+	LD	(#HMMV_CMD.DXL),A	; DX = Beginning of line, 0
+	LD	(#HMMV_CMD.DXH),A	; DX = Beginning of line, 0
+	LD	A,(#CursorCol)
+	LD	B,A
+	ADD	A,A
+	ADD	A,B					; Column * 6 = X coordinate of current cursor position
+	ADD	A,A					; And now double  it
+	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
+	LD	A,#0x00				; Probably will be 0 NX higher byte
+	JR	NC,V9938_ErDis1.NXH	; But if carry, means it is 1
+	INC	A					; If carry, NXh is 1
+V9938_ErDis1.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
+	LD	A,(#CursorRow)		; Now get the row / line
+	ADD	A,A					; 8 pixels height each character, multiply it per 8
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
+	LD	A,#0x08				
+	LD	(#HMMV_CMD.NYL),A	; To clear a single line it is 8 pixels height number of dots height
+	XOR	A
+	LD	(#HMMV_CMD.DYH),A	; DYH and NYH 0
+	LD	(#HMMV_CMD.NYH),A
+	CALL	DO_HMMV			; Aaaand.... Clear!
+	; Now, do we need to clear above cursor?
+	LD	A,(#CursorRow)		; Let's see how many pixels we need to fill
+	OR	A					; First row/line?
+	JR	Z,V9938_ErDis1.SL	; If first line, done
+	; Not first, so multiply it per 8
+	LD	A,A					;
+	LD	A,A					;	
+	LD	(#HMMV_CMD.NYL),A	; To clear remaining lines it is 8 pixels height multiplied by number of lines - 1 (which is cursor row)
+	XOR	A				
+	LD	(#HMMV_CMD.DYH),A	; DYH, DYL, DXL ,DXH  and and NYH 0
+	LD	(#HMMV_CMD.DYL),A	; 
+	LD	(#HMMV_CMD.NYH),A	;
+	LD	(#HMMV_CMD.DXL),A	; 
+	LD	(#HMMV_CMD.DXH),A	; 
+	LD	A,#0xE0				; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
+	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
+	LD	A,#1				;
+	LD	(#HMMV_CMD.NXH),A	; Store NX higher byte
+	CALL	DO_HMMV			; Aaaand.... Clear!	
+V9938_ErDis1.SL:	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
 
 V9938_ErLin0:
 	LD	A,(#CursorCol)
+V9938_ErLin0.1:
 	LD	B,A
 	ADD	A,A
 	ADD	A,B
@@ -1353,7 +1544,6 @@ V9938_WaitCmd:
 	JP	V9938_WaitCmd
 
 
-
 DO_HMMC:
 	CALL	V9938_WaitCmd	; Wait if any command is pending
 	DI
@@ -1361,26 +1551,26 @@ DO_HMMC:
 	OUT	(#0x99),A
 	LD	A,#0x91				; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
-	LD	HL,#HMMC_CMD			; The HMMC buffer
+	LD	HL,#HMMC_CMD		; The HMMC buffer
 	LD	C,#0x9B				; And port for indirect access
 	LD	A,(HL)				; LD DXL in A
 	INC	HL
 	INC	HL					; HL pointing to DYL
-	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
 	ADD	A,A					; Multiply by 2
 	OUT	(C),A				; And send DXL to #36
 	LD	A,#0x00				; DXH could be 0
-	JR	NC,DO_HMMC.DXH				; If no carry, it is 0
+	JR	NC,DO_HMMC.DXH		; If no carry, it is 0
 	INC	A					; Otherwise it is 1
-DO_HMMC.DXH:	OUT	(C),A			; And send DXH to #37
-	LD	A,(HL)				; Load IYL in A
+DO_HMMC.DXH:	OUT	(C),A	; And send DXH to #37
+	LD	A,(HL)				; Load DYL in A
 	INC	HL					
 	INC	HL					; HL pointing @ NXL
-	LD	B,A					; Copy IYL to B
+	LD	B,A					; Copy DYL to B
 	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our IYL to it
+	ADD	A,B					; Add our DYL to it
 	OUT	(C),A				; Send it to #38
-	XOR	A					; IYH always 0
+	XOR	A					; DYH always 0
 	OUT	(C),A				; Send it
 	OUTI					; And now send the rest of buffer
 	OUTI
@@ -1433,6 +1623,72 @@ DO_HMMV.DXH:	OUT	(C),A
 	OUTI
 	OUTI
 	OUTI
+	EI
+	RET
+	
+
+DO_HMMM:
+	CALL	V9938_WaitCmd	; Wait if any command is pending
+	DI
+	LD	A,#0x20				; Register 32 as value for...
+	OUT	(#0x99),A
+	LD	A,#0x91				; Register #17 (indirect register access auto increment)
+	OUT	(#0x99),A
+	LD	HL,#HMMM_CMD		; The HMMC buffer
+	LD	C,#0x9B				; And port for indirect access
+	LD	A,(HL)				; LD SXL in A
+	INC	HL
+	INC	HL					; HL pointing to SYL
+	ADD	#0x08				; Add 8 to SXL (A) - Border of 16 pixels
+	ADD	A,A					; Multiply by 2
+	OUT	(C),A				; And send SXL to #32
+	LD	A,#0x00				; SXH could be 0
+	JR	NC,DO_HMMM.SXH		; If no carry, it is 0
+	INC	A					; Otherwise it is 1
+DO_HMMM.SXH:	OUT	(C),A	; And send SXH to #33
+	LD	A,(HL)				; Load SYL in A
+	INC	HL					
+	INC	HL					; HL pointing @ DXL
+	LD	B,A					; Copy SYL to B
+	LD	A,(#VDP_23)			; Get current vertical offset
+	ADD	A,B					; Add our SYL to it
+	OUT	(C),A				; Send it to #34
+	XOR	A					; SYH always 0
+	OUT	(C),A				; Send it to #35
+	LD	A,(HL)				; LD DXL in A
+	INC	HL
+	INC	HL					; HL pointing to DYL
+	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A					; Multiply by 2
+	OUT	(C),A				; And send DXL to #36
+	LD	A,#0x00				; DXH could be 0
+	JR	NC,DO_HMMM.DXH		; If no carry, it is 0
+	INC	A					; Otherwise it is 1
+DO_HMMM.DXH:	OUT	(C),A	; And send DXH to #37
+	LD	A,(HL)				; Load DYL in A
+	INC	HL					
+	INC	HL					; HL pointing @ DYL
+	LD	B,A					; Copy DYL to B
+	LD	A,(#VDP_23)			; Get current vertical offset
+	ADD	A,B					; Add our DYL to it
+	OUT	(C),A				; Send it to #38
+	XOR	A					; DYH always 0
+	OUT	(C),A				; Send it to #38
+	; And now send the rest of buffer,
+	OUTI					; NXL -> #40
+	OUTI					; NXH -> #41
+	OUTI					; NYL -> #42
+	OUTI					; NYH -> #43
+	; And now we skip #44 and go to#45 and #46
+	LD	A,(HL)				; Load ARG in A
+	INC	HL					; HL pointing to CMD
+	OUT	(#0x99),A			; Send it
+	LD	A,#0xAD				; #45				
+	OUT	(#0x99),A			; Send it
+	LD	A,(HL)				; Load CMD in A
+	OUT	(#0x99),A			; Send it
+	LD	A,#0xAE				; #46
+	OUT	(#0x99),A			; Send it
 	EI
 	RET
 	
@@ -1506,6 +1762,22 @@ HMMV_CMD.NYH:	.db	#0x00
 HMMV_CMD.CLR:	.db	#0x00
 HMMV_CMD.ARG:	.db	#0x00
 HMMV_CMD.CMD:	.db	#0xC0
+
+HMMM_CMD:
+HMMM_CMD.SXL:	.db	#0x00
+HMMM_CMD.SXH:	.db	#0x00
+HMMM_CMD.SYL:	.db	#0x00
+HMMM_CMD.SYH:	.db	#0x00
+HMMM_CMD.DXL:	.db	#0x00
+HMMM_CMD.DXH:	.db	#0x00
+HMMM_CMD.DYL:	.db	#0x00
+HMMM_CMD.DYH:	.db	#0x00
+HMMM_CMD.NXL:	.db	#0x00
+HMMM_CMD.NXH:	.db	#0x00
+HMMM_CMD.NYL:	.db	#0x00
+HMMM_CMD.NYH:	.db	#0x00
+HMMM_CMD.ARG:	.db	#0x00
+HMMM_CMD.CMD:	.db	#0xD0
 
 ANSI_PAL:
 	.db	#0x00,#0x00,#0x50,#0x00,#0x00,#0x05,#0x50,#0x02,#0x05,#0x00,#0x55,#0x00,#0x05,#0x05,#0x55,#0x05
