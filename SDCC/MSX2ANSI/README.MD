@@ -17,6 +17,15 @@ As an usage example, check my TELNET terminal source code:
 
 https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
 
+# MSX2ANSI v1.2
+
+Added ESCx5 (turn off cursor) support
+Added ESCy5 (turn on cursor) support
+If a character is below 0x20 and not a screen control code, print it
+Fix characters code 16, 17, 24, 25, 26, 27, 30 and 31
+Probably not all characters below 0x20 (32) are correct... And it is very hard to achieve it with 6 pixels wide font
+
+
 # MSX2ANSI v1.1
 
 Fixed CSI J behavior when no parameter / 0 was choosen
