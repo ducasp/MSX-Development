@@ -19,6 +19,7 @@
 ; v1.3: 
 ; OPJ - Character code 16 was in code 18, fixed that
 ; Piter Punk - Fixed bad behavior of CSIm (no parameters) as well as a crash
+; Piter Punk - Add support for reverse video mode
 ;
 ; v1.2: 
 ; Added ESCx5 (turn off cursor) support

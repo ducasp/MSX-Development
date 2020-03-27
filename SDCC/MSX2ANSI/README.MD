@@ -23,6 +23,8 @@ Character 16 was not correct, fixed that
 
 Piter Punk contributed with a fix for CSIm (no paramters), fixing a crash and a non-standard behavior.
 
+Piter Punk contributed with support for reverse colors mode.
+
 # MSX2ANSI v1.2
 
 Added ESCx5 (turn off cursor) support
