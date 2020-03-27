@@ -656,6 +656,8 @@ ANSI_SGR.RLP:
 	JR	Z,ANSI_SGR.BLD			; SET FONT TO BOLD
 	CP      #7
 	JR      Z,ANSI_SGR.REV                  ; REVERSE COLORS
+	CP      #27
+	JR      Z,ANSI_SGR.URV                  ; UN-REVERSE COLORS
 	CP	#30
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#38
@@ -678,8 +680,8 @@ ANSI_SGR.RES:					; RESET ATTRIBUTES
 					;	5 Blink on
 					;	7 Reverse Video on
 					;	8 Concealed on
-					;     By now, the only one supported
-					;     is BOLD
+					;     By now, the we supports
+					;     BOLD and REVERSE
 	XOR	A				
 	LD	(#HiLighted),A
 	LD	(#Reversed),A
@@ -700,6 +702,13 @@ ANSI_SGR.REV:
 	OR      A
 	JR      NZ,ANSI_SGR.CLR
 	LD      A,#0x01
+	LD      (#Reversed),A
+	JR      ANSI_SGR.SWP
+ANSI_SGR.URV:
+	LD      A,(#Reversed)
+	OR      A
+	JR      Z,ANSI_SGR.CLR
+	XOR	A
 	LD      (#Reversed),A
 	JR      ANSI_SGR.SWP
 ANSI_SGR.SFC:	
