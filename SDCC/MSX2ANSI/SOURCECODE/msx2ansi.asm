@@ -641,10 +641,11 @@ ANSI_DL:
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
 	OR	A
-	;JR	Z,ANSI_SGR.RET
-	; OPJ: Zero parameters -> Reset attributes
-	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	LD	DE,#Parameters.PRM
+	; OPJ: Zero parameters -> Reset attributes, 
+	JR	NZ,ANSI_SGR.RLP			
+	LD	(DE),A
+	LD	B,#0x01
 ANSI_SGR.RLP:	
 	PUSH	BC
 	LD	A,(DE)
@@ -667,9 +668,22 @@ ANSI_SGR.UNK:
 ANSI_SGR.RET:	
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
-ANSI_SGR.RES:	
-	XOR	A						; RESET ATTRIBUTES
+ANSI_SGR.RES:					; RESET ATTRIBUTES
+					; PK: Reset text attributes, they 
+					;     are:
+					;	1 Bold
+					;	4 Underscore
+					;	5 Blink on
+					;	7 Reverse Video on
+					;	8 Concealed on
+					;     By now, the only one supported
+					;     is BOLD
+	XOR	A				
 	LD	(#HiLighted),A
+					; PK: Some softwares expects that 
+					;     reset restore the text and
+					;     background colors to a sane 
+					;     default
 	LD	(#BackColor),A
 	LD	A,#0x07
 	LD	(#ForeColor),A
@@ -1782,7 +1796,6 @@ ForeColor:	.db	#0x07
 FontColor:	.db	#0x07
 
 HiLighted:	.db	#0x00
-
 
 ANSI_M:		.db	#0x00		; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
 ANSI_P:		.dw	#ANSI_S		; Point the next free position in buffer
