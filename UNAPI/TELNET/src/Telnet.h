@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.23
+--   Revision 1.24
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -105,11 +105,12 @@ const unsigned char ucCrLf[3]="\r\n"; //auxiliary
 const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
                        "<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\r\n\r\n"
                        "a: turns off automatic download detection (some BBSs can't be used with it)\r\n"
+                       "o: turns off ANSI rendering and use MSX-DOS text rendering\r\n"
                        "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.23 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.23 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.24 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.24 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_Up[] = "\x1b[A";
 const char ucCursor_Down[] = "\x1b[B";
 const char ucCursor_Forward[] = "\x1b[C";
@@ -118,7 +119,7 @@ const char ucCursor_Backward[] = "\x1b[D";
 //Our Flags
 unsigned char ucEcho; //Echo On?
 unsigned char ucAutoDownload; //Auto download on binary transfers?
-unsigned char ucAnsi; //Detected J-ANSI or using external ANSI?
+unsigned char ucAnsi; //Using ANSI rendering?
 unsigned char ucEnterHit; //user has input enter?
 unsigned char ucWidth40; //Detected 40 Columns or less?
 unsigned char ucSentWill; //Sent what information we are willing for negotiation?
@@ -148,7 +149,7 @@ unsigned int uiGetSize;
 Z80_registers regs; //auxiliary structure for asm function calling
 
 unsigned char negotiate(unsigned char *ucBuf);
-unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort);
+unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption);
 void ParseTelnetData(unsigned char * ucBuffer);
 void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall;
 #endif // _TELNET_HEADER_INCLUDED

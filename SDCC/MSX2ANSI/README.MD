@@ -17,6 +17,14 @@ As an usage example, check my TELNET terminal source code:
 
 https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
 
+# MSX2ANSI v1.3
+
+Character 16 was not correct, fixed that
+
+Piter Punk contributed with a fix for CSIm (no paramters), fixing a crash and a non-standard behavior.
+
+Piter Punk contributed with support for reverse colors mode.
+
 # MSX2ANSI v1.2
 
 Added ESCx5 (turn off cursor) support
@@ -36,5 +44,7 @@ Added CSI n P support for Linux telnet daemons
 All source code and binaries: 
 (c)Tobias Keizer (original version of ANSI-DRV.BIN)
 (c)2019 - 2020 Oduvaldo Pavan Junior - ducasp@gmail.com (modified version, adding sprite cursor and fixing a few bugs and adding some features, remember, all hard work on the rendering engine was done by Toby!)
+
+Thanks to Piter Punk for his contribution on fixing CSIm behavior!
 
 All code can be re-used, re-written, as long as the source code of changes is made public as well and the original authors are credited.

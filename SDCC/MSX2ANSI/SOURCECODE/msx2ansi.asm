@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.2
+; MSX2ANSI ANSI V9938 Library v.1.3
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -7,12 +7,19 @@
 ; This version of code and conversion into SDCC library by Oduvaldo Pavan Junior
 ; ducasp@gmail.com
 ;
+; Thanks to Piter Punk for his contribution on fixing ESC[m (no parameters) behavior
+;
 ; Comercial usage of this code or derivative works of this code are
 ; allowed ONLY upon agreement with the author.
 ; Non-comercial usage is free as long as you publish your code changes and give
 ; credits to the original authors
 ;
 ; Changelog:
+;
+; v1.3: 
+; OPJ - Character code 16 was in code 18, fixed that
+; Piter Punk - Fixed bad behavior of CSIm (no parameters) as well as a crash
+; Piter Punk - Add support for reverse video mode
 ;
 ; v1.2: 
 ; Added ESCx5 (turn off cursor) support
@@ -641,10 +648,11 @@ ANSI_DL:
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
 	OR	A
-	;JR	Z,ANSI_SGR.RET
-	; OPJ: Zero parameters -> Reset attributes
-	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	LD	DE,#Parameters.PRM
+	; OPJ: Zero parameters -> Reset attributes, 
+	JR	NZ,ANSI_SGR.RLP			
+	LD	(DE),A
+	LD	B,#0x01
 ANSI_SGR.RLP:	
 	PUSH	BC
 	LD	A,(DE)
@@ -653,6 +661,10 @@ ANSI_SGR.RLP:
 	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	CP	#1
 	JR	Z,ANSI_SGR.BLD			; SET FONT TO BOLD
+	CP      #7
+	JR      Z,ANSI_SGR.REV                  ; REVERSE COLORS
+	CP      #27
+	JR      Z,ANSI_SGR.URV                  ; UN-REVERSE COLORS
 	CP	#30
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#38
@@ -667,9 +679,23 @@ ANSI_SGR.UNK:
 ANSI_SGR.RET:	
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
-ANSI_SGR.RES:	
-	XOR	A						; RESET ATTRIBUTES
+ANSI_SGR.RES:					; RESET ATTRIBUTES
+					; PK: Reset text attributes, they 
+					;     are:
+					;	1 Bold
+					;	4 Underscore
+					;	5 Blink on
+					;	7 Reverse Video on
+					;	8 Concealed on
+					;     By now, the we supports
+					;     BOLD and REVERSE
+	XOR	A				
 	LD	(#HiLighted),A
+	LD	(#Reversed),A
+					; PK: Some softwares expects that 
+					;     reset restore the text and
+					;     background colors to a sane 
+					;     default
 	LD	(#BackColor),A
 	LD	A,#0x07
 	LD	(#ForeColor),A
@@ -678,6 +704,20 @@ ANSI_SGR.BLD:
 	LD	A,#0x01
 	LD	(#HiLighted),A
 	JR	ANSI_SGR.CLR
+ANSI_SGR.REV:
+	LD      A,(#Reversed)
+	OR      A
+	JR      NZ,ANSI_SGR.CLR
+	LD      A,#0x01
+	LD      (#Reversed),A
+	JR      ANSI_SGR.SWP
+ANSI_SGR.URV:
+	LD      A,(#Reversed)
+	OR      A
+	JR      Z,ANSI_SGR.CLR
+	XOR	A
+	LD      (#Reversed),A
+	JR      ANSI_SGR.SWP
 ANSI_SGR.SFC:	
 	SUB	#30
 	LD	(#ForeColor),A
@@ -689,6 +729,14 @@ ANSI_SGR.SBC:
 ANSI_SGR.CLR:	
 	CALL	V9938_SetColors
 	JR	ANSI_SGR.UNK
+ANSI_SGR.SWP:
+	LD      A,(#ForeColor)
+	LD      B,A
+	LD      A,(#BackColor)
+	LD      (#ForeColor),A
+	LD      A,B
+	LD      (#BackColor),A
+	JR      ANSI_SGR.CLR
 
 VT52_ENCURSOR:
 	DI
@@ -1783,6 +1831,7 @@ FontColor:	.db	#0x07
 
 HiLighted:	.db	#0x00
 
+Reversed:	.db	#0x00
 
 ANSI_M:		.db	#0x00		; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
 ANSI_P:		.dw	#ANSI_S		; Point the next free position in buffer
@@ -1877,7 +1926,7 @@ FontData:
 	.db #0x30,#0x28,#0x24,#0x24,#0x28,#0x20,#0xE0,#0xC0 ;013 / 0x0D - 
 	.db #0x3C,#0x24,#0x3C,#0x24,#0x24,#0xE4,#0xDC,#0x18 ;014 / 0x0E - 
 	.db #0x10,#0x54,#0x38,#0xEC,#0x38,#0x54,#0x10,#0x00 ;015 / 0x0F - 
-	.db #0x10,#0x10,#0x10,#0x7C,#0x10,#0x10,#0x10,#0x10 ;016 / 0x10 - 
+	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;016 / 0x10 - Arrow tip to right
 	.db #0x10,#0x30,#0x70,#0xF0,#0x70,#0x30,#0x10,#0x00 ;017 / 0x11 - Arrow tip to left
 	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;018 / 0x12 - Arrow tip to right
 	.db #0x10,#0x10,#0x10,#0xF0,#0x10,#0x10,#0x10,#0x10 ;019 / 0x13 - 

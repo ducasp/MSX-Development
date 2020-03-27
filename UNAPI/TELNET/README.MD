@@ -1,7 +1,13 @@
-# TELNET v1.23
+# TELNET v1.24
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+# CHANGELOG v1.24
+	- Re-compiled with new version of MSX2ANSI library. Piter Punk kindly fixed
+	an issue with CSIm (no parameters) as well added support to reverse colors.
+	It was crashing and also the behavior of CSIm or CSI0m was not proper. 
+	Thanks Piter!
+	
 # CHANGELOG v1.23
 	- Changed the way to handle keyboard input, Fusion-C removed support for
 	  the method I've used before.
