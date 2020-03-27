@@ -645,6 +645,7 @@ ANSI_SGR:						; ANSI Set Graphics Rendition
 	; OPJ: Zero parameters -> Reset attributes, 
 	JR	NZ,ANSI_SGR.RLP			
 	LD	(DE),A
+	LD	B,#0x01
 ANSI_SGR.RLP:	
 	PUSH	BC
 	LD	A,(DE)
@@ -667,17 +668,25 @@ ANSI_SGR.UNK:
 ANSI_SGR.RET:	
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
-ANSI_SGR.RES:
-	; PK: Reset text attributes, they are:
-	;	1 Bold
-	;	4 Underscore
-	;	5 Blink on
-	;	7 Reverse Video on
-	;	8 Concealed on
-	;     By now, the only one supported is BOLD
-	;
-	XOR	A				; RESET ATTRIBUTES
+ANSI_SGR.RES:					; RESET ATTRIBUTES
+					; PK: Reset text attributes, they 
+					;     are:
+					;	1 Bold
+					;	4 Underscore
+					;	5 Blink on
+					;	7 Reverse Video on
+					;	8 Concealed on
+					;     By now, the only one supported
+					;     is BOLD
+	XOR	A				
 	LD	(#HiLighted),A
+					; PK: Some softwares expects that 
+					;     reset restore the text and
+					;     background colors to a sane 
+					;     default
+	LD	(#BackColor),A
+	LD	A,#0x07
+	LD	(#ForeColor),A
 	JR	ANSI_SGR.CLR
 ANSI_SGR.BLD:	
 	LD	A,#0x01
