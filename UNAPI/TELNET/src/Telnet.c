@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.23
+--   Revision 1.24
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -278,7 +278,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
 // It is mandatory to have server:port as first argument
 // All other arguments are optional
 //
-unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort)
+unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption)
 {
 	unsigned int iRet = 0;
 	unsigned char * ucMySeek = NULL;
@@ -288,6 +288,7 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 	//Defaults
     ucAutoDownload = 1; //Auto download On
     ucStandardDataTransfer = 1; //usually standard
+    *ucAnsiOption = 1; //try to render ANSI if possible
 
 	if (argc)
 	{
@@ -312,6 +313,8 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
                 ucInput = (unsigned char*)argv[ucTmp];
                 if ( (ucInput[0]=='a')||(ucInput[0]=='A') )
                     ucAutoDownload = 0; //turn off auto download selection pop-up when binary transmission command received
+                else if ( (ucInput[0]=='o')||(ucInput[0]=='O') )
+                    *ucAnsiOption = 0; //turn off ansi rendering
                 else if ( (ucInput[0]=='r')||(ucInput[0]=='R') )
                     ucStandardDataTransfer = 0; //server misbehave and do not double FF on file transfers
             }
@@ -334,11 +337,9 @@ int main(char** argv, int argc)
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
-    // no bytes received yet
+    //no bytes received yet
     uiGetSize = 0;
-    // For now, let's say we do not have ANSI
-	ucAnsi = 0;
-	//save cursor status
+    //save cursor status
 	ucCursorSave = ucCursorDisplayed;
 
 	// Telnet Protocol Flags
@@ -350,7 +351,7 @@ int main(char** argv, int argc)
 	initPrint();
 
 	// Validate command line parameters
-    if(!IsValidInput(argv, argc, ucServer, ucPort))
+    if(!IsValidInput(argv, argc, ucServer, ucPort, &ucAnsi))
 	{
 		// If invalid parameters, just show some instructions
 		print(ucSWInfo);
@@ -363,10 +364,14 @@ int main(char** argv, int argc)
 	//What type of MSX?
     if(ReadMSXtype()!=0) //>MSX-1
     {
-        ucAnsi = 1; //ok, let's tell we are ANSI terminal
-        initAnsi((unsigned int)SendCursorPosition);
+        // are we going to render ansi?
+        if (ucAnsi)
+            initAnsi((unsigned int)SendCursorPosition);
+        else // if not, let's ensure 80 columns mode
+            Width(80);
     }
-    else
+
+    if (!ucAnsi)
     {
         //Ok, no ANSI, do we have 80 columns?
         if (ucLinLen<80)
@@ -426,9 +431,6 @@ int main(char** argv, int argc)
             // A key has been hit?
             if (ucTxData)
             {
-                // Get the key
-                ucTxData = InputChar ();
-
                 if (ucTxData == 0x02) //CTRL + B - Start file download
                     XYModemGet(ucConnNumber, ucStandardDataTransfer);
 #ifdef XYMODEM_UPLOAD_SUPPORT

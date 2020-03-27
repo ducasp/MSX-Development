@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.2
+; MSX2ANSI ANSI V9938 Library v.1.3
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -7,12 +7,18 @@
 ; This version of code and conversion into SDCC library by Oduvaldo Pavan Junior
 ; ducasp@gmail.com
 ;
+; Thanks to Piter Punk for his contribution on fixing ESC[m (no parameters) behavior
+;
 ; Comercial usage of this code or derivative works of this code are
 ; allowed ONLY upon agreement with the author.
 ; Non-comercial usage is free as long as you publish your code changes and give
 ; credits to the original authors
 ;
 ; Changelog:
+;
+; v1.3: 
+; OPJ - Character code 16 was in code 18, fixed that
+; Piter Punk - Fixed bad behavior of CSIm (no parameters) as well as a crash
 ;
 ; v1.2: 
 ; Added ESCx5 (turn off cursor) support
@@ -1890,7 +1896,7 @@ FontData:
 	.db #0x30,#0x28,#0x24,#0x24,#0x28,#0x20,#0xE0,#0xC0 ;013 / 0x0D - 
 	.db #0x3C,#0x24,#0x3C,#0x24,#0x24,#0xE4,#0xDC,#0x18 ;014 / 0x0E - 
 	.db #0x10,#0x54,#0x38,#0xEC,#0x38,#0x54,#0x10,#0x00 ;015 / 0x0F - 
-	.db #0x10,#0x10,#0x10,#0x7C,#0x10,#0x10,#0x10,#0x10 ;016 / 0x10 - 
+	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;016 / 0x10 - Arrow tip to right
 	.db #0x10,#0x30,#0x70,#0xF0,#0x70,#0x30,#0x10,#0x00 ;017 / 0x11 - Arrow tip to left
 	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;018 / 0x12 - Arrow tip to right
 	.db #0x10,#0x10,#0x10,#0xF0,#0x10,#0x10,#0x10,#0x10 ;019 / 0x13 - 
