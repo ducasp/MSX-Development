@@ -660,6 +660,10 @@ ANSI_SGR.RLP:
 	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	CP	#1
 	JR	Z,ANSI_SGR.BLD			; SET FONT TO BOLD
+	CP      #7
+	JR      Z,ANSI_SGR.REV                  ; REVERSE COLORS
+	CP      #27
+	JR      Z,ANSI_SGR.URV                  ; UN-REVERSE COLORS
 	CP	#30
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#38
@@ -682,10 +686,11 @@ ANSI_SGR.RES:					; RESET ATTRIBUTES
 					;	5 Blink on
 					;	7 Reverse Video on
 					;	8 Concealed on
-					;     By now, the only one supported
-					;     is BOLD
+					;     By now, the we supports
+					;     BOLD and REVERSE
 	XOR	A				
 	LD	(#HiLighted),A
+	LD	(#Reversed),A
 					; PK: Some softwares expects that 
 					;     reset restore the text and
 					;     background colors to a sane 
@@ -698,6 +703,20 @@ ANSI_SGR.BLD:
 	LD	A,#0x01
 	LD	(#HiLighted),A
 	JR	ANSI_SGR.CLR
+ANSI_SGR.REV:
+	LD      A,(#Reversed)
+	OR      A
+	JR      NZ,ANSI_SGR.CLR
+	LD      A,#0x01
+	LD      (#Reversed),A
+	JR      ANSI_SGR.SWP
+ANSI_SGR.URV:
+	LD      A,(#Reversed)
+	OR      A
+	JR      Z,ANSI_SGR.CLR
+	XOR	A
+	LD      (#Reversed),A
+	JR      ANSI_SGR.SWP
 ANSI_SGR.SFC:	
 	SUB	#30
 	LD	(#ForeColor),A
@@ -709,6 +728,14 @@ ANSI_SGR.SBC:
 ANSI_SGR.CLR:	
 	CALL	V9938_SetColors
 	JR	ANSI_SGR.UNK
+ANSI_SGR.SWP:
+	LD      A,(#ForeColor)
+	LD      B,A
+	LD      A,(#BackColor)
+	LD      (#ForeColor),A
+	LD      A,B
+	LD      (#BackColor),A
+	JR      ANSI_SGR.CLR
 
 VT52_ENCURSOR:
 	DI
@@ -1802,6 +1829,8 @@ ForeColor:	.db	#0x07
 FontColor:	.db	#0x07
 
 HiLighted:	.db	#0x00
+
+Reversed:	.db	#0x00
 
 ANSI_M:		.db	#0x00		; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
 ANSI_P:		.dw	#ANSI_S		; Point the next free position in buffer
