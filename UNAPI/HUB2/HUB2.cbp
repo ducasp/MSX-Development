@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="HUB2" />
+		<Option pch_mode="2" />
+		<Option compiler="sdcc" />
+		<Build>
+			<Target title="Release">
+				<Option output="bin/Release/HUB2" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="sdcc" />
+				<Compiler>
+					<Add option="--out-fmt-ihx" />
+					<Add option="--no-std-crt0" />
+					<Add option="-mz80" />
+					<Add option="--opt-code-speed" />
+					<Add option="--verbose" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196  --allow-unsafe-read" />
+					<Add directory="../fusion-c/header" />
+				</Compiler>
+				<Linker>
+					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="../fusion-c/lib/msx2ansi.lib" />
+					<Add library="../fusion-c/lib/fusion.lib" />
+					<Add library="../fusion-c/lib/asm.lib" />
+					<Add library="../fusion-c/lib/base64.lib" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="cmd /c ren bin\Release\HUB2.exe HUB2.ihx" />
+					<Add after="cmd /c ..\hex2bin -e com bin\Release\HUB2.ihx" />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Unit filename="src/HUB2.c">
+			<Option compilerVar="CC" />
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="src/HUB2.h" />
+		<Unit filename="src/HUB2menus.h" />
+		<Unit filename="src/dos.c">
+			<Option compilerVar="CC" />
+			<Option weight="100" />
+		</Unit>
+		<Unit filename="src/dos.h" />
+		<Unit filename="src/hget.c">
+			<Option compilerVar="CC" />
+			<Option weight="0" />
+		</Unit>
+		<Unit filename="src/hget.h" />
+		<Unit filename="src/hgetlib.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
