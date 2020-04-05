@@ -1,7 +1,7 @@
 /*
 --
--- HUB2menus.h
---   MSX HUB client using UNAPI for MSX.
+-- HUBGmenus.h
+--   MSX HUB client using UNAPI for MSX2.
 --   Revision 0.1
 --
 -- Requires SDCC and Fusion-C library to compile
@@ -34,14 +34,14 @@
 --
 */
 
-#ifndef _HUB2MENUS_HEADER_INCLUDED
-#define _HUB2MENUS_HEADER_INCLUDED
+#ifndef _HUBGMENUS_HEADER_INCLUDED
+#define _HUBGMENUS_HEADER_INCLUDED
 
 //BIG, HUGE, GIGANTIC EXTRA LARGE WARNING!!!!
 //Only edit this file on a text editor that supports CP850 or 437, otherwise strings converted to UTF8 will be looking like... meh!
 
-const char chHub2Menu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on black background
-                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.70\x1b[0;31mออออออออออป"
+const char chHubGMenu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on black background
+                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.71\x1b[0;31mออออออออออป"
                        "ฬอออออออออออออออออออออออออออออออออออออออหออออออออออออออออออออออออออออออออออออออน"
 					   "บ\x1b[3;41Hบ\x1b[3;80Hบ"
 					   "ฬออออออออออออออออออออหออออออออออออออออออสออออออออออออออออออออออออออออออออออออออน"
@@ -78,4 +78,4 @@ const char chClearBothStatusWindows[] = "\x1b[0;31;40m\x1b[21;3H\x1b[K\x1b[21;80
 const char chIconOn[] = "\x1b[23;2H\x1b[1;32;40m*";
 const char chIconOff[] = "\x1b[23;2H\x1b[0;31;40m ";
 const char chClearBarWindow[] = "\x1b[0;31;40m\x1b[23;4H\x1b[K\x1b[23;80Hบ";
-#endif // _HUB2MENUS_HEADER_INCLUDED
+#endif // _HUBGMENUS_HEADER_INCLUDED

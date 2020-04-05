@@ -2,15 +2,25 @@
 --
 -- HGET.h
 --   Header for HGET.c
---   Revision 0.1
+--   Revision 0.2
 --
---        Oduvaldo Pavan Junior 04/2020 v0.1
+--        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
 --
 --   Based on HGET Unapi Utility that is a work from:
 --        Konamiman 1/2011 v1.1
 --        Oduvaldo Pavan Junior 07/2019 v1.3
 --
 */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include "hgetlib.h"
+//These are available at www.konamiman.com
+#include "asm.h"
+#include "base64.h"
+
+
 #ifndef HGET_H
 #define HGET_H
 #define _TERM0 0
@@ -152,7 +162,8 @@ bool TlsIsSupported = false;
 byte tcpIpSpecificationVersionMain;
 byte tcpIpSpecificationVersionSecondary;
 #endif
-//bool RedirectKeepAliveSupported = false;
+bool tryKeepAlive = false;
+bool keepingConnectionAlive = false;
 byte redirectionRequests = 0;
 static funcptr UpdateReceivedStatus;
 static funcdataptr SaveReceivedData;

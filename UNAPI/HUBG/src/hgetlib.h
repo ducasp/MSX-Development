@@ -2,15 +2,19 @@
 
  HGETLIB.h
    Header for HGET.c application interface
-   Revision 0.1
+   Revision 0.2
 
-        Oduvaldo Pavan Junior 04/2020 v0.1
+        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
 
    Based on HGET Unapi Utility that is a work from:
         Konamiman 1/2011 v1.1
         Oduvaldo Pavan Junior 07/2019 v1.3
 
    HGET Library history:
+   Version 0.2 - making code cleaner and trying to keep Konamiman style, also
+   adding basic support to keep-alive connections, also, agent is defined in
+   hgetlib.h so each application can define it own by changing it.
+
    Version 0.1 - it is a simplification of HGET so it can be used as a library
    inside a project. It doesn't intend to have the exact same features, but has
    different objectives:
@@ -45,6 +49,9 @@
 */
 #ifndef HGETLIB_H
 #define HGETLIB_H
+
+#define HGET_RETRIES 1
+#define HGET_AGENT "User-Agent: MSXHUBG (MSX-DOS)\r\n"
 
 #ifndef bool
 typedef unsigned char bool;
@@ -90,16 +97,17 @@ enum HgetReturnCodes {
     ERR_HGET_REDIRECT_BUT_NO_NEW_LOCATION_PROVIDED, //30
     ERR_HGET_AUTH_REQUESTED_BUT_NO_CREDENTIALS_PROVIDED, //31
     ERR_HGET_TRANSFER_TIMEOUT, //32
-    ERR_HGET_CONN_LOST //33
+    ERR_HGET_CONN_LOST, //33
+    ERR_HGET_INVALID_BUFFER //34
 };
 
 int hgetinit (unsigned int addressforbuffer);
 void hgetfinish (void);
 char* ltoa(unsigned long num, char *string);
 #ifdef USE_TLS
-int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback);
+int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive);
 #else
-int hget (char* url, char* filename, char* credent, int progress_callback, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback);
+int hget (char* url, char* filename, char* credent, int progress_callback, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive);
 #endif
 
 #endif

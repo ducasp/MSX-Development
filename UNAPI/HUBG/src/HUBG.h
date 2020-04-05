@@ -1,8 +1,8 @@
 /*
 --
--- HUB2.h
---   MSX HUB client using UNAPI for MSX.
---   Revision 0.7
+-- HUBG.h
+--   MSX HUB client using UNAPI for MSX2.
+--   Revision 0.71
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -36,14 +36,14 @@
 --
 */
 
-#ifndef _HUB2_HEADER_INCLUDED
-#define _HUB2_HEADER_INCLUDED
+#ifndef _HUBG_HEADER_INCLUDED
+#define _HUBG_HEADER_INCLUDED
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../../fusion-c/header/msx_fusion.h"
 #include "../../fusion-c/header/asm.h"
-#include "HUB2menus.h"
+#include "HUBGmenus.h"
 #include "hgetlib.h"
 
 #define MAX_PATH_SIZE (64)
@@ -69,7 +69,7 @@
 #define MAX_REMOTE_GROUP_ITENS 9
 
 // Main menu is driven by a state-machine, those are the states
-enum Hub2States {
+enum HubGStates {
     STATE_IDLE_LOCAL = 0,
     STATE_REDRAW_LOCAL_PAGE,
     STATE_REFRESH_LOCAL_PAGE,
@@ -172,4 +172,4 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage);
 void upgrade(unsigned char ucPage, unsigned char ucItem);
 void info(char *package);
 unsigned char is_installed(unsigned char *ucPackage);
-#endif // _HUB2_HEADER_INCLUDED
+#endif // _HUBG_HEADER_INCLUDED

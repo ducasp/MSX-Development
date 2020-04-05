@@ -1,11 +1,15 @@
-/* HTTP getter Library 0.1
-        Oduvaldo Pavan Junior 04/2020 v0.1
+/* HTTP getter Library 0.2
+        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
 
    Based on HGET Unapi Utility that is a work from:
         Konamiman 1/2011 v1.1
         Oduvaldo Pavan Junior 07/2019 v1.3
 
    HGET Library history:
+   Version 0.2 - making code cleaner and trying to keep Konamiman style, also
+   adding basic support to keep-alive connections, also, agent is defined in
+   hgetlib.h so each application can define it own by changing it.
+
    Version 0.1 - it is a simplification of HGET so it can be used as a library
    inside a project. It doesn't intend to have the exact same features, but has
    different objectives:
@@ -38,61 +42,59 @@
    file size is unknown. This is way easier on VDP / CALLs and allow better
    performance on fast adapters that can use the extra CPU time.
 */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-//These are available at www.konamiman.com
-#include "asm.h"
-#include "base64.h"
-#include "hgetlib.h"
 #include "hget.h"
-
 
 int hgetinit (unsigned int addressforbuffer)
 {
-    hasinitialized = true;
+    hasinitialized = false;
     thereisacallback = false;
     thereisasavecallback = false;
+    unsigned int bufferSize = sizeof(t_TcpConnectionParameters) + sizeof(unapi_code_block) + 0x200 + TCP_BUFFER_SIZE;
 #ifdef USE_TLS
     TlsIsSupported = false;
     useHttps = false;
 #endif
-    //RedirectKeepAliveSupported = false;
+    tryKeepAlive = false;
 
-    //InitializeBufferPointers - We need room for at least 1560 bytes from the beginning of addressforbuffer
-    TcpConnectionParameters = (t_TcpConnectionParameters*)addressforbuffer; // 69
-    domainName =(char*)((unsigned int)TcpConnectionParameters + sizeof(t_TcpConnectionParameters)); // 512 - 69 = 443
-    codeBlock = (unapi_code_block*)(addressforbuffer + 0x200); // 24
-    TcpInputData = (byte*)((unsigned int)codeBlock + sizeof(unapi_code_block)); //TCP_BUFFER_SIZE -> 1024
+    //InitializeBufferPointers - We need room for our data from the beginning of addressforbuffer
+    //And that data MUST NOT be in page 1, that means, 0x4000 to 0x7FFF, as this is where UNAPI
+    //device code resides and calls to UNAPI will switch that page
+    if ((addressforbuffer>=0x8000)||((addressforbuffer+bufferSize)<0x4000)) {
+        TcpConnectionParameters = (t_TcpConnectionParameters*)addressforbuffer; // 69
+        domainName = (char*)((unsigned int)TcpConnectionParameters + sizeof(t_TcpConnectionParameters)); // 512
+        codeBlock = (unapi_code_block*)((unsigned int)domainName + 0x200); // 24
+        TcpInputData = (byte*)((unsigned int)codeBlock + sizeof(unapi_code_block)); //TCP_BUFFER_SIZE -> 1024
 
-    if (!InitializeTcpipUnapi())
-        return ERR_TCPIPUNAPI_NOTFOUND;
-    if (!CheckTcpipCapabilities())
-        return ERR_TCPIPUNAPI_NOT_TCPIP_CAPABLE;
+        if (!InitializeTcpipUnapi())
+            return ERR_TCPIPUNAPI_NOTFOUND;
+        if (!CheckTcpipCapabilities())
+            return ERR_TCPIPUNAPI_NOT_TCPIP_CAPABLE;
 
-    return ERR_TCPIPUNAPI_OK;
+        hasinitialized = true;
+        return ERR_TCPIPUNAPI_OK;
+    } else
+        return ERR_HGET_INVALID_BUFFER;
+
 }
 
 
 void hgetfinish (void)
 {
-    if (hasinitialized)
-    {
+    if (hasinitialized) {
         thereisacallback = false;
+        keepingConnectionAlive = false;
+        tryKeepAlive = false;
         CloseTcpConnection();
         CloseLocalFile();
     }
 }
 #ifdef USE_TLS
-int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback)
+int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive)
 #else
-int hget (char* url, char* filename, char* credent, int progress_callback, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback)
+int hget (char* url, char* filename, char* credent, int progress_callback, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive)
 #endif
 {
-    int iRet;
+    int funcret;
     char* pointer;
 #ifdef USE_TLS
 	mustCheckCertificate = checkcertificateifssl;
@@ -112,34 +114,35 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
     else
         localFileName[0] = '\0';
 
-    if (progress_callback)
-    {
+    if (progress_callback) {
         UpdateReceivedStatus = (funcptr)progress_callback;
         thereisacallback = true;
-    }
-    else
+    } else
         thereisacallback = false;
 
-    if (data_write_callback)
-    {
+    if (data_write_callback) {
         SaveReceivedData = (funcdataptr)data_write_callback;
         thereisasavecallback = true;
-    }
-    else
+    } else
         thereisasavecallback = false;
 
-    if (content_size_callback)
-    {
+    if (content_size_callback) {
         SendContentSize = (funcsizeptr)content_size_callback;
         thereisasizecallback = true;
-    }
-    else
+    } else
         thereisasizecallback = false;
 
-    *domainName = '\0';
-    iRet = ProcessUrl(url, 0);
-    if (iRet != ERR_TCPIPUNAPI_OK)
-        return iRet;
+    tryKeepAlive = enableKeepAlive;
+
+    //did the previous operation asked to keep connection alive?
+    if (!keepingConnectionAlive) {
+        *domainName = '\0';
+        funcret = ProcessUrl(url, 0);
+    } else //connection is alive, so treat as redirection so it checks the previous domain name
+        funcret = ProcessUrl(url, 1);
+
+    if (funcret != ERR_TCPIPUNAPI_OK)
+        return funcret;
 
     if(localFileName[0] == '\0') {
         pointer = FindLastSlash(remoteFilePath);
@@ -154,12 +157,12 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
     if (!CheckNetworkConnection())
         return ERR_TCPIPUNAPI_NO_CONNECTION;
 
-    iRet = DoHttpWork(rcvbuffer, rcvbuffersize);
+    funcret = DoHttpWork(rcvbuffer, rcvbuffersize);
 
-    if (iRet == ERR_TCPIPUNAPI_OK)
+    if (funcret == ERR_TCPIPUNAPI_OK)
         Terminate();
 
-    return iRet;
+    return funcret;
 }
 
 
@@ -169,7 +172,10 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
 
 void Terminate()
 {
-    CloseTcpConnection();
+    if (!tryKeepAlive) {
+        CloseTcpConnection();
+        keepingConnectionAlive = false;
+    }
     CloseLocalFile();
 }
 
@@ -200,10 +206,6 @@ bool CheckTcpipCapabilities()
         return false;
     }
 
-    /*reg.Bytes.B = 2;
-    UnapiCall(codeBlock, TCPIP_GET_CAPAB, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.B > 1)
-        RedirectKeepAliveSupported = true;*/
 #ifdef USE_TLS
     TlsIsSupported = false;
     safeTlsIsSupported = false;
@@ -383,20 +385,23 @@ char* FindFirstSemicolon(char* string)
 
 int DoHttpWork(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
-    int iRet;
+    int funcret;
+    byte retries = HGET_RETRIES;
 
     authenticationRequested = 0;
 	redirectionRequests = 0;
 
     ResetTcpBuffer();
 
-    iRet = ResolveServerName();
-    if (iRet != ERR_TCPIPUNAPI_OK)
-        return iRet;
+    if ((!keepingConnectionAlive)||((keepingConnectionAlive)&&(redirectionUrlIsNewDomainName))) {
+        funcret = ResolveServerName();
+        if (funcret != ERR_TCPIPUNAPI_OK)
+            return funcret;
 
-    iRet = OpenTcpConnection();
-    if (iRet != ERR_TCPIPUNAPI_OK)
-        return iRet;
+        funcret = OpenTcpConnection();
+        if (funcret != ERR_TCPIPUNAPI_OK)
+            return funcret;
+    }
 
     do {
         // Initialize HTTP Variables
@@ -407,15 +412,48 @@ int DoHttpWork(char *rcvbuffer, unsigned int *rcvbuffersize)
         contentLength = 0;
         newLocationReceived = 0;
 
-        iRet = SendHttpRequest();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-            return iRet;
-        iRet = ReadResponseHeaders();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-            return iRet;
-        iRet = CheckHeaderErrors();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-            return iRet;
+        funcret = SendHttpRequest();
+        if (funcret != ERR_TCPIPUNAPI_OK) {
+            if (retries)
+            {
+                --retries;
+                CloseTcpConnection();
+                ResolveServerName();
+                OpenTcpConnection();
+                ResetTcpBuffer();
+                continue;
+            }
+            else
+                return funcret;
+        }
+        funcret = ReadResponseHeaders();
+        if (funcret != ERR_TCPIPUNAPI_OK) {
+            if (retries)
+            {
+                --retries;
+                CloseTcpConnection();
+                ResolveServerName();
+                OpenTcpConnection();
+                ResetTcpBuffer();
+                continue;
+            }
+            else
+                return funcret;
+        }
+        funcret = CheckHeaderErrors();
+        if (funcret != ERR_TCPIPUNAPI_OK) {
+            if (retries)
+            {
+                --retries;
+                CloseTcpConnection();
+                ResolveServerName();
+                OpenTcpConnection();
+                ResetTcpBuffer();
+                continue;
+            }
+            else
+                return funcret;
+        }
         if(redirectionRequested) {
             if(redirectionUrlIsNewDomainName) {
                 CloseTcpConnection();
@@ -424,66 +462,63 @@ int DoHttpWork(char *rcvbuffer, unsigned int *rcvbuffersize)
             }
             ResetTcpBuffer();
         } else if(continueReceived || authenticationRequested) {
-            iRet = DiscardBogusHttpContent();
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
+            funcret = DiscardBogusHttpContent();
+            if (funcret != ERR_TCPIPUNAPI_OK)
+                return funcret;
         }
     } while(continueReceived || redirectionRequested || authenticationRequested);
 
 	DownloadHttpContents(rcvbuffer, rcvbuffersize);
-    return iRet;
+    return funcret;
 }
 
 
 int DiscardBogusHttpContent()
 {
-    int iRet = ERR_TCPIPUNAPI_OK;
+    int funcret = ERR_TCPIPUNAPI_OK;
     while(remainingInputData > 0) {
-        iRet = GetInputByte(NULL);
-        if (iRet!=ERR_TCPIPUNAPI_OK)
-            return iRet;
+        funcret = GetInputByte(NULL);
+        if (funcret!=ERR_TCPIPUNAPI_OK)
+            return funcret;
     }
-    return iRet;
+    return funcret;
 }
 
 
 int SendHttpRequest()
 {
-    int iReturn;
+    int funcret;
     sprintf(TcpOutputData, "%s %s HTTP/1.1\r\n", "GET", remoteFilePath);
-    iReturn = SendLineToTcp(TcpOutputData);
-    if (iReturn!=ERR_TCPIPUNAPI_OK)
-        return iReturn;
+    funcret = SendLineToTcp(TcpOutputData);
+    if (funcret!=ERR_TCPIPUNAPI_OK)
+        return funcret;
     sprintf(TcpOutputData, "Host: %s\r\n", domainName);
-    iReturn = SendLineToTcp(TcpOutputData);
-    if (iReturn!=ERR_TCPIPUNAPI_OK)
-        return iReturn;
-    sprintf(TcpOutputData, "User-Agent: MSXHUB2 (MSX-DOS)\r\n");
-    iReturn = SendLineToTcp(TcpOutputData);
-    if (iReturn!=ERR_TCPIPUNAPI_OK)
-        return iReturn;
-    /*
-    if (keepconnected)
-    {
+    funcret = SendLineToTcp(TcpOutputData);
+    if (funcret!=ERR_TCPIPUNAPI_OK)
+        return funcret;
+    sprintf(TcpOutputData, HGET_AGENT);
+    funcret = SendLineToTcp(TcpOutputData);
+    if (funcret!=ERR_TCPIPUNAPI_OK)
+        return funcret;
+    if (tryKeepAlive) {
         sprintf(TcpOutputData, "Connection: Keep-Alive\r\n");
-        iReturn = SendLineToTcp(TcpOutputData);
-        if (iReturn!=ERR_TCPIPUNAPI_OK)
-            return iReturn;
+        funcret = SendLineToTcp(TcpOutputData);
+        if (funcret!=ERR_TCPIPUNAPI_OK)
+            return funcret;
     }
-    */
-    iReturn = SendCredentialsIfNecessary();
-    if (iReturn!=ERR_TCPIPUNAPI_OK)
-        return iReturn;
+    funcret = SendCredentialsIfNecessary();
+    if (funcret!=ERR_TCPIPUNAPI_OK)
+        return funcret;
     sprintf(TcpOutputData,"\r\n");
-    iReturn = SendLineToTcp(TcpOutputData);
-    return iReturn;
+    funcret = SendLineToTcp(TcpOutputData);
+    return funcret;
 }
 
 
 int SendCredentialsIfNecessary()
 {
     int encodedLength;
-    int iRet;
+    int funcret;
 
     if(authenticationRequested) {
         Base64Init(0);
@@ -491,16 +526,12 @@ int SendCredentialsIfNecessary()
         TcpOutputData[encodedLength] = '\0';
         encodedLength++;
         sprintf(&TcpOutputData[encodedLength], "Authorization: Basic %s\r\n", TcpOutputData);
-        iRet = SendLineToTcp(&TcpOutputData[encodedLength]);
-        if (iRet!=ERR_TCPIPUNAPI_OK)
-        {
+        funcret = SendLineToTcp(&TcpOutputData[encodedLength]);
+        if (funcret!=ERR_TCPIPUNAPI_OK)
             authenticationSent = 0;
-        }
         else
-        {
             authenticationSent = 1;
-        }
-        return iRet;
+        return funcret;
     }
 
     return ERR_TCPIPUNAPI_OK;
@@ -509,36 +540,34 @@ int SendCredentialsIfNecessary()
 
 int ReadResponseHeaders()
 {
-    int iRet;
+    int funcret;
 
     emptyLineReaded = 0;
     zeroContentLengthAnnounced = false;
 
-    iRet = ReadResponseStatus();
-    if (iRet == ERR_TCPIPUNAPI_OK)
+    funcret = ReadResponseStatus();
+    if (funcret == ERR_TCPIPUNAPI_OK)
     {
         while(!emptyLineReaded) {
-            iRet = ReadNextHeader();
-            if (iRet == ERR_TCPIPUNAPI_OK)
-                iRet = ProcessNextHeader();
+            funcret = ReadNextHeader();
+            if (funcret == ERR_TCPIPUNAPI_OK)
+                funcret = ProcessNextHeader();
         }
-        if (iRet == ERR_TCPIPUNAPI_OK)
-        {
-            iRet = ProcessResponseStatus();
-        }
+        if (funcret == ERR_TCPIPUNAPI_OK)
+            funcret = ProcessResponseStatus();
     }
 
-    return iRet;
+    return funcret;
 }
 
 
 int ReadResponseStatus()
 {
-    int iRet;
+    int funcret;
     char* pointer;
-    iRet = ReadNextHeader();
-    if (iRet != ERR_TCPIPUNAPI_OK)
-        return iRet;
+    funcret = ReadNextHeader();
+    if (funcret != ERR_TCPIPUNAPI_OK)
+        return funcret;
     strcpy(statusLine, headerLine);
     pointer = statusLine;
     SkipCharsUntil(pointer, ' ');
@@ -581,16 +610,16 @@ int ReadNextHeader()
 {
     char* pointer;
     byte data;
-    int iRet;
+    int funcret;
     pointer = headerLine;
 
-    iRet = GetInputByte(&data);
-    if (iRet != ERR_TCPIPUNAPI_OK)
-        return iRet;
+    funcret = GetInputByte(&data);
+    if (funcret != ERR_TCPIPUNAPI_OK)
+        return funcret;
     if(data == 13) {
-        iRet = SkipLF();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-            return iRet;
+        funcret = SkipLF();
+        if (funcret != ERR_TCPIPUNAPI_OK)
+            return funcret;
         emptyLineReaded = 1;
         return ERR_TCPIPUNAPI_OK;
     }
@@ -598,14 +627,14 @@ int ReadNextHeader()
     pointer++;
 
     do {
-        iRet = GetInputByte(&data);
-        if (iRet != ERR_TCPIPUNAPI_OK)
-            return iRet;
+        funcret = GetInputByte(&data);
+        if (funcret != ERR_TCPIPUNAPI_OK)
+            return funcret;
         if(data == 13) {
             *pointer = '\0';
-            iRet = SkipLF();
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
+            funcret = SkipLF();
+            if (funcret != ERR_TCPIPUNAPI_OK)
+                return funcret;
         } else {
             *pointer = data;
             pointer++;
@@ -659,9 +688,9 @@ int ProcessNextHeader()
         ProcessUrl(headerContents, 1);
     }
 
-    /*if(HeaderTitleIs("Connection") && HeaderContentsIs("close")) {
-        keepconnected = false;
-    }*/
+    if(HeaderTitleIs("Connection") && HeaderContentsIs("close") && (tryKeepAlive)) {
+        tryKeepAlive = false;
+    }
 
     return ERR_TCPIPUNAPI_OK;
 }
@@ -687,18 +716,15 @@ void ExtractHeaderTitleAndContents()
 int CheckHeaderErrors()
 {
     if(contentLength == 0 && !zeroContentLengthAnnounced && !isChunkedTransfer) {
-        //print("WARNING: Unknown transfer length. Will retrieve data until connection is closed.\r\n");
         return ERR_TCPIPUNAPI_OK;
     }
 
     if(redirectionRequested && !newLocationReceived) {
-        //Terminate("ERROR: Redirection was requested, but the new location was not provided.");
         Terminate();
         return ERR_HGET_REDIRECT_BUT_NO_NEW_LOCATION_PROVIDED;
     }
 
     if(authenticationRequested && credentials == NULL) {
-        //Terminate("ERROR: Server requires authentication, but no credentials were provided.");
         Terminate();
         return ERR_HGET_AUTH_REQUESTED_BUT_NO_CREDENTIALS_PROVIDED;
     }
@@ -729,14 +755,13 @@ int SendLineToTcp(char* string)
 
 int EnsureThereIsTcpDataAvailable()
 {
-    int iRet;
+    int funcret;
     ticksWaited = 0;
 
 	sysTimerHold = *SYSTIMER;
 	while(remainingInputData == 0) {
 		LetTcpipBreathe();
-		if (sysTimerHold != *SYSTIMER)
-		{
+		if (sysTimerHold != *SYSTIMER) {
 			ticksWaited++;
 			sysTimerHold = *SYSTIMER;
 		}
@@ -745,9 +770,9 @@ int EnsureThereIsTcpDataAvailable()
 			return ERR_HGET_TRANSFER_TIMEOUT;
 		}
 
-		iRet = ReadAsMuchTcpDataAsPossible();
-		if (iRet!=ERR_TCPIPUNAPI_OK)
-            return iRet;
+		funcret = ReadAsMuchTcpDataAsPossible();
+		if (funcret!=ERR_TCPIPUNAPI_OK)
+            return funcret;
 		if(remainingInputData == 0) {
 			if (!EnsureTcpConnectionIsStillOpen()) {
                 Terminate();
@@ -794,25 +819,23 @@ int ReadAsMuchTcpDataAsPossible()
 
 int GetInputByte(byte *data)
 {
-    int iRet;
-    iRet = EnsureThereIsTcpDataAvailable();
-    if (iRet == ERR_TCPIPUNAPI_OK)
-    {
+    int funcret;
+    funcret = EnsureThereIsTcpDataAvailable();
+    if (funcret == ERR_TCPIPUNAPI_OK) {
         if (data)
             *data = *inputDataPointer;
         inputDataPointer++;
         remainingInputData--;
     }
-    return iRet;
+    return funcret;
 }
 
 
 int DownloadHttpContents(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
-    int iRet;
+    int funcret;
 
-    if ((!rcvbuffersize)||(!*rcvbuffersize))
-    {
+    if ((!rcvbuffersize)||(!*rcvbuffersize)) {
         if (!CreateLocalFile())
         {
             Terminate();
@@ -821,53 +844,47 @@ int DownloadHttpContents(char *rcvbuffer, unsigned int *rcvbuffersize)
     }
 
     if(isChunkedTransfer) {
-        iRet = DoChunkedDataTransfer(rcvbuffer, rcvbuffersize);
-    } else {
-        iRet = DoDirectDatatransfer(rcvbuffer, rcvbuffersize);
-    }
+        funcret = DoChunkedDataTransfer(rcvbuffer, rcvbuffersize);
+    } else
+        funcret = DoDirectDatatransfer(rcvbuffer, rcvbuffersize);
 
     Terminate();
 
-    return iRet;
+    return funcret;
 }
 
 int DoDirectDatatransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
-    int iRet = ERR_TCPIPUNAPI_OK;
+    int funcret = ERR_TCPIPUNAPI_OK;
     unsigned int bufferAvailable = 0;
 
-    if (rcvbuffersize)
-    {
+    if (rcvbuffersize) {
         bufferAvailable = *rcvbuffersize;
         *rcvbuffersize = 0;
     }
 
     if(zeroContentLengthAnnounced) {
-        return iRet;
+        return funcret;
     }
 
-	if (contentLength)
-	{
+	if (contentLength) {
 		blockSize = contentLength/25;
 		currentBlock = 0;
 	}
 
 	if (bufferAvailable)
     while(contentLength == 0 || receivedLength < contentLength) {
-        iRet = EnsureThereIsTcpDataAvailable();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
+        funcret = EnsureThereIsTcpDataAvailable();
+        if (funcret != ERR_TCPIPUNAPI_OK)
+                return funcret;
         receivedLength += remainingInputData;
 		currentBlock += remainingInputData;
         UpdateReceivingMessage();
-        if (bufferAvailable>=remainingInputData)
-        {
+        if (bufferAvailable>=remainingInputData) {
             memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,remainingInputData);
             bufferAvailable-=remainingInputData;
             *rcvbuffersize+=remainingInputData;
-        }
-        else if (bufferAvailable)
-        {
+        } else if (bufferAvailable) {
             memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,bufferAvailable);
             *rcvbuffersize+=bufferAvailable;
             bufferAvailable=0;
@@ -875,120 +892,114 @@ int DoDirectDatatransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
         ResetTcpBuffer();
     }
     else
-    while(contentLength == 0 || receivedLength < contentLength) {
-        iRet = EnsureThereIsTcpDataAvailable();
-        if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-        receivedLength += remainingInputData;
-		currentBlock += remainingInputData;
-        UpdateReceivingMessage();
-        if (!WriteContentsToFile(inputDataPointer, remainingInputData))
-        {
-            Terminate();
-            return ERR_HGET_DISK_WRITE_ERROR;
+        while(contentLength == 0 || receivedLength < contentLength) {
+            funcret = EnsureThereIsTcpDataAvailable();
+            if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+            receivedLength += remainingInputData;
+            currentBlock += remainingInputData;
+            UpdateReceivingMessage();
+            if (!WriteContentsToFile(inputDataPointer, remainingInputData))
+            {
+                Terminate();
+                return ERR_HGET_DISK_WRITE_ERROR;
+            }
+            ResetTcpBuffer();
         }
-        ResetTcpBuffer();
-    }
-    return iRet;
+    return funcret;
 }
 
 
 int DoChunkedDataTransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
     int chunkSizeInBuffer;
-    int iRet = ERR_TCPIPUNAPI_OK;
+    int funcret = ERR_TCPIPUNAPI_OK;
     unsigned int bufferAvailable = 0;
 
-    if (rcvbuffersize)
-    {
+    if (rcvbuffersize) {
         bufferAvailable = *rcvbuffersize;
         *rcvbuffersize = 0;
     }
 
     currentChunkSize = GetNextChunkSize();
 
-	if (contentLength)
-	{
+	if (contentLength) {
 		blockSize = contentLength/25;
 		currentBlock = 0;
 	}
 
 	if (bufferAvailable)
-    while(1) {
-        if(currentChunkSize == 0) {
-            iRet = GetInputByte(NULL); //Chunk data is followed by an extra CRLF
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-            iRet = GetInputByte(NULL);
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-            currentChunkSize = GetNextChunkSize();
+        while(1) {
             if(currentChunkSize == 0) {
-                break;
+                funcret = GetInputByte(NULL); //Chunk data is followed by an extra CRLF
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+                funcret = GetInputByte(NULL);
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+                currentChunkSize = GetNextChunkSize();
+                if(currentChunkSize == 0) {
+                    break;
+                }
             }
-        }
 
-        if(remainingInputData == 0) {
-            iRet = EnsureThereIsTcpDataAvailable();
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-        }
+            if(remainingInputData == 0) {
+                funcret = EnsureThereIsTcpDataAvailable();
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+            }
 
-        chunkSizeInBuffer = currentChunkSize > remainingInputData ? remainingInputData : currentChunkSize;
-        receivedLength += chunkSizeInBuffer;
-        UpdateReceivingMessage();
+            chunkSizeInBuffer = currentChunkSize > remainingInputData ? remainingInputData : currentChunkSize;
+            receivedLength += chunkSizeInBuffer;
+            UpdateReceivingMessage();
 
-        if (bufferAvailable>=chunkSizeInBuffer)
-        {
-            memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,chunkSizeInBuffer);
-            bufferAvailable-=chunkSizeInBuffer;
-            *rcvbuffersize+=chunkSizeInBuffer;
-        }
-        else if (bufferAvailable)
-        {
-            memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,bufferAvailable);
-            *rcvbuffersize+=bufferAvailable;
-            bufferAvailable=0;
-        }
+            if (bufferAvailable>=chunkSizeInBuffer) {
+                memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,chunkSizeInBuffer);
+                bufferAvailable-=chunkSizeInBuffer;
+                *rcvbuffersize+=chunkSizeInBuffer;
+            } else if (bufferAvailable) {
+                memcpy(&rcvbuffer[*rcvbuffersize],inputDataPointer,bufferAvailable);
+                *rcvbuffersize+=bufferAvailable;
+                bufferAvailable=0;
+            }
 
-        inputDataPointer += chunkSizeInBuffer;
-        currentChunkSize -= chunkSizeInBuffer;
-        remainingInputData -= chunkSizeInBuffer;
-    }
+            inputDataPointer += chunkSizeInBuffer;
+            currentChunkSize -= chunkSizeInBuffer;
+            remainingInputData -= chunkSizeInBuffer;
+        }
     else
-    while(1) {
-        if(currentChunkSize == 0) {
-            iRet = GetInputByte(NULL); //Chunk data is followed by an extra CRLF
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-            iRet = GetInputByte(NULL);
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-            currentChunkSize = GetNextChunkSize();
+        while(1) {
             if(currentChunkSize == 0) {
-                break;
+                funcret = GetInputByte(NULL); //Chunk data is followed by an extra CRLF
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+                funcret = GetInputByte(NULL);
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+                currentChunkSize = GetNextChunkSize();
+                if(currentChunkSize == 0) {
+                    break;
+                }
             }
-        }
 
-        if(remainingInputData == 0) {
-            iRet = EnsureThereIsTcpDataAvailable();
-            if (iRet != ERR_TCPIPUNAPI_OK)
-                return iRet;
-        }
+            if(remainingInputData == 0) {
+                funcret = EnsureThereIsTcpDataAvailable();
+                if (funcret != ERR_TCPIPUNAPI_OK)
+                    return funcret;
+            }
 
-        chunkSizeInBuffer = currentChunkSize > remainingInputData ? remainingInputData : currentChunkSize;
-        receivedLength += chunkSizeInBuffer;
-        UpdateReceivingMessage();
-       if (!WriteContentsToFile(inputDataPointer, chunkSizeInBuffer))
-        {
-            Terminate();
-            return ERR_HGET_DISK_WRITE_ERROR;
+            chunkSizeInBuffer = currentChunkSize > remainingInputData ? remainingInputData : currentChunkSize;
+            receivedLength += chunkSizeInBuffer;
+            UpdateReceivingMessage();
+            if (!WriteContentsToFile(inputDataPointer, chunkSizeInBuffer)) {
+                Terminate();
+                return ERR_HGET_DISK_WRITE_ERROR;
+            }
+            inputDataPointer += chunkSizeInBuffer;
+            currentChunkSize -= chunkSizeInBuffer;
+            remainingInputData -= chunkSizeInBuffer;
         }
-        inputDataPointer += chunkSizeInBuffer;
-        currentChunkSize -= chunkSizeInBuffer;
-        remainingInputData -= chunkSizeInBuffer;
-    }
-    return iRet;
+    return funcret;
 }
 
 
@@ -1040,26 +1051,21 @@ bool CreateLocalFile()
 void UpdateReceivingMessage()
 {
     if(thereisacallback) {
-		if ((contentLength)&&(blockSize))
-		{
+		if ((contentLength)&&(blockSize)) {
 			while (currentBlock>=blockSize)
 			{
 				currentBlock-=blockSize;
 				UpdateReceivedStatus(false);
 			}
-		}
-		else
-		{
+		} else
 			UpdateReceivedStatus(true);
-		}
     }
 }
 
 
 bool WriteContentsToFile(byte* dataPointer, int size)
 {
-    if (thereisasavecallback)
-    {
+    if (thereisasavecallback) {
         SaveReceivedData(dataPointer, size);
         return true;
     }
@@ -1070,8 +1076,7 @@ bool WriteContentsToFile(byte* dataPointer, int size)
     DosCall(_WRITE, &reg, REGS_MAIN, REGS_AF);
     if(reg.Bytes.A != 0) {
         return false;
-    }
-    else
+    } else
         return true;
 }
 
@@ -1162,16 +1167,14 @@ int ResolveServerName()
     TcpConnectionParameters->remoteIP[2] = reg.Bytes.E;
     TcpConnectionParameters->remoteIP[3] = reg.Bytes.D;
 #ifdef USE_TLS
-	if (useHttps)
-	{
+	if (useHttps) {
 		if (mustCheckCertificate)
 			TcpConnectionParameters->flags = TcpConnectionParameters->flags | TCPFLAGS_VERIFY_CERTIFICATE ;
 		if (mustCheckHostName)
 			TcpConnectionParameters->hostName =  (int)domainName;
 		else
 			TcpConnectionParameters->hostName =  0;
-	}
-	else
+	} else
 #endif
 	{
 		TcpConnectionParameters->flags = 0 ;

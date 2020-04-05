@@ -2,12 +2,12 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="HUB2" />
+		<Option title="HUBG" />
 		<Option pch_mode="2" />
 		<Option compiler="sdcc" />
 		<Build>
 			<Target title="Release">
-				<Option output="bin/Release/HUB2" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/HUBG" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="sdcc" />
@@ -18,27 +18,27 @@
 					<Add option="--opt-code-speed" />
 					<Add option="--verbose" />
 					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196  --allow-unsafe-read" />
-					<Add directory="../fusion-c/header" />
+					<Add directory="c:/fusion-c/fusion-c/header" />
 				</Compiler>
 				<Linker>
-					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
-					<Add library="../fusion-c/lib/msx2ansi.lib" />
-					<Add library="../fusion-c/lib/fusion.lib" />
-					<Add library="../fusion-c/lib/asm.lib" />
-					<Add library="../fusion-c/lib/base64.lib" />
+					<Add option="C:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="C:/fusion-c/fusion-c/lib/msx2ansi.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/fusion.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/asm.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/base64.lib" />
 				</Linker>
 				<ExtraCommands>
-					<Add after="cmd /c ren bin\Release\HUB2.exe HUB2.ihx" />
-					<Add after="cmd /c ..\hex2bin -e com bin\Release\HUB2.ihx" />
+					<Add after="cmd /c ren bin\Release\HUBG.exe HUBG.ihx" />
+					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\HUBG.ihx" />
 				</ExtraCommands>
 			</Target>
 		</Build>
-		<Unit filename="src/HUB2.c">
+		<Unit filename="src/HUBG.c">
 			<Option compilerVar="CC" />
 			<Option weight="0" />
 		</Unit>
-		<Unit filename="src/HUB2.h" />
-		<Unit filename="src/HUB2menus.h" />
+		<Unit filename="src/HUBG.h" />
+		<Unit filename="src/HUBGmenus.h" />
 		<Unit filename="src/dos.c">
 			<Option compilerVar="CC" />
 			<Option weight="100" />

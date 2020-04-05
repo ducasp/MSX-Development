@@ -1,8 +1,8 @@
 /*
 --
--- HUB2.c
+-- HUBG.c
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.7
+--   Revision 0.71
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -35,7 +35,7 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 */
-#include "HUB2.h"
+#include "HUBG.h"
 #include "io.h"
 #include "ctype.h"
 #include "msx2ansi.h"
@@ -124,7 +124,7 @@ void info(char *package)
     AnsiPrint("\x1b[21;3H\x1b[1;37mDownloading information from package ");
     AnsiPrint(package);
 
-    iRet = hget(chTextLine,"info.tmp",NULL,(int)HTTPStatusUpdate,NULL,NULL,0,0);
+    iRet = hget(chTextLine,"info.tmp",NULL,(int)HTTPStatusUpdate,NULL,NULL,0,0,false);
     if (iRet != ERR_TCPIPUNAPI_OK)
     {
         AnsiPrint("\x1b[21;3H\x1b[1;37mError getting package information...\x1b[K\x1b[21;80H\x1b[0;31m\xba");
@@ -192,7 +192,7 @@ void info(char *package)
     while(!Inkey());
 
     dos_close(fp);
-    delete_file("info.tmp");
+    //delete_file("info.tmp");
 }
 
 void uninstall(char *package)
@@ -300,8 +300,8 @@ void configure(void)
     char c;
     int n;
 
-    AnsiPrint("Welcome to MSXHub2!\r\n\n");
-    AnsiPrint("It looks like it's the first time you run MSXHub2. It's going to be automatically configured.\r\n\n");
+    AnsiPrint("Welcome to MSXHubG!\r\n\n");
+    AnsiPrint("It looks like it's the first time you run MSXHubG. It's going to be automatically configured.\r\n\n");
 
     AnsiPrint("- Main directory: ");
     AnsiPrint(hubpath);
@@ -361,7 +361,7 @@ void configure(void)
 
     save_config("BASEURL", "http://api.msxhub.com/api/");
 
-    AnsiPrint("Done! MSXHub2 configured properly. Hit a key to continue...\r\n");
+    AnsiPrint("Done! MSXHubG configured properly. Hit a key to continue...\r\n");
     while (!Inkey());
 }
 
@@ -407,7 +407,7 @@ void categories (void)
     {
         strcpy(chTextLine,baseurl);
         strcat(chTextLine,"categories");
-        iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0);
+        iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0,false);
     }
     else //load once, no need to keep reloading every time
         return;
@@ -544,7 +544,7 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage)
                 strcat(chTextLine,packagetoinstall);
                 strcat(chTextLine,"/latest/installdir");
                 bufferSize = sizeof (installdir);
-                iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,installdir,&bufferSize,0,0);
+                iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,installdir,&bufferSize,0,0,true);
                 if (iRet != ERR_TCPIPUNAPI_OK)
                 {
                     AnsiPrint("\x1b[21;3H\x1b[1;37mError getting installation folder...\x1b[K\x1b[21;80H\x1b[0;31m\xba");
@@ -592,7 +592,7 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage)
             strcat(chTextLine,packagetoinstall);
             strcat(chTextLine,"/latest/pages");
             bufferSize = BUFFER_SIZE;
-            iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0);
+            iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0,true);
             if (iRet != ERR_TCPIPUNAPI_OK)
             {
                 AnsiPrint("\x1b[21;3H\x1b[1;37mError getting number of file pages...\x1b[K\x1b[21;80H\x1b[0;31m\xba");
@@ -618,7 +618,7 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage)
                 sprintf(buffer, "%d", cp+1); // using variable files as temp variable
                 strcat(chTextLine, buffer);
                 bufferSize = BUFFER_SIZE;
-                iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0);
+                iRet = hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,buffer,&bufferSize,0,0,true);
                 if (iRet != ERR_TCPIPUNAPI_OK)
                 {
                     AnsiPrint("\x1b[21;3H\x1b[1;37mError getting list of files for this page...\x1b[K\x1b[21;80H\x1b[0;31m\xba");
@@ -696,7 +696,7 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage)
                         FileTransferInProgress = true;
                         FirstStatusUpdate = true;
                         FileSize = 0;
-                        iRet = hget(chTextLine,local_path,NULL,(int)HTTPStatusUpdate,NULL,NULL,0,(int)HTTPFileSizeUpdate);
+                        iRet = hget(chTextLine,local_path,NULL,(int)HTTPStatusUpdate,NULL,NULL,0,(int)HTTPFileSizeUpdate,true);
                         FileTransferInProgress = false;
                         if (iRet != ERR_TCPIPUNAPI_OK)
                         {
@@ -829,7 +829,7 @@ void GetGroupList(char *GroupName)
     strcat(chTextLine,"list?category=");
     strcat(chTextLine, GroupName);
     GGLLState = STATE_GGL_STARTUP;
-    if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)GroupListRcvCallBack,0)!=ERR_TCPIPUNAPI_OK)
+    if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)GroupListRcvCallBack,0,false)!=ERR_TCPIPUNAPI_OK)
     {
         AnsiPrint("\x1b[21;3H\x1b[1;37mFailure trying to get the list of group ");
         AnsiPrint(GroupName);
@@ -1061,10 +1061,12 @@ void HTTPStatusUpdate (bool isChunked)
             ++BarPosition;
         }
     }
+
     if (!ucConnectionIcon)
         AnsiPrint(chIconOn);
     else
         AnsiPrint(chIconOff);
+
     ucConnectionIcon = !ucConnectionIcon;
 }
 
@@ -1095,7 +1097,7 @@ int main(char** argv, int argc)
 	//What type of MSX?
     if(ReadMSXtype()==0) //>MSX-1?
     {
-        printf ("Sorry, HUB2 requires at least a MSX2...\r\n");
+        printf ("Sorry, HUBG requires at least a MSX2...\r\n");
         //restore cursor status
         ucCursorDisplayed = ucCursorSave;
 		return 0;
@@ -1104,7 +1106,7 @@ int main(char** argv, int argc)
     //What type of MSX-DOS?
     if(GetOSVersion()<2)
     {
-        printf ("Sorry, HUB2 requires at least MSX DOS 2...\r\n");
+        printf ("Sorry, HUBG requires at least MSX DOS 2...\r\n");
         //restore cursor status
         ucCursorDisplayed = ucCursorSave;
 		return 0;
@@ -1113,7 +1115,7 @@ int main(char** argv, int argc)
     // Allocate memory for HGET on page 2 so it won't conflict with memory page swapping
     if (hgetinit(0xC000) != ERR_TCPIPUNAPI_OK)
     {
-        printf ("Sorry, HUB2 requires an working TCP-IP UNAPI interface...\r\n");
+        printf ("Sorry, HUBG requires an working TCP-IP UNAPI interface...\r\n");
         //restore cursor status
         ucCursorDisplayed = ucCursorSave;
         return 0;
@@ -1139,7 +1141,7 @@ int main(char** argv, int argc)
         strcpy(progsdir, get_config("PROGSDIR"));
         strcpy(baseurl, get_config("BASEURL"));
         if ((progsdir[0]==0)||(baseurl[0]==0))
-            die("Error configuring MSX HUB2...\r\n");
+            die("Error configuring MSX HUBG...\r\n");
     }
 
     do
@@ -1164,7 +1166,7 @@ int main(char** argv, int argc)
             case STATE_REDRAW_LOCAL_PAGE:
                 ucPage = 0;
                 installed();
-                AnsiPrint(chHub2Menu);
+                AnsiPrint(chHubGMenu);
                 AnsiPrint(chLocalSelected);
                 RefreshMenu(ucPage,0);
                 ucState = STATE_IDLE_LOCAL;
@@ -1356,7 +1358,7 @@ int main(char** argv, int argc)
                 if ((ucState==STATE_IDLE_LOCAL)&&(hubInstalledPackages.ucPackages))
                 {
                     info(hubInstalledPackages.chPackageName[ucItemSelected + 10*ucPage]);
-                    AnsiPrint(chHub2Menu);
+                    AnsiPrint(chHubGMenu);
                     AnsiPrint(chLocalSelected);
                     RefreshMenu(ucPage,ucItemSelected);
                 }
@@ -1366,7 +1368,7 @@ int main(char** argv, int argc)
                     {
                         ucTmp1 = (MAX_REMOTE_PACK_LIST_ITENS*ucListPage) + ucPackageItemSelected;
                         info(hubGroupPackages.ucPackageName[ucTmp1]);
-                        AnsiPrint(chHub2Menu);
+                        AnsiPrint(chHubGMenu);
                         AnsiPrint(chRemoteSelected);
                         RefreshRemoteMenu(ucPage,ucItemSelected);
                         RefreshRemoteList(ucListPage,ucPackageItemSelected);
