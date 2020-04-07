@@ -1,6 +1,11 @@
-# HUBG v0.71
+# HUBG v0.72
 
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v0.72
+
+	- Keep-Alive fix: faster installations, specially on packs that have many
+	  files
 
 # CHANGELOG v0.71
 

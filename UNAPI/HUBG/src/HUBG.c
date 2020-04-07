@@ -2,7 +2,7 @@
 --
 -- HUBG.c
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.71
+--   Revision 0.72
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -745,6 +745,7 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage)
             sprintf(chTextLine,"\x1b[21;3H\x1b[1;37mInstalled %s!\x1b[K\x1b[21;80H\x1b[0;31m\xba",packagetoinstall);
             AnsiPrint(chTextLine);
             AnsiPrint(chClearBarWindow);
+            hgetfinish();
         }
     }
 }

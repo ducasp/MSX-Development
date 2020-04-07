@@ -176,6 +176,8 @@ void Terminate()
         CloseTcpConnection();
         keepingConnectionAlive = false;
     }
+    else
+        keepingConnectionAlive = true;
     CloseLocalFile();
 }
 

@@ -41,7 +41,7 @@
 //Only edit this file on a text editor that supports CP850 or 437, otherwise strings converted to UTF8 will be looking like... meh!
 
 const char chHubGMenu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on black background
-                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.71\x1b[0;31mออออออออออป"
+                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.72\x1b[0;31mออออออออออป"
                        "ฬอออออออออออออออออออออออออออออออออออออออหออออออออออออออออออออออออออออออออออออออน"
 					   "บ\x1b[3;41Hบ\x1b[3;80Hบ"
 					   "ฬออออออออออออออออออออหออออออออออออออออออสออออออออออออออออออออออออออออออออออออออน"
