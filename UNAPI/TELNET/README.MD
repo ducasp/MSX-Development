@@ -1,7 +1,27 @@
-# TELNET v1.24
+# TELNET v1.30
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+# CHANGELOG v1.30
+	- Made a few behavior changes, CTRL+B won't begin downloads anymore, CTRL+E
+	  won't exit anymore. Those keys will now be sent over the connection which
+	  might be useful when acessing a linux daemon. :)
+	- Now, to start a file transfer, press F1
+	- Now, to exit the program, press F5
+	- Now, the program by default DO NOT send CR/LF when enter is pressed, just
+	  CR, this makes it works with a few door games like LORD and also do not
+	  seem to hurt how it works with all BBS
+	- Just in case just CR is giving you troubles, added possibility of changing
+      CRLF behavior on the fly, press F3 to toggle it
+	- Added possibility of changing ECHO behavior on the fly, press F2 to toggle
+	  it
+	- By default, now, automatic pop-up of file transfer protocol selection will
+	  be disabled if the BBS send a DO BINARY in the initial handshake, the only
+	  type of BBS that this feature works is Synchronet, and it do not send DO 
+	  BINARY
+	- Compiled with new version of MSX2ANSI library that supports BEEPing when
+	  BELL is received
+		
 # CHANGELOG v1.24
 	- Re-compiled with new version of MSX2ANSI library. Piter Punk kindly fixed
 	an issue with CSIm (no parameters) as well added support to reverse colors.
@@ -225,12 +245,21 @@ Example to connect to rainmaker:
 
 telnet rainmaker.wunderground.com:23
 
-Most keys and CTRL+KEY combinations are sent to the telnet server, exceptions
-are CTRL+E (Exit the telnet client) and CTRL+B (Begin File Transfer).
+Most keys and CTRL+KEY combinations are sent to the telnet server.
+
+To exit the program, press F5.
+
+By default, echo is ON if server do not negotiate echo, and it will be ON or
+OFF following the server negotiation request. If for some reason that do not
+work, you can press F2 to change the current echo state.
+
+By default, program will send only CR upon pressing ENTER. If that doesn't work
+for the server/BBS you are using, press F3 to change this behavior (there are
+two possible behaviors: default, send only CR, non-default, send CR-LF).
 
 To use the file download capabilities of this telnet client, once the server is
-ready to send files, press CTRL+B and then type the filename if XMODEM is being
-used, or Y if it is a YMODEM transfer, or G for YMODEM-G. On some servers (i.e.
+ready to send files, press F1 and then type the filename if XMODEM is being
+used, or Y if it is a YMODEM transfer, or G for YMODEM-G. On some BBS's (i.e.
 Synchronet BBSs) you do not need to do this as they send a telnet command that
 warns a binary data transfer is starting, so the list of protocol options pops
 up automatically.

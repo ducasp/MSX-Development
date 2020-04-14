@@ -141,7 +141,7 @@ unsigned char IsConnected (unsigned char ucConnNumber)
 
 unsigned char TxByte (unsigned char ucConnNumber, unsigned char uchByte)
 {
-    return TxData (ucConnNumber,&uchByte,1);
+    return TxUnsafeData (ucConnNumber,&uchByte,1);
 }
 
 unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize)

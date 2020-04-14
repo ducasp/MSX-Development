@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.24
+--   Revision 1.30
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -111,8 +111,13 @@ unsigned char negotiate(unsigned char *ucBuf)
             XYModemGet(ucConnNumber, ucStandardDataTransfer);
             return 0;
         }
-        else
+        else if (!ucEnterHit)
+        {
+            //If we received TRANSMIT BINARY right at the beginning, odds are that this BBS
+            //will not use it to signal file transfers
+            ucAutoDownload = 0;
             return 1;
+        }
 	}
 	else if (ucBuf[1] == WONT && ucBuf[2] == CMD_ECHO) { //Host is not going to echo
 		ucEcho = 1;
@@ -124,7 +129,7 @@ unsigned char negotiate(unsigned char *ucBuf)
     if (ucBuf[1] == DO)
     {
         //we are willing to negotiate TTYPE and TERMINAL SPEED
-        if ( (ucBuf[2] == CMD_TTYPE) || (ucBuf[2] == CMD_TERMINAL_SPEED))
+        if ( (ucBuf[2] == CMD_TTYPE) || (ucBuf[2] == CMD_TERMINAL_SPEED) || (ucBuf[2] == CMD_TRANSMIT_BINARY))
             ucBuf[1] = WILL;
         else //otherwise, not
             ucBuf[1] = WONT;
@@ -334,6 +339,12 @@ int main(char** argv, int argc)
     unsigned char ucAliveConnCount = 0; //when this is 0, check if connection is alive
     char chTextLine[128];
     unsigned char ucCursorSave;
+    unsigned char ucFnkBackup[160];
+    unsigned char *ucFnkStr = (unsigned char*)0xF87F;
+    unsigned char ucF5Exit = 0;
+    unsigned char ucUseCrLf = 0;
+    unsigned char ucLockF2 = 0;
+    unsigned char ucLockF3 = 0;
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
@@ -406,6 +417,11 @@ int main(char** argv, int argc)
         return 0;
     }
 
+    // Backup function keys
+    memcpy(ucFnkBackup,ucFnkStr,160);
+    // Make sure those won't have any text
+    memset(ucFnkStr,'\0',160);
+
     sprintf (chTextLine,"Connecting to server: %s:%s \r\n", ucServer, ucPort);
     print (chTextLine);
 
@@ -427,51 +443,67 @@ int main(char** argv, int argc)
             //UNAPI Breathing just in case adapter need it
             UnapiBreath();
 
+            if ((ucMT6 & 0x21)==1) //F1 and not shift: Start Transfer
+                XYModemGet(ucConnNumber, ucStandardDataTransfer); //no need to lock, function will wait for key input
+
+            if ((ucMT6 & 0x41)==1) //F2 and not shift: Change Echo
+                ucLockF2 = 1; //key pressed, wait until it is released
+            else if ((ucLockF2)&&(ucMT6&0x40)) //key released, let's do it
+            {
+               ucEcho = !ucEcho;
+               ucLockF2 = 0;
+            }
+
+            if ((ucMT6 & 0x81)==1) //F3 and not shift: Change Cr / CrLf
+                ucLockF3 = 1; //key pressed, wait until it is released
+            else if ((ucLockF3)&&(ucMT6&0x80)) //key released, let's do it
+            {
+                ucUseCrLf = !ucUseCrLf;
+                ucLockF3 = 0;
+            }
+
+            if ((!(ucMT7 & 0x2))&&((ucMT6&0x1))) //F5 and not shift: Exit
+            {
+                //no need to lock, exit immediatelly
+                ucF5Exit = 1;
+                break;
+            }
+
             ucTxData = Inkey ();
             // A key has been hit?
             if (ucTxData)
             {
-                if (ucTxData == 0x02) //CTRL + B - Start file download
-                    XYModemGet(ucConnNumber, ucStandardDataTransfer);
-#ifdef XYMODEM_UPLOAD_SUPPORT
-                else if (ucTxData == 0x13) //CTRL + S - Start file upload
+                printChar(7);
+                if (ucTxData == 13) // enter/CR ?
                 {
-                    if (filename[0]==0)
-                        XYModemPrepareSend();
-                    else
-                        XYModemSend();
-                }
-#endif
-                else
-                {
-                    if (ucTxData == 13) // enter/CR ?
-                    {
+                    if (ucUseCrLf)
                         // Send CR and LF as well
                         TxUnsafeData (ucConnNumber, ucCrLf, 2);
-                        // Update flag that enter has been hit
-                        ucEnterHit = 1;
-                    }
-                    else if (ucTxData == 28) // right?
-                        TxUnsafeData (ucConnNumber, ucCursor_Forward, 3);
-                    else if (ucTxData == 29) // left?
-                        TxUnsafeData (ucConnNumber, ucCursor_Backward, 3);
-                    else if (ucTxData == 30) // up?
-                        TxUnsafeData (ucConnNumber, ucCursor_Up, 3);
-                    else if (ucTxData == 31) // down?
-                        TxUnsafeData (ucConnNumber, ucCursor_Down, 3);
-                    else
-                        // Send the byte directly
+                    else //just send cr
                         TxByte (ucConnNumber, ucTxData);
+                    // Update flag that enter has been hit
+                    ucEnterHit = 1;
+                }
+                else if (ucTxData == 28) // right?
+                    TxUnsafeData (ucConnNumber, ucCursor_Forward, 3);
+                else if (ucTxData == 29) // left?
+                    TxUnsafeData (ucConnNumber, ucCursor_Backward, 3);
+                else if (ucTxData == 30) // up?
+                    TxUnsafeData (ucConnNumber, ucCursor_Up, 3);
+                else if (ucTxData == 31) // down?
+                    TxUnsafeData (ucConnNumber, ucCursor_Down, 3);
+                else
+                    // Send the byte directly
+                    TxByte (ucConnNumber, ucTxData);
 
-                    // If we are echoing our own keys
-                    if (ucEcho)
-                    {
-                        if (ucTxData != 13)
-                            printChar(ucTxData);
-                        else
-                            print("\r\n");
+                // If we are echoing our own keys
+                if (ucEcho)
+                {
+                    if (ucTxData != 13)
+                        printChar(ucTxData);
+                    else
+                        print("\r\n");
 
-                    }
                 }
             }
 
@@ -493,12 +525,12 @@ int main(char** argv, int argc)
                     break;
             }
         }
-        while (ucTxData != 5); //If CTRL+E pressed, exit...
+        while (1);
 
         if (ucAnsi) //loaded ansi-drv.bin?
             endAnsi();
 
-        if (ucTxData == 5) //CTRL+E pressed?
+        if (ucF5Exit) //F5 pressed?
             print("Closing connection...\r\n"); //Yes, so we are closing
         else
             print("Connection closed on the other end...\r\n"); //No, so we will close after the other end closed
@@ -520,6 +552,8 @@ int main(char** argv, int argc)
 
     //restore cursor status
     ucCursorDisplayed = ucCursorSave;
+    //restore function keys
+    memcpy(ucFnkStr,ucFnkBackup,160);
 
 	return 0;
 }
