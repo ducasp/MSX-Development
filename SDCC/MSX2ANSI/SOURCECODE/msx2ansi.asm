@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.3
+; MSX2ANSI ANSI V9938 Library v.1.4
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -15,6 +15,9 @@
 ; credits to the original authors
 ;
 ; Changelog:
+;
+; v1.4: 
+; OPJ - Control code BELL (7) now beeps
 ;
 ; v1.3: 
 ; OPJ - Character code 16 was in code 18, fixed that
@@ -250,8 +253,14 @@ ControlCode:
 	JP	Z,CarriageReturn
 	CP	#27
 	JP	Z,EscapeCode			; If an Escape code, let's check it	
+	CP	#7
+	JP	Z,Bell					
 	JP	PrintText.RLP.CCPrint
 
+Bell:
+	LD	IX,#0x00C0
+	CALL	_BIOS_C			; Interslot call to beep
+	JP	PrintText.RLP
 
 
 EscapeCode:

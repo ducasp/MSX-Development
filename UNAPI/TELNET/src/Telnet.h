@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.24
+--   Revision 1.30
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -109,8 +109,8 @@ const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
                        "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.24 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.24 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.30 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.30 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_Up[] = "\x1b[A";
 const char ucCursor_Down[] = "\x1b[B";
 const char ucCursor_Forward[] = "\x1b[C";
@@ -134,15 +134,15 @@ unsigned char ucEscData[25];
 unsigned char ucRcvData[128];
 
 //MSX Variables that we will access
-__at 0xF3DC unsigned char ucCursorY;
-__at 0xF3DD unsigned char ucCursorX;
 __at 0xF3B0 unsigned char ucLinLen;
 __at 0xFCA9 unsigned char ucCursorDisplayed;
+__at 0xFBEB unsigned char ucMT6;
+__at 0xFBEC unsigned char ucMT7;
 
 //IMPORTANT: You need to check the map compiler generates to make sure this
 //address do not overlap functions, variables, etc
 //UNAPI requires memory buffer @ 0x8000 or higher...
-__at 0xD000 unsigned char ucRcvDataMemory[]; //area to hold data sent to jANSI, need to be in the 3rd 16K block
+__at 0xD000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
 #define RcvMemorySize 1025
 unsigned int uiGetSize;
 
