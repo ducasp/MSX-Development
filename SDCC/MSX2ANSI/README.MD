@@ -20,6 +20,8 @@ https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
 # MSX2ANSI v1.4
 
 When "printing" character 7 (BELL) now it BEEPs properly
+Piter Punk offered some help on a new way to call BEEP, which is more reliable, the previous way
+was crashing on some configurations
 
 # MSX2ANSI v1.3
 
