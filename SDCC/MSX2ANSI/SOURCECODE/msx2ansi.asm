@@ -258,8 +258,20 @@ ControlCode:
 	JP	PrintText.RLP.CCPrint
 
 Bell:
-	LD	IX,#0x00C0
-	CALL	_BIOS_C			; Interslot call to beep
+	PUSH	HL
+	PUSH	AF
+	PUSH	BC
+	PUSH	DE
+	PUSH	IY
+	PUSH	IX
+	LD	IX,#0x017D
+	CALL	CALSUB			; Interslot call to beep
+	POP	IX
+	POP	IY
+	POP	DE
+	POP	BC
+	POP	AF
+	POP	HL
 	JP	PrintText.RLP
 
 
@@ -912,7 +924,7 @@ rstPlt	.equ	#0x0145
 ; not supported on the MSX at all.
 ;
 CALSLT	.equ	#0x001C
-NMI		.equ	#0x0066
+NMI	.equ	#0x0066
 EXTROM	.equ	#0x015F
 EXPTBL	.equ	#0xFCC1
 H_NMI	.equ	#0xFDD6
