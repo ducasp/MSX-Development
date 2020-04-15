@@ -473,7 +473,6 @@ int main(char** argv, int argc)
             // A key has been hit?
             if (ucTxData)
             {
-                printChar(7);
                 if (ucTxData == 13) // enter/CR ?
                 {
                     if (ucUseCrLf)
