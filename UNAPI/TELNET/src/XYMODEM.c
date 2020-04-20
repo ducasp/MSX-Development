@@ -2,10 +2,10 @@
 --
 -- XYMODEM.c
 --   X/YMODEM(G) for UNAPI Telnet Terminal.
---   Revision 0.80
+--   Revision 1.00
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -44,18 +44,18 @@
 #include "print.h"
 
 //X and YMODEM Vars
-__at 0xC802 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
-__at 0xCD16 unsigned char RcvBuffer[]; //make sure it works in your map file, need to be in 0x8000 and beyond
+__at 0x8500 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
 unsigned char filename[20];
 //Indicates G-Modem transfer in progress
 unsigned char G;
+unsigned char TestTransfer;
 unsigned long SentFileSize;
 unsigned char chFileSize[30];
 unsigned char chTransferConn;
 unsigned char chDoubleFF;
 char chProtocolString[128];
 
- // Helper function for file transfers
+// Helper function for file transfers
 char *ultostr(unsigned long value, char *ptr, int base)
 {
   unsigned long t = 0, res = 0;
@@ -98,101 +98,35 @@ char *ultostr(unsigned long value, char *ptr, int base)
   return(ptr);
 }
 
-int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket, unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K)
-{
-    unsigned int uiRet = 0;
-    unsigned int uiI = 0;
-	unsigned int uiJ;
-    unsigned char ucContinueAfterHeaderFound = 0;
-    static unsigned char ucSplitFF = 0;
-
-    if (!uiIndex) //Index 0 means packet has not started yet
-    {
-        //New package, so split information do not matter, we will wait SOH/STX/EOT/ETB/CAN
-        ucSplitFF = 0;
-        for (uiI=0;uiI<uiReceivedSize;++uiI)
-        {
-            if (ucReceived[uiI]  == SOH) //128 bytes packet
-            {
-                ucContinueAfterHeaderFound = 1;
-                *ucIs1K = 0;
-                break;
-            }
-            else if (ucReceived[uiI] == STX) //1024 bytes packet
-            {
-                ucContinueAfterHeaderFound = 1;
-                *ucIs1K = 1;
-                break;
-            }
-            else if ((ucReceived[uiI] == EOT)||(ucReceived[uiI] == ETB)||(ucReceived[uiI] == CAN))
-            {
-                return (ucReceived[uiI]*-1);
-            }
-        }
-    }
-
-    if ((uiIndex)||(ucContinueAfterHeaderFound)) //packet has started
-    {
-        if (chDoubleFF)
-		{
-            //now get rid of all double FF's replacing by  single FF
-            for (uiJ=0;uiI<uiReceivedSize;++uiI)
-            {
-                if (ucReceived[uiI]  != 0xFF) //not telnet IAC
-                {
-                    ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                    ++uiRet;
-                    ++uiJ;
-                }
-                else
-                {
-                    if (ucSplitFF)
-                    {
-                        ucSplitFF = 0;
-                        if (uiI==0) //first after a split? Ignore, otherwise continue checking
-                            continue; //this might confuse you, continue will jump to next iteration of loop and not execute the rest of the code below
-                    }
-
-                    if ( (uiI<(uiReceivedSize-1)) && (ucReceived[uiI+1] == 0xff) )
-                    {
-                        ++uiRet;
-                        ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                        ++uiI; //jump next FF
-                        ++uiJ;
-                    }
-                    else //an alone FF in the last byte, should have been split
-                    {
-                        ucSplitFF = 1;
-                        ucPacket[uiJ+uiIndex]=ucReceived[uiI];
-                        ++uiRet;
-                        ++uiJ;
-                    }
-                }
-            }
-		}
-		else
-		{
-			uiRet = uiReceivedSize - uiI;
-			memcpy (&ucPacket[uiIndex],&ucReceived[uiI],uiRet);
-		}
-    }
-
-    return uiRet;
-}
-
-int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K)
+//X and YModem packets are similar in structure:
+//Starts with SOH if 128 bytes packet or STX for 1024 bytes packet
+//Then you get a packet sequence number, XMODEM starts with packet 1
+//and the file data, while YMODEM starts with packet 0 that has the
+//file information (name/size/date)
+//Then you have the complement (i.e.: for 0, FF, for 1, FE, etc) of
+//the packet sequence
+//Then you have the 128 or 1024 bytes of data
+//And finally after the data, two bytes containing CRC16 or a checksum
+//
+//Due to the way we handle the buffer as a pointer of a pointer, buffer
+//MUST HAVE at least the double of a whole packet size, which means 2108
+//bytes. This speeds up quite a bit the decoding of double FF's.
+int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
 {
     int ret = 0;
-	unsigned char is1K = 0;
+	unsigned char is1K = *ucIs1K;
 	unsigned int uiReadHelper = 0;
 	unsigned int PktStatus = 0;
 	unsigned int TimeOut,Time1;
 	unsigned char TimeLeap;
-	int iParseResult;
+	unsigned char ucFoundStart = 0;
+	unsigned char ucSkipFF = 0;
+	unsigned int uiI,uiJ;
+	unsigned char *ucTmpPointer;
 
 	// Timeout for a packet
     Time1 = uiTickCount;
-    TimeOut = 360 + Time1;
+    TimeOut = XYMODEM_PACKET_TIMEOUT + Time1;
     if (TimeOut<Time1)
         TimeLeap = 1;
     else
@@ -201,28 +135,88 @@ int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K)
 
 	//This is the packet receiving loop, it will exit upon timeout
     //or receiving the packet
-    do
+    while (1)
     {
         if (!is1K)
             uiReadHelper = (133-PktStatus); //at least 128 bytes + 5 bytes header
         else
             uiReadHelper = (1029-PktStatus); //at least 1024 bytes + 5 bytes header
 
-        // Read remaining data
-        if (RXData (chTransferConn, RcvBuffer, &uiReadHelper))
+        ucTmpPointer = *ucPacket + PktStatus;
+
+        // Read data
+        if (RXData (chTransferConn, ucTmpPointer, &uiReadHelper))
         {
-            iParseResult = ParseReceivedData(RcvBuffer, ucPacket, PktStatus, uiReadHelper, &is1K);
-            if (iParseResult>0)
+            if (!ucFoundStart)
             {
-                PktStatus += iParseResult;
+                //New package, so split information do not matter, we will wait SOH/STX/EOT/ETB/CAN
+                for(uiI=0;uiI<uiReadHelper;++uiI)
+                {
+                    if (ucTmpPointer[uiI]==STX) //1024 bytes packet start
+                    {
+                        is1K = 1;
+                        ucTmpPointer += uiI;
+                        *ucPacket = ucTmpPointer;
+                        ucFoundStart = 1;
+                        uiReadHelper -= uiI;
+                        break;
+                    }
+                    else if (ucTmpPointer[uiI]==SOH) //128 bytes packet start
+                    {
+                        is1K = 0;
+                        ucTmpPointer += uiI;
+                        *ucPacket = ucTmpPointer;
+                        ucFoundStart = 1;
+                        uiReadHelper -= uiI;
+                        break;
+                    }
+                    else if ((ucTmpPointer[uiI] == EOT)||(ucTmpPointer[uiI] == ETB)||(ucTmpPointer[uiI] == CAN)) //transmission cancelled
+                        return (ucTmpPointer[uiI]*-1);
+                }
+            }
+
+            if (ucFoundStart)
+            {
+                if (TestTransfer)
+                {
+                   TestTransfer = 0;
+                   if (uiReadHelper>3)
+                    if ((ucTmpPointer[1]==0x00)&&(ucTmpPointer[2]==0xff)&&(ucTmpPointer[3]!=0xff))
+                        chDoubleFF = 0;
+                }
+
+                if (chDoubleFF)
+                {
+                    for (uiI=0,uiJ=0;uiI<uiReadHelper;++uiI)
+                    {
+                        if (ucSkipFF) //Skip FF?
+                        {
+                            ++uiJ;
+                            ucSkipFF=0;
+                            continue;
+                        }
+
+                        if (ucTmpPointer[uiI] == 0xFF) //Telnet IAC?
+                            ucSkipFF=1;
+
+                        if (uiJ) //need to start moving bytes
+                            ucTmpPointer[uiI-uiJ]=ucTmpPointer[uiI];
+                    }
+                    PktStatus += uiReadHelper;
+                    PktStatus -= uiJ;
+                }
+                else
+                {
+                    PktStatus += uiReadHelper;
+                }
+
                 if ( ((is1K)&&(PktStatus>=1029)) || ((!is1K)&&(PktStatus>=133)) )
                 {
                     TimeOut = 0;
                     break;
                 }
             }
-            else if (iParseResult<0)
-                return iParseResult;
+
         }
 
         UnapiBreath();
@@ -249,7 +243,6 @@ int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K)
             }
         }
     }
-    while (1);
 
     if (TimeOut == 0) //Packet received
     {
@@ -290,11 +283,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 	unsigned int TimeOut,Time1;
 	unsigned char TimeLeap;
 	unsigned char Retries;
+	unsigned char *ucReadBuffer;
 	static long FileSize;
 	static long ReceivedSize;
 	int iGetPacketResult;
 
-    	//This is an escape indicating to just send an Action (i.e.: C, ACK, NAK)
+    //This is an escape indicating to just send an Action (i.e.: C, ACK, NAK)
 	if (*File == -1)
 	{
 		ret = TxByte (chTransferConn, Action);
@@ -305,12 +299,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 			return 0;
 	}
 
-	// If sending a start of transmission 3 retries
+	// If sending a start of transmission XYMODEM_STARTPACKET_RETRIES retries
 	if ((Action == 'C')||(Action == 'G'))
-		Retries = 3;
-	else //otherwise 10
+		Retries = XYMODEM_STARTPACKET_RETRIES;
+	else //otherwise XYMODEM_PACKET_RETRIES
         if(!G)
-            Retries = 10;
+            Retries = XYMODEM_PACKET_RETRIES;
         else
             Retries = 1; //YMODEM-G - no retries at all, once wrong, cancel
 
@@ -333,7 +327,8 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
 		//or receiving the packet
 		do
 		{
-		    iGetPacketResult = GetPacket(RcvPkt, &is1K);
+		    ucReadBuffer = RcvPkt;
+		    iGetPacketResult = GetPacket(&ucReadBuffer, &is1K);
 		    if (iGetPacketResult==1) //success
             {
                 //YMODEM
@@ -341,10 +336,10 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                 //First response to a C (start CRC session) or G won't be
                 //a data packet, but a packet with number 0 containing
                 //filename and possibly file size...
-                if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(RcvPkt[1] == 0))
+                if ((isYmodem)&&((Action == 'C')||(Action == 'G'))&&(ucReadBuffer[1] == 0))
                 {
 					//is NULL the filename?
-					if (RcvPkt[3] == 0)
+					if (ucReadBuffer[3] == 0)
 						//No file received, end of transmission
                         return 254;
                     else
@@ -352,16 +347,16 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                         ReceivedSize = 0;
                         //Let's check for file name
                         for (chrLen=3;chrLen<140;chrLen++)
-                            if (RcvPkt[chrLen] == 0)
+                            if (ucReadBuffer[chrLen] == 0)
                                 break;
                         ++chrLen;
 
-                        if ((RcvPkt[chrLen]>='0')&&(RcvPkt[chrLen]<='9'))
-                            FileSize = atol(&RcvPkt[chrLen]);
+                        if ((ucReadBuffer[chrLen]>='0')&&(ucReadBuffer[chrLen]<='9'))
+                            FileSize = atol(&ucReadBuffer[chrLen]);
 
                         if (FileSize == 0)
                         {
-                            sprintf(chProtocolString,"Receiving file: %s Unknown size.\r\n",&RcvPkt[3]);
+                            sprintf(chProtocolString,"Receiving file: %s Unknown size.\r\n",&ucReadBuffer[3]);
                             print(chProtocolString);
                             FileSize = -1;
                         }
@@ -369,14 +364,14 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                         {
                             //Some servers do not comply to put a 0 after file size, use space
                             //so just fix it
-                            for (chrTerm=chrLen; (RcvPkt[chrTerm]>='0')&&(RcvPkt[chrTerm]<='9'); ++chrTerm);
-                            RcvPkt[chrTerm]=0;
-                            sprintf(chProtocolString,"Receiving file: %s Size: %s\r\n",&RcvPkt[3],&RcvPkt[chrLen]);
+                            for (chrTerm=chrLen; (ucReadBuffer[chrTerm]>='0')&&(ucReadBuffer[chrTerm]<='9'); ++chrTerm);
+                            ucReadBuffer[chrTerm]=0;
+                            sprintf(chProtocolString,"Receiving file: %s Size: %s\r\n",&ucReadBuffer[3],&ucReadBuffer[chrLen]);
                             print(chProtocolString);
                         }
 
-                        strcpy (filename, &RcvPkt[3]);
-                        *File = Open (&RcvPkt[3],O_CREAT);
+                        strcpy (filename, &ucReadBuffer[3]);
+                        *File = Open (&ucReadBuffer[3],O_CREAT);
                         if (*File != -1)
                         {
                             //File created, success
@@ -395,7 +390,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                     }
                 }
                 //not response to C or G, so packet numbers must match
-                else if ( (RcvPkt[1] == PktNumber) && (RcvPkt[2] == (0xFF - PktNumber) ) )
+                else if ( (ucReadBuffer[1] == PktNumber) && (ucReadBuffer[2] == (0xFF - PktNumber) ) )
                 {
                     //Ok, write it
                     if (is1K)
@@ -409,12 +404,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                             if (ReceivedSize>FileSize)
                             {
                                 //just save up to file size
-                                Write(*File, &RcvPkt[3],1024 - (ReceivedSize-FileSize));
+                                Write(*File, &ucReadBuffer[3],1024 - (ReceivedSize-FileSize));
                             }
                             else //otherwise save the entire block
-                                Write(*File, &RcvPkt[3],1024);
+                                Write(*File, &ucReadBuffer[3],1024);
                         else //XMODEM you just save everything and file could be padded
-                            Write(*File, &RcvPkt[3],1024);
+                            Write(*File, &ucReadBuffer[3],1024);
                     }
                     else
                     {
@@ -425,12 +420,12 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                         if (FileSize>0)
                             if (ReceivedSize>FileSize)
                             {
-                                Write(*File, &RcvPkt[3],128 - (ReceivedSize-FileSize));
+                                Write(*File, &ucReadBuffer[3],128 - (ReceivedSize-FileSize));
                             }
                             else
-                                Write(*File, &RcvPkt[3],128);
+                                Write(*File, &ucReadBuffer[3],128);
                         else
-                            Write(*File, &RcvPkt[3],128);
+                            Write(*File, &ucReadBuffer[3],128);
                     }
                     //Set time out as 0 to indicate success
                     TimeOut = 0;
@@ -442,7 +437,7 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                 //we will get the same packet again. In this case we just
                 //need to ignore it.
                 //is this a previous packet being retried?
-                else if (RcvPkt[1] == PktNumber - 1)
+                else if (ucReadBuffer[1] == PktNumber - 1)
                 {
                     //set timeout as 1 to indicate error and retry will do it
                     TimeOut = 1;
@@ -531,8 +526,9 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
     else
         G=0;
 	//Y-Modem?
-	if ( (((filename[0]=='y')||(filename[0]=='Y'))&&(filename[1]==0)) || (G) )
+	if ((G) || (((filename[0]=='y')||(filename[0]=='Y'))&&(filename[1]==0)))
 	{
+	    TestTransfer = 1; //test first packet, 00, if it is doubling ff or not
         do
         {
             // A key has been hit?
@@ -653,6 +649,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 	}
 	else //X-Modem
 	{
+	    TestTransfer = 0; //in XMODEM we are not able to test packet 00 (STX or SOH, 00 and FF, if fourth byte is FF then it is doubling, otherwise not)
 		//in XMODEM filename is up to the user, we've already asked it, so create the file
 		iFile = Open (filename,O_CREAT);
 

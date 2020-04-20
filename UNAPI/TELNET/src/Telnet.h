@@ -2,7 +2,7 @@
 --
 -- telnet.h
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.30
+--   Revision 1.31
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -84,33 +84,25 @@ enum TelnetDataParserStates {
 };
 
 //Those won't change, so we won't waste memory and use global constants
-const unsigned char ucClientWill[] = { IAC, WILL, CMD_WINDOW_SIZE,\ //we are willing to negotiate Window Size
-                                      IAC, WILL, CMD_TTYPE,\ //we are willing to negotiate Terminal Type
-                                      IAC, WILL, CMD_TERMINAL_SPEED\ //we are willing to negotiate Terminal Speed
-                                      };
 const unsigned char ucWindowSize[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
 const unsigned char ucWindowSize0[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 40, 0, 24, IAC, SE}; //our terminal is 40x24
 const unsigned char ucWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
-const unsigned char ucEchoDont[] = {IAC, DONT, CMD_ECHO};
-const unsigned char ucEchoDo[] = {IAC, DO, CMD_ECHO};
-const unsigned char ucBinaryDo[] = {IAC, DO, CMD_TRANSMIT_BINARY};
 const unsigned char ucTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'A', 'N', 'S', 'I', IAC, SE}; //Terminal ANSI
 const unsigned char ucTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
-const unsigned char ucSpeed800K[] = {IAC, SB, CMD_TERMINAL_SPEED, IS, '8', '0', '0', '0', '0', '0', ',', '8', '0', '0', '0', '0', '0', IAC,SE}; //terminal speed response
 
 //Auxiliary strings
 const unsigned char ucCrLf[3]="\r\n"; //auxiliary
 
 //Instructions
-const char ucUsage[] = "Usage: telnet <server:port> [a] [r]\r\n\r\n"
-                       "<server:port>: 192.168.0.1:23 or bbs.hispamsx.org:23\r\n\r\n"
+const char ucUsage[] = "Usage: telnet <server[:port]> [a] [r]\r\n\r\n"
+                       "<server[:port]>: 192.168.0.1:34 or bbs.hispamsx.org\r\n\r\n"
                        "a: turns off automatic download detection (some BBSs can't be used with it)\r\n"
                        "o: turns off ANSI rendering and use MSX-DOS text rendering\r\n"
                        "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
 
 //Versions
-const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.30 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
-const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.30 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfo[] = "> MSX UNAPI TELNET Client v1.31 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI TELNET Client v1.31 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 const char ucCursor_Up[] = "\x1b[A";
 const char ucCursor_Down[] = "\x1b[B";
 const char ucCursor_Forward[] = "\x1b[C";
@@ -122,15 +114,12 @@ unsigned char ucAutoDownload; //Auto download on binary transfers?
 unsigned char ucAnsi; //Using ANSI rendering?
 unsigned char ucEnterHit; //user has input enter?
 unsigned char ucWidth40; //Detected 40 Columns or less?
-unsigned char ucSentWill; //Sent what information we are willing for negotiation?
 unsigned char ucState; //State of Telnet Data Parser
 unsigned char ucCmdCounter; //If there is a TELNET command in progress, its size
-unsigned char ucEscCounter; //If there is an ESC command in progress, its size
 unsigned char ucStandardDataTransfer; //Is this telnet server proper and transmitting files using telnet double FF?
 unsigned char ucConnNumber; //hold the connection number received by UnapiHelper
 
 //For data receive parsing
-unsigned char ucEscData[25];
 unsigned char ucRcvData[128];
 
 //MSX Variables that we will access
@@ -142,14 +131,14 @@ __at 0xFBEC unsigned char ucMT7;
 //IMPORTANT: You need to check the map compiler generates to make sure this
 //address do not overlap functions, variables, etc
 //UNAPI requires memory buffer @ 0x8000 or higher...
-__at 0xD000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
-#define RcvMemorySize 1025
+__at 0x8000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
+#define RcvMemorySize 1024
 unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling
 
-unsigned char negotiate(unsigned char *ucBuf);
+void negotiate(unsigned char *ucBuf);
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption);
-void ParseTelnetData(unsigned char * ucBuffer);
+void ParseTelnetData(void);
 void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall;
 #endif // _TELNET_HEADER_INCLUDED

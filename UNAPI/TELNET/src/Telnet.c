@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.30
+--   Revision 1.31
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -47,118 +47,111 @@
 // This will handle CMD negotiation...
 // Basically, the first time host send any command our client will send it
 // is willing to send the following information:
-// Terminal Type (xterm-16color if jANSI running or UNKNOWN if plain text)
-// Window Size (80x25 if jANSI running or 80x24 if plain text
-// Terminal Speed (UART Speed).
+// Terminal Type (ANSI if on MSX 2 or better or UNKNOWN if plain text / MSX1)
+// Window Size (80x25 if ANSI running or 80x24 / 40x24 if MSX1)
 //
 // Upon receiving a DO CMD_WINDOW_SIZE, respond with Window Size.
 // Upon receiving TTYPE SUB OPTION request, respond accordingly whether dumb
-// or ANSI (xterm-16color).
-// Upon receiving TSPEED SUB OPTION request, respond accordingly our fake 800000
-// Speed.
+// or ANSI.
+//
 // Upon receiving WILL ECHO, turn off our ECHO (as host will ECHO), otherwise
 // if receiving WONT ECHO or no ECHO negotiation, we will ECHO locally.
 // Upon receiving TRANSMIT_BINARY, will just acknowledge if enter was not hit
 // as some BBSs send it at start negotiations, but after that, invoke the
-// file transfer function automatically (some BBSs do that before sending files)
+// file transfer function automatically (this works only on Synchronet BBSs)
 //
-// Treat the DO for TTYPE and TSPEED with an WILL to tell that we are ready
-// to send the information when requested.
+// Treat the DO for TTYPE with an WILL to tell that we are ready to send the
+// information when requested.
 //
 // Any other negotiation requested will be replied as:
 // Host asking us if we can DO something are replied as WONT do it
 // Host telling that it WILL do something, we tell it to DO it
-unsigned char negotiate(unsigned char *ucBuf)
+void negotiate(unsigned char *ucBuf)
 {
-    if (ucBuf[1] == DO && ucBuf[2] == CMD_WINDOW_SIZE) { //request of our terminal window size
-        if (ucAnsi)
-            TxUnsafeData (ucConnNumber, ucWindowSize1, sizeof(ucWindowSize1)); //80x25
-        else
-            if (!ucWidth40)
-                TxUnsafeData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize)); //80x24
-            else
-                TxUnsafeData (ucConnNumber, ucWindowSize0, sizeof(ucWindowSize0)); //40x24
-        return 1;
-    }
-	else if (ucBuf[1] == SB && ucBuf[2] == CMD_TTYPE) { //requesting Terminal Type list
-        if (ucAnsi)
-            TxUnsafeData (ucConnNumber, ucTTYPE2, sizeof(ucTTYPE2)); //xterm 16 colors
-        else
-            TxUnsafeData (ucConnNumber, ucTTYPE3, sizeof(ucTTYPE3)); //dumb/unknown
-        return 1;
-    }
-    else if (ucBuf[1] == SB && ucBuf[2] == CMD_TERMINAL_SPEED) { //requesting Terminal Speed
-        TxUnsafeData (ucConnNumber, ucSpeed800K, sizeof(ucSpeed800K)); //lets say 800Kbps
-        return 1;
-    }
-	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_ECHO) { //Host is going to echo
-		ucEcho = 0;
-		TxUnsafeData (ucConnNumber, ucEchoDo, sizeof(ucEchoDo)); //Ok host, you can echo, I'm not going to echo
-		return 1;
-	}
-	else if (ucBuf[1] == WILL && ucBuf[2] == CMD_TRANSMIT_BINARY) { //Host is going to send a file?
-		TxUnsafeData (ucConnNumber, ucBinaryDo, sizeof(ucBinaryDo));
-		if ((ucEnterHit)&&(ucAutoDownload))
-        {
-            //Some BBSs use transmit binary at start of telnet negotiations, thus why not do
-            //this before ENTER is HIT (which is Ok, ANSI data is 8 bit)
-            //
-            //Also some BBBs use it before transmitting any data, which is really not needed
-            //it is like a kid asking are we there yet? ... You said once, no need to say
-            //every darn time you are sending a screen. This is why there is a command to
-            //disable the download detection (which works for Syncrhonet BBSs just fine, and
-            //since those are the majority nowadays, why this option default is ON)
-            XYModemGet(ucConnNumber, ucStandardDataTransfer);
-            return 0;
-        }
-        else if (!ucEnterHit)
-        {
-            //If we received TRANSMIT BINARY right at the beginning, odds are that this BBS
-            //will not use it to signal file transfers
-            ucAutoDownload = 0;
-            return 1;
-        }
-	}
-	else if (ucBuf[1] == WONT && ucBuf[2] == CMD_ECHO) { //Host is not going to echo
-		ucEcho = 1;
-		TxUnsafeData (ucConnNumber, ucEchoDont, sizeof(ucEchoDont)); //Ok, don't echo, I'm doing it by myself
-		return 1;
-	}
-
-	//if we are here, none of the above mentioned cases
-    if (ucBuf[1] == DO)
+    switch (ucBuf[1])
     {
-        //we are willing to negotiate TTYPE and TERMINAL SPEED
-        if ( (ucBuf[2] == CMD_TTYPE) || (ucBuf[2] == CMD_TERMINAL_SPEED) || (ucBuf[2] == CMD_TRANSMIT_BINARY))
-            ucBuf[1] = WILL;
-        else //otherwise, not
+        case DO:
+            switch (ucBuf[2])
+            {
+                case CMD_WINDOW_SIZE:
+                    //request of our terminal window size
+                    if (ucAnsi)
+                        TxUnsafeData (ucConnNumber, ucWindowSize1, sizeof(ucWindowSize1)); //80x25
+                    else
+                        if (!ucWidth40)
+                            TxUnsafeData (ucConnNumber, ucWindowSize, sizeof(ucWindowSize)); //80x24
+                        else
+                            TxUnsafeData (ucConnNumber, ucWindowSize0, sizeof(ucWindowSize0)); //40x24
+                break;
+                //we are willing to negotiate TTYPE and TERMINAL SPEED
+                case CMD_TTYPE:
+                case CMD_TRANSMIT_BINARY:
+                    ucBuf[1] = WILL;
+                    TxUnsafeData (ucConnNumber, ucBuf, 3);
+                break;
+                default:
+                    ucBuf[1] = WONT;
+                    TxUnsafeData (ucConnNumber, ucBuf, 3);
+                break;
+            }
+        break;
+        case WILL:
+            switch (ucBuf[2])
+            {
+                case CMD_ECHO:
+                    //Host is going to echo
+                    ucEcho = 0;
+                    ucBuf[1] = DO;
+                    TxUnsafeData (ucConnNumber, ucBuf, 3); //Ok host, you can echo, I'm not going to echo
+                break;
+                case CMD_TRANSMIT_BINARY:
+                    //Ok, can do it
+                    ucBuf[1] = DO;
+                    TxUnsafeData (ucConnNumber, ucBuf, 3);
+                    //Initial handshake?
+                    if (!ucEnterHit)
+                        //If we received TRANSMIT BINARY right at the beginning, odds are that this BBS
+                        //will not use it to signal file transfers
+                        ucAutoDownload = 0;
+                    //Host is going to send a file?
+                    else if (ucAutoDownload)
+                        //Some BBSs use transmit binary at start of telnet negotiations, thus why not do
+                        //this before ENTER is HIT (which is Ok, ANSI data is 8 bit)
+                        //
+                        //Also some BBBs use it before transmitting any data, and those that do will do
+                        //it during initial hand-shake, before user type anything. In this case AutoDownload
+                        //should disable the download detection (which works for Syncrhonet BBSs just fine,
+                        //and Synchronet BBSs do not sent it during initial handshake)
+                        XYModemGet(ucConnNumber, ucStandardDataTransfer);
+                break;
+                default:
+                    ucBuf[1] = DO;
+                    TxUnsafeData (ucConnNumber, ucBuf, 3);
+                break;
+            }
+        break;
+        case SB:
+            if (ucBuf[2] == CMD_TTYPE)
+            {
+                //requesting Terminal Type list
+                if (ucAnsi)
+                    TxUnsafeData (ucConnNumber, ucTTYPE2, sizeof(ucTTYPE2)); //ANSI
+                else
+                    TxUnsafeData (ucConnNumber, ucTTYPE3, sizeof(ucTTYPE3)); //dumb/unknown
+            }
+        break;
+        case WONT:
+            if (ucBuf[2] == CMD_ECHO)
+                //Host is not going to echo
+                ucEcho = 1;
+            ucBuf[1] = DONT;
+            TxUnsafeData (ucConnNumber, ucBuf, 3);
+        break;
+        case DONT:
             ucBuf[1] = WONT;
+            TxUnsafeData (ucConnNumber, ucBuf, 3);
+        break;
     }
-    else if (ucBuf[1] == WILL)
-        ucBuf[1] = DO;
-    else
-        return 1;
-
-	TxUnsafeData (ucConnNumber, ucBuf, 3);
-
-	return 1;
-}
-
-// This is a callback function
-// ANSI-DRV will call this function when ESC[6n is received
-// And we will return current cursor position
-// This is crucial for quite a few BBSs terminal window size detection routines
-// As well Synchronet BBSs that have avatars
-void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
-{
-    unsigned char uchPositionResponse[12];
-    unsigned char uchRow,uchColumn;
-
-    uchColumn = uiCursorPosition & 0xff;
-    uchRow = (uiCursorPosition >> 8) & 0xff;
-    //return cursor position
-    sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
-    TxUnsafeData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
 }
 
 // This function will handle a received buffer from a TELNET connection. If
@@ -166,13 +159,12 @@ void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
 // print those, as well try to negotiate it using our negotiate function.
 // Also clear double FF's (this is how telnet indicate FF) and replace by a
 // single FF.
-void ParseTelnetData(unsigned char * ucBuffer)
+void ParseTelnetData()
 {
-    unsigned char * chTmp = ucBuffer;
+    unsigned char * chTmp = ucRcvDataMemory;
     unsigned char * chLimit = chTmp + uiGetSize;
 
-    //While we have data in the buffer
-    while (chTmp<chLimit)
+    do
     {
         switch (ucState)
         {
@@ -184,18 +176,12 @@ void ParseTelnetData(unsigned char * ucBuffer)
                     ucState = TELNET_CMD_INPROGRESS; // flag a command or sub is in progress
                     ucCmdCounter = 1;
                     ++chTmp;
-                    if (!ucSentWill)
-                    {
-                        //send WILL of what we are ready to negotiate
-                        ucSentWill = 1;
-                        TxUnsafeData (ucConnNumber, ucClientWill, sizeof(ucClientWill));
-                        // Need to process whatever host asked
-                    }
                 }
                 else
                 {
-                    printChar(*chTmp);
-                    ++chTmp;
+                    // Do it until IAC or hit the limit
+                    for (;(chTmp<chLimit)&&(*chTmp!=IAC);++chTmp)
+                        printChar(*chTmp);
                 }
             break;
             case TELNET_CMD_INPROGRESS:
@@ -209,12 +195,7 @@ void ParseTelnetData(unsigned char * ucBuffer)
                     printChar(0xff);
                 }
                 // Is it a two byte command? Just ignore, we do not react to those
-                else if ( (ucCmdCounter == 1) && (
-                      (*chTmp == GA) || (*chTmp == EL) || (*chTmp == EC) ||
-                      (*chTmp == AYT) || (*chTmp == AO) || (*chTmp == IP) ||
-                      (*chTmp == BRK) || (*chTmp == DM) || (*chTmp == NOP)
-                     )
-                   )
+                else if ((ucCmdCounter == 1) && (*chTmp <= GA) && (*chTmp >= NOP))
                 {
                     ++chTmp; //jump the CMD
                     ucState = TELNET_IDLE; //CMD finished
@@ -277,12 +258,29 @@ void ParseTelnetData(unsigned char * ucBuffer)
             break;
         }
     }
+    while (chTmp<chLimit); //While we have data in the buffer
+}
+
+// This is a callback function
+// MSX2ANSI will call this function when ESC[6n is received
+// And we will send the current cursor position over the connection
+// This is crucial for quite a few BBSs terminal window size detection routines
+// As well Synchronet BBSs that have avatars that will be misplaced without this
+void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
+{
+    unsigned char uchPositionResponse[12];
+    unsigned char uchRow,uchColumn;
+
+    uchColumn = uiCursorPosition & 0xff;
+    uchRow = (uiCursorPosition >> 8) & 0xff;
+    //return cursor position
+    sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
+    TxUnsafeData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
 }
 
 // Checks Input Data received from command Line and copy to the variables
-// It is mandatory to have server:port as first argument
+// It is mandatory to have server as first argument
 // All other arguments are optional
-//
 unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption)
 {
 	unsigned int iRet = 0;
@@ -309,6 +307,12 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 				strcpy (ucPort, ucMySeek);
 				iRet = 1;
 			}
+		}
+		else if((!ucMySeek) && (strlen(ucInput)<128))
+		{
+            strcpy (ucServer, ucInput);
+            strcpy (ucPort, "23");
+            iRet = 1;
 		}
 
 		if (argc>1)
@@ -401,11 +405,8 @@ int main(char** argv, int argc)
         }
         print(ucSWInfo);
     }
-
-    if (ucAnsi)
-        print(ucSWInfoANSI);
     else
-        print (ucSWInfoANSI);
+        print(ucSWInfoANSI);
 
     // Time to check for UNAPI availability
 	if (!InitializeTCPIPUnapi())
@@ -430,15 +431,11 @@ int main(char** argv, int argc)
 
     if ( ucRet == ERR_OK)
     {
-        //print("Connected!\r\n");
-
-        ucSentWill = 0;
-
         // Ok, we are connected, now we stay looping into this state
-        // machine until ESC key is pressed
+        // machine until key assigned to exit is pressed
         do
         {
-            //ok, after 255 loops, we check for connection state, and this is the counter of loops
+            //ok, after 255 loops w/o data, we check for connection state, and this is the counter of loops
             ++ucAliveConnCount;
             //UNAPI Breathing just in case adapter need it
             UnapiBreath();
@@ -507,16 +504,20 @@ int main(char** argv, int argc)
             }
 
             // Is there DATA?
-            uiGetSize = RcvMemorySize - 1;
+            uiGetSize = RcvMemorySize;
             if (RXData(ucConnNumber, ucRcvDataMemory, &uiGetSize))
             {
                 //Data received?
                 if(uiGetSize)
+                {
                     //Parse it and do what is needed, including printing it
-                    ParseTelnetData(ucRcvDataMemory);
+                    ParseTelnetData();
+                    //zero the connection alive count, no need to check while we are receiving data
+                    ucAliveConnCount = 1;
+                }
             }
 
-            //Have we done 255 loops?
+            //Have we done 255 loops w/o receiving data?
             if (!ucAliveConnCount)
             {
                 //Check if connection still is alive
@@ -526,13 +527,13 @@ int main(char** argv, int argc)
         }
         while (1);
 
-        if (ucAnsi) //loaded ansi-drv.bin?
-            endAnsi();
+        if (ucAnsi) //using msx2ansi?
+            endAnsi(); //terminate its screen mode
 
         if (ucF5Exit) //F5 pressed?
             print("Closing connection...\r\n"); //Yes, so we are closing
         else
-            print("Connection closed on the other end...\r\n"); //No, so we will close after the other end closed
+            print("Connection closed on the other end...\r\n"); //No, so we will try to close after the other end closed
         ucRet = CloseConnection(ucConnNumber);
 
         if (ucRet != 0)
@@ -543,7 +544,7 @@ int main(char** argv, int argc)
     }
     else
     {
-        if (ucAnsi) //loaded ansi-drv.bin?
+        if (ucAnsi) //loaded msx2ansi?
             endAnsi();
         sprintf (chTextLine,"Error %u connecting to server: %s:%s\r\n", ucRet, ucServer, ucPort);
         print (chTextLine);

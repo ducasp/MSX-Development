@@ -2,8 +2,6 @@
 #include "print.h"
 #include "../../fusion-c/header/msx2ansi.h"
 
-Z80_registers prtregs; //auxiliary structure for asm function calling
-
 unsigned char usingAnsiDrv;
 
 void initPrint()

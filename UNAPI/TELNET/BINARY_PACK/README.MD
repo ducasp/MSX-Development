@@ -6,9 +6,29 @@ This pack includes TELNET as well as its readme file
 
 If you have a MSX2 or better, ANSI will work. It is automatic, don't worry.
 
-# TELNET v1.30
+# TELNET v1.31
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.31
+	- General code cleaning. Removing unused variables, made the negotiation
+	  code more efficient and better to understand, as well as fixing old
+	  comments that were referring to stuff no longer used :)
+	- Due to the better telnet negotiation code, along with a different way to
+	  detect a dead connection, the flow of ANSI animation and text rendering
+	  is smoother, specially on regular z80 clock and with Obsonet
+	- If no portnumber is given, will assume default port (23)
+	- Automatic detection of BBB's that misbehave on Telnet Protocol during
+	  file transfers (i.e.: based on Mystic) if the transfer protocol is YModem
+	  or YModem-G
+	- There is a significant (50%) speed-up on YModem-G transfers when the BBS
+	  uses the proper TELNET protocol during file transfers (i.e.: every 0xFF 
+	  byte is sent as 0xFF 0xFF) and the adapter allows for more than 3KB/s
+	  transfers (i.e.: SM-X, GR8NET... Sorry, Obsonet is not getting faster
+	  transfers)
+	- Fixed an issue where SM-X wouldn't always properly handshake with the BBS
+	  during start-up, i.e.: HispaMSX wouldn't always detect terminal as ANSI
+	  capable
 
 # CHANGELOG v1.30
 	- Made a few behavior changes, CTRL+B won't begin downloads anymore, CTRL+E
@@ -239,6 +259,9 @@ results).
 telnet server:port [a] [r]
 
 server:port: 192.168.0.1:23 or bbs.hispamsx.org:23
+
+(NOTE: :port is now optional, and if it is not provided, will assume default 
+telnet port, 23)
 
 a - Will turn off automatic file download detection. It works on all Synchronet
 BBS's and doesn't interfere on many others. But a few BBSs over use the Binary

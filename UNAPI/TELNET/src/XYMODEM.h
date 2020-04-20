@@ -2,10 +2,10 @@
 --
 -- XYMODEM.h
 --   X/YMODEM(G) for UNAPI Telnet Terminal.
---   Revision 0.80
+--   Revision 1.00
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -60,11 +60,13 @@
 #define CAN 0x18
 
 __at 0xFC9E unsigned int uiTickCount;
+#define XYMODEM_PACKET_TIMEOUT 360
+#define XYMODEM_STARTPACKET_RETRIES 3
+#define XYMODEM_PACKET_RETRIES 10
 
 char *ultostr(unsigned long value, char *ptr, int base);
 unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned char PktNumber, unsigned char isYmodem);
 void CancelTransfer(void);
 void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer);
-int GetPacket(unsigned char * ucPacket, unsigned char * ucIs1K);
-int ParseReceivedData(unsigned char * ucReceived, unsigned char * ucPacket,  unsigned int uiIndex, unsigned int uiReceivedSize, unsigned char * ucIs1K);
+int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K);
 #endif // _XYMODEM_HEADER_INCLUDED
