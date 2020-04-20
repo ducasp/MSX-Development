@@ -1,10 +1,16 @@
-# HOW TO BUILD
+# HOW TO BUILD USING LINUX
+
+Piter Punk was very kind in providing a Makefile that should worf with Linux.
+It seems you just need to create a folder within fusion-c installation folder
+and move all files, including make file, to it. :)
+
+# HOW TO BUILD USING WINDOWS
 
 My setup to build is:
 
 - Windows PC
 - Fusion-C Library ( you can get it for free at http://www.ebsoft.fr/shop/en/home/66-fusion-c.html )
-- SDCC 3.9.0 ( Eric recommends 3.6.0 for fusion-c, but it is not good dealing with switch/case and 
+- SDCC 4.0.0 ( Eric recommends 3.6.0 for fusion-c, but it is not good dealing with switch/case and 
   nested IFs and end-up causing errors with this code)
 - CodeBlocks as Dev GUI
 
