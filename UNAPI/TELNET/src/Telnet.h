@@ -84,11 +84,11 @@ enum TelnetDataParserStates {
 };
 
 //Those won't change, so we won't waste memory and use global constants
-const unsigned char ucWindowSize[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
-const unsigned char ucWindowSize0[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 40, 0, 24, IAC, SE}; //our terminal is 40x24
-const unsigned char ucWindowSize1[] = {IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
+const unsigned char ucWindowSize[] = {IAC, WILL, CMD_WINDOW_SIZE, IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 24, IAC, SE}; //our terminal is 80x24
+const unsigned char ucWindowSize0[] = {IAC, WILL, CMD_WINDOW_SIZE, IAC, SB, CMD_WINDOW_SIZE, 0, 40, 0, 24, IAC, SE}; //our terminal is 40x24
+const unsigned char ucWindowSize1[] = {IAC, WILL, CMD_WINDOW_SIZE, IAC, SB, CMD_WINDOW_SIZE, 0, 80, 0, 25, IAC, SE}; //our terminal is 80x25
 const unsigned char ucTTYPE2[] = {IAC, SB, CMD_TTYPE, IS, 'A', 'N', 'S', 'I', IAC, SE}; //Terminal ANSI
-const unsigned char ucTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'U', 'N', 'K', 'N', 'O', 'W', 'N', IAC, SE}; //Terminal UNKNOWN
+const unsigned char ucTTYPE3[] = {IAC, SB, CMD_TTYPE, IS, 'V', 'T', '5', '2', IAC, SE}; //Terminal UNKNOWN
 
 //Auxiliary strings
 const unsigned char ucCrLf[3]="\r\n"; //auxiliary
