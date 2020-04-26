@@ -1,5 +1,7 @@
 This is the source code and binaries for the original ANSIDRV for MSX2 and better or for V9990
 
+This code was gently sent to me after request by Sonyc AKA T, Tobias Keizer, the author of this original work
+
 It is intended to be used with Turbo Pascal
 
 These are the instructions to use by Carlos de Santana (Sd-Snatcher @ MSXRC):
