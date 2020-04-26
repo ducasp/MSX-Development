@@ -16,6 +16,10 @@
 ;
 ; Changelog:
 ;
+; Piter Punk - Rewrite HorizontalTab routine to move cursor to a tabstop
+; Piter Punk - Added back HorizontalTab (0x09) handling
+; Piter Punk - Added save and restore cursor VT100 control codes
+;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
 ;
@@ -252,7 +256,9 @@ ControlCode:
 	CP	#13
 	JP	Z,CarriageReturn
 	CP	#27
-	JP	Z,EscapeCode			; If an Escape code, let's check it	
+	JP	Z,EscapeCode			; If an Escape code, let's check it
+	CP	#9
+	JP	Z,HorizontalTab
 	CP	#7
 	JP	Z,Bell					
 	JP	PrintText.RLP.CCPrint
@@ -290,6 +296,10 @@ EscapeCode:
 	JP	Z,VT52_LE
 	CP	#'H'
 	JP	Z,VT52_HOME
+	CP	#'7'
+	JP	Z,VT100_SCP
+	CP	#'8'
+	JP	Z,VT100_RCP
 	JP	PrintText.RLP
 
 
@@ -835,6 +845,18 @@ VT52_HOME:
 
 
 
+VT100_SCP:
+	LD	(#EndAddress),HL
+	JP	ANSI_SCP
+
+
+
+VT100_RCP:
+	LD	(#EndAddress),HL
+	JP	ANSI_RCP
+
+
+
 BackSpace:
 	LD	A,(#CursorCol)
 	OR	A
@@ -848,17 +870,14 @@ BackSpace:
 
 HorizontalTab:
 	LD	A,(#CursorCol)
-	ADD	#0x08
-	AND	#0b11111000
+	OR	#7
+	CP	#79
+	JP	Z,HorizontalTab.SCP
+	INC	A
+HorizontalTab.SCP:
 	LD	(#CursorCol),A
-	CP	#80
-	JP	C,HorizontalTab.RET
-	SUB	#80
-	LD	(#CursorCol),A
-	JP	LineFeed
-HorizontalTab.RET:	
 	CALL	V9938_SetCursorX
-	CALL	V9938_SetCursorY
+	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 
