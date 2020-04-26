@@ -436,7 +436,7 @@ Parameters.SETOMT:
 	CP	#'P'
 	JP	Z,ANSI_DCH
 	CP	#'b'
-	JP	Z,ANSI_RLC
+	JP	Z,ANSI_REP
 
 	JP	Parameters.ERR
 
