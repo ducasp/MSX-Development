@@ -16,6 +16,8 @@
 ;
 ; Changelog:
 ;
+; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), 
+;              ESC[#G (ANSI CHA), ESC[#I (ANSI CHT) and ESC[#Z (ANSI CBT),
 ; Piter Punk - Added Support to ESC[nb, ANSI REP, which repeats the last char
 ; Piter Punk - Rewrite HorizontalTab routine to move cursor to a tabstop
 ; Piter Punk - Added back HorizontalTab (0x09) handling
@@ -437,6 +439,16 @@ Parameters.SETOMT:
 	JP	Z,ANSI_DCH
 	CP	#'b'
 	JP	Z,ANSI_REP
+	CP	#'d'
+	JP	Z,ANSI_VPA
+	CP	#'e'
+	JP	Z,ANSI_CUD
+	CP	#'G'
+	JP	Z,ANSI_CHA
+	CP	#'I'
+	JP	Z,ANSI_CHT
+	CP	#'Z'
+	JP	Z,ANSI_CBT
 
 	JP	Parameters.ERR
 
@@ -513,8 +525,10 @@ ANSI_CUU.SCP:
 	JP	PrintText.RLP
 
 
-
-ANSI_CUD:						; ANSI Cursor Down
+ANSI_VPA:				; ANSI Vertical Position Absolute 
+	LD	A,#255
+	LD	(#CursorRow),A
+ANSI_CUD:				; ANSI Cursor Down
 	LD	A,B
 	LD	B,#1
 	OR	A
@@ -542,6 +556,9 @@ ANSI_CUD.SCP:
 
 
 
+ANSI_CHA:				; ANSI Cursor Horizontal Absolute
+	LD	A,#255
+	LD	(#CursorCol),A
 ANSI_CUF:						; ANSI Cursor Forward
 	LD	A,B
 	LD	B,#1
@@ -644,7 +661,7 @@ ANSI_REP.RLP:
 	JP	C,ANSI_REP.ELP		; If up to position 80, done
 	XOR	A				
 	LD	(#CursorCol),A		; Otherwise cursor is back to position 0
-	CALL	LineFeedSub		; And feed the line
+	CALL	LFeedSub		; And feed the line
 ANSI_REP.ELP:
 	POP	HL
 	POP	BC
@@ -708,6 +725,39 @@ ANSI_DL:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
+
+ANSI_CHT:				; ANSI Horizontal Tab
+	LD	A,B
+	LD	B,#1			; No number is one Tab
+	OR	A
+	JR	Z,ANSI_CHT.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of repeats
+ANSI_CHT.RLP:
+	PUSH	BC
+	PUSH	HL
+	CALL	HTabSub			;
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_CHT.RLP		; It's the end? No? Repeat!
+	JP	PrintText.RLP
+	
+
+ANSI_CBT:				; ANSI Cursor Backwards Tabulation
+	LD	A,B
+	LD	B,#1			; No number is one Tab
+	OR	A
+	JR	Z,ANSI_CBT.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of repeats
+ANSI_CBT.RLP:
+	PUSH	BC
+	PUSH	HL
+	CALL	CBTabSub			;
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_CBT.RLP		; It's the end? No? Repeat!
+	JP	PrintText.RLP
 
 
 ANSI_SGR:						; ANSI Set Graphics Rendition
@@ -901,35 +951,50 @@ BackSpace:
 	JP	PrintText.RLP
 
 
-
 HorizontalTab:
+	CALL	HTabSub
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+HTabSub:
 	LD	A,(#CursorCol)		; Get the current column
 	OR	#7			; Goes to the next tabstop
 					; Tabstops traditionally were
 					; in each 8th column
 	CP	#79
-	JP	Z,HorizontalTab.SCP
+	JP	Z,HTabSub.SCP
 	INC	A			; Some adjusts here and there...
-HorizontalTab.SCP:
+HTabSub.SCP:
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
-	LD	HL,(#EndAddress)
-	JP	PrintText.RLP
+	RET
+
+
+
+CBTabSub:
+	LD	A,(#CursorCol)		; Get the current column
+	DEC	A
+	AND	#248			; Goes to the previous tabstop
+					; Tabstops traditionally were
+					; in each 8th column
+	CP	#248
+	JP	NZ,CBTabSub.SCP
+	XOR	A			; Positions belows 0 are 0
+CBTabSub.SCP:
+	JR	HTabSub.SCP
 
 
 
 LineFeed:
-	CALL	LineFeedSub
+	CALL	LFeedSub
 	JP	PrintText.RLP
-
-LineFeedSub:
+LFeedSub:
 	LD	A,(#CursorRow)
 	INC	A
 	CP	#25
-	JR	C,LineFeedSub.NNL
+	JR	C,LFeedSub.NNL
 	CALL	V9938_LineFeed
 	LD	A,#24
-LineFeedSub.NNL:	
+LFeedSub.NNL:	
 	LD	(#CursorRow),A
 	CALL	V9938_SetCursorX
 	CALL	V9938_SetCursorY
