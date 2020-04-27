@@ -16,6 +16,13 @@
 ;
 ; Changelog:
 ;
+; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), 
+;              ESC[#G (ANSI CHA), ESC[#I (ANSI CHT) and ESC[#Z (ANSI CBT),
+; Piter Punk - Added Support to ESC[nb, ANSI REP, which repeats the last char
+; Piter Punk - Rewrite HorizontalTab routine to move cursor to a tabstop
+; Piter Punk - Added back HorizontalTab (0x09) handling
+; Piter Punk - Added save and restore cursor VT100 control codes
+;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
 ;
@@ -213,7 +220,7 @@ BufferText:
 	PUSH	HL					; Save pointer
 	CALL	BufferChar			; Process or print it
 	POP	HL						; Restore pointer
-	JP	BufferText				; Continue
+	JR	BufferText				; Continue
 PrintText:
 PrintText.RLP:	
 	LD	A,(HL)					; Load the character
@@ -221,6 +228,7 @@ PrintText.RLP:
 	CP	#0x20				
 	JP	C,ControlCode			; If less than 0x20 (space), a control character
 PrintText.RLP.CCPrint:	
+	LD	(#LastChar),A
 	PUSH	HL					; Save Pointer
 	CALL	V9938_PrintChar		; Call the print routine for our chip
 	POP	HL						; Restore Pointer
@@ -231,7 +239,7 @@ PrintText.RLP.CCPrint:
 	CALL	V9938_SetCursorX	; Set cursor on screen	
 	POP	AF						; Restore
 	CP	#80				
-	JP	C,PrintText.RLP			; If up to position 80, done
+	JR	C,PrintText.RLP			; If up to position 80, done
 	XOR	A				
 	LD	(#CursorCol),A			; Otherwise cursor is back to position 0
 	JP	LineFeed				; And feed the line
@@ -244,7 +252,7 @@ PrintText.RLP.CCPrint:
 
 ControlCode:
 	OR	A
-	RET	Z						; If 0, done
+	RET	Z				; If 0, done
 	CP	#8
 	JP	Z,BackSpace		
 	CP	#10
@@ -252,7 +260,9 @@ ControlCode:
 	CP	#13
 	JP	Z,CarriageReturn
 	CP	#27
-	JP	Z,EscapeCode			; If an Escape code, let's check it	
+	JP	Z,EscapeCode			; If an Escape code, let's check it
+	CP	#9
+	JP	Z,HorizontalTab
 	CP	#7
 	JP	Z,Bell					
 	JP	PrintText.RLP.CCPrint
@@ -290,6 +300,10 @@ EscapeCode:
 	JP	Z,VT52_LE
 	CP	#'H'
 	JP	Z,VT52_HOME
+	CP	#'7'
+	JP	Z,VT100_SCP
+	CP	#'8'
+	JP	Z,VT100_RCP
 	JP	PrintText.RLP
 
 
@@ -423,6 +437,18 @@ Parameters.SETOMT:
 	JP	Z,ANSI_CGP
 	CP	#'P'
 	JP	Z,ANSI_DCH
+	CP	#'b'
+	JP	Z,ANSI_REP
+	CP	#'d'
+	JP	Z,ANSI_VPA
+	CP	#'e'
+	JP	Z,ANSI_CUD
+	CP	#'G'
+	JP	Z,ANSI_CHA
+	CP	#'I'
+	JP	Z,ANSI_CHT
+	CP	#'Z'
+	JP	Z,ANSI_CBT
 
 	JP	Parameters.ERR
 
@@ -499,8 +525,10 @@ ANSI_CUU.SCP:
 	JP	PrintText.RLP
 
 
-
-ANSI_CUD:						; ANSI Cursor Down
+ANSI_VPA:				; ANSI Vertical Position Absolute 
+	LD	A,#255
+	LD	(#CursorRow),A
+ANSI_CUD:				; ANSI Cursor Down
 	LD	A,B
 	LD	B,#1
 	OR	A
@@ -528,6 +556,9 @@ ANSI_CUD.SCP:
 
 
 
+ANSI_CHA:				; ANSI Cursor Horizontal Absolute
+	LD	A,#255
+	LD	(#CursorCol),A
 ANSI_CUF:						; ANSI Cursor Forward
 	LD	A,B
 	LD	B,#1
@@ -606,7 +637,37 @@ ANSI_DCH:						; ANSI Delelete Characters
 ANSI_DCH.GP:	
 	LD	A,(#Parameters.PRM+0)	; Load parameter, number of characters to delete
 	JP	V9938_DelChr
+
 	
+ANSI_REP:				; ANSI Repeat Last Character
+	LD	A,B
+	LD	B,#1			; No number is repeat once	
+	OR	A
+	JR	Z,ANSI_REP.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of repeats
+ANSI_REP.RLP:
+	LD	A,(#LastChar)
+	PUSH	BC
+	PUSH	HL			
+	CALL	V9938_PrintChar		; Call the print routine for our chip
+	LD	A,(#CursorCol)		; Get Current Cursor Position
+	INC	A			; Increment it
+	LD	(#CursorCol),A		; Save
+	PUSH	AF			
+	CALL	V9938_SetCursorX	; Set cursor on screen	
+	POP	AF		
+	CP	#80				
+	JP	C,ANSI_REP.ELP		; If up to position 80, done
+	XOR	A				
+	LD	(#CursorCol),A		; Otherwise cursor is back to position 0
+	CALL	LFeedSub		; And feed the line
+ANSI_REP.ELP:
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_REP.RLP		; It's the end? No? Repeat!
+	JP	PrintText.RLP
+
 
 ANSI_ED:						; ANSI Erase in display
 	LD	A,B
@@ -665,6 +726,39 @@ ANSI_DL:
 	JP	PrintText.RLP
 
 
+ANSI_CHT:				; ANSI Horizontal Tab
+	LD	A,B
+	LD	B,#1			; No number is one Tab
+	OR	A
+	JR	Z,ANSI_CHT.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of repeats
+ANSI_CHT.RLP:
+	PUSH	BC
+	PUSH	HL
+	CALL	HTabSub			;
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_CHT.RLP		; It's the end? No? Repeat!
+	JP	PrintText.RLP
+	
+
+ANSI_CBT:				; ANSI Cursor Backwards Tabulation
+	LD	A,B
+	LD	B,#1			; No number is one Tab
+	OR	A
+	JR	Z,ANSI_CBT.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of repeats
+ANSI_CBT.RLP:
+	PUSH	BC
+	PUSH	HL
+	CALL	CBTabSub			;
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_CBT.RLP		; It's the end? No? Repeat!
+	JP	PrintText.RLP
+
 
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
@@ -708,7 +802,7 @@ ANSI_SGR.RES:					; RESET ATTRIBUTES
 					;	5 Blink on
 					;	7 Reverse Video on
 					;	8 Concealed on
-					;     By now, the we supports
+					;     By now, this library supports
 					;     BOLD and REVERSE
 	XOR	A				
 	LD	(#HiLighted),A
@@ -835,6 +929,18 @@ VT52_HOME:
 
 
 
+VT100_SCP:
+	LD	(#EndAddress),HL
+	JP	ANSI_SCP
+
+
+
+VT100_RCP:
+	LD	(#EndAddress),HL
+	JP	ANSI_RCP
+
+
+
 BackSpace:
 	LD	A,(#CursorCol)
 	OR	A
@@ -845,38 +951,54 @@ BackSpace:
 	JP	PrintText.RLP
 
 
-
 HorizontalTab:
-	LD	A,(#CursorCol)
-	ADD	#0x08
-	AND	#0b11111000
-	LD	(#CursorCol),A
-	CP	#80
-	JP	C,HorizontalTab.RET
-	SUB	#80
-	LD	(#CursorCol),A
-	JP	LineFeed
-HorizontalTab.RET:	
-	CALL	V9938_SetCursorX
-	CALL	V9938_SetCursorY
+	CALL	HTabSub
+	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
+HTabSub:
+	LD	A,(#CursorCol)		; Get the current column
+	OR	#7			; Goes to the next tabstop
+					; Tabstops traditionally were
+					; in each 8th column
+	CP	#79
+	JP	Z,HTabSub.SCP
+	INC	A			; Some adjusts here and there...
+HTabSub.SCP:
+	LD	(#CursorCol),A
+	CALL	V9938_SetCursorX
+	RET
+
+
+
+CBTabSub:
+	LD	A,(#CursorCol)		; Get the current column
+	DEC	A
+	AND	#248			; Goes to the previous tabstop
+					; Tabstops traditionally were
+					; in each 8th column
+	CP	#248
+	JP	NZ,CBTabSub.SCP
+	XOR	A			; Positions belows 0 are 0
+CBTabSub.SCP:
+	JR	HTabSub.SCP
 
 
 
 LineFeed:
+	CALL	LFeedSub
+	JP	PrintText.RLP
+LFeedSub:
 	LD	A,(#CursorRow)
 	INC	A
 	CP	#25
-	JR	C,LineFeed.NNL
+	JR	C,LFeedSub.NNL
 	CALL	V9938_LineFeed
 	LD	A,#24
-LineFeed.NNL:	
+LFeedSub.NNL:	
 	LD	(#CursorRow),A
 	CALL	V9938_SetCursorX
 	CALL	V9938_SetCursorY
-	JP	PrintText.RLP
-
-
+	RET
 
 CarriageReturn:
 	XOR	A
@@ -1853,6 +1975,8 @@ FontColor:	.db	#0x07
 HiLighted:	.db	#0x00
 
 Reversed:	.db	#0x00
+
+LastChar:	.db	#0x65
 
 ANSI_M:		.db	#0x00		; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
 ANSI_P:		.dw	#ANSI_S		; Point the next free position in buffer
