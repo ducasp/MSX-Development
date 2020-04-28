@@ -2,7 +2,7 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.31
+--   Revision 1.32
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -510,8 +510,12 @@ int main(char** argv, int argc)
                 //Data received?
                 if(uiGetSize)
                 {
+                    //Warn we are going to print a whole buffer
+                    StartPrintBuffer();
                     //Parse it and do what is needed, including printing it
                     ParseTelnetData();
+                    //Buffer Processing finished
+                    EndPrintBuffer();
                     //zero the connection alive count, no need to check while we are receiving data
                     ucAliveConnCount = 1;
                 }
