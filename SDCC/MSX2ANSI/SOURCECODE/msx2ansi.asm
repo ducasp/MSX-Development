@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.4
+; MSX2ANSI ANSI V9938 Library v.1.5
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -7,7 +7,10 @@
 ; This version of code and conversion into SDCC library by Oduvaldo Pavan Junior
 ; ducasp@gmail.com
 ;
-; Thanks to Piter Punk for his contribution on fixing ESC[m (no parameters) behavior
+; Thanks to Piter Punk for his contribution on making this library also a great
+; library to use for a remote terminal, he has fixed a few already implemented
+; escape code behavior as well as adding several escape codes that are important
+; for nCurses applications
 ;
 ; Comercial usage of this code or derivative works of this code are
 ; allowed ONLY upon agreement with the author.
@@ -16,12 +19,19 @@
 ;
 ; Changelog:
 ;
-; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), 
-;              ESC[#G (ANSI CHA), ESC[#I (ANSI CHT) and ESC[#Z (ANSI CBT),
+; v1.5: 
+; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), ESC[#G
+; (ANSI CHA), ESC[#I (ANSI CHT) and ESC[#Z (ANSI CBT)
 ; Piter Punk - Added Support to ESC[nb, ANSI REP, which repeats the last char
 ; Piter Punk - Rewrite HorizontalTab routine to move cursor to a tabstop
 ; Piter Punk - Added back HorizontalTab (0x09) handling
 ; Piter Punk - Added save and restore cursor VT100 control codes
+; OPJ - Fixed the issue with ESC[#J, DO_HMMV was clearing memory that was not
+; from its video page depending on the current line offset
+; OPJ - Added the possibility of disabling cursor while putting text with 
+; AnsiPutChar through AnsiStartBuffer and AnsiEndBuffer, this might generate
+; a more pleasant screen rendering without the cursor moving and also speed up
+; certain operations like screen clearing and line deletions
 ;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
@@ -84,6 +94,40 @@ _AnsiFinish::
 	PUSH	IX					; Interslot call might mess with IX and C expect it to be intact
 	CALL	V9938_Finish		; Restore	
 	POP	IX						; Restore IX so C won't have issues
+	RET
+
+; AnsiStartBuffer needs no parameters
+;
+; Will turn off sprite cursor if it is on, idea is to make rendering faster and
+; there is no need to have the cursor enabled while rendering a live buffer. For
+; some applications it is faster to use putchar than print, thus the need to indicate
+; start and end of buffer printing
+;
+; void AnsiStartBuffer()
+_AnsiStartBuffer::
+StartBuffer:
+	LD	A,(#CursorOn)
+	OR	A
+	RET	Z
+	CALL	DisCursorSub
+	RET
+
+; AnsiEndBuffer needs no parameters
+;
+; Will turn sprite cursor back on if it was on, idea is to make rendering faster and
+; there is no need to have the cursor enabled while rendering a live buffer. For
+; some applications it is faster to use putchar than print, thus the need to indicate
+; start and end of buffer printing
+;
+; void AnsiEndBuffer()
+_AnsiEndBuffer::
+EndBuffer:
+	LD	A,(#CursorOn)
+	OR	A
+	RET	Z
+	CALL	EnCursorSub	
+	CALL	V9938_SetCursorX
+	CALL	V9938_SetCursorY
 	RET
 
 
@@ -208,19 +252,24 @@ BufferChar.Y.END:
 	LD	(#ANSI_P),HL			; new buffer position
 	JR	BufferChar.END			; not a parameter I understand, so print on the screen
 
-
 ; AnsiPrint - will proccess and print the string whose address is in HL (zero terminated)
 ; void __z88dk_fastcall AnsiPrint(unsigned char * ucString)
 _AnsiPrint::
+	CALL	StartBuffer			; Disable sprite to render faster, if needed
 BufferText:
 	LD	A,(HL)					; Load the character
 	INC	HL						; Increment pointer
 	OR 	A						; 0?
-	RET	Z						; Yes, end of string
+	JP	Z,EndAnsiPrint			; Yes, end of string
 	PUSH	HL					; Save pointer
 	CALL	BufferChar			; Process or print it
 	POP	HL						; Restore pointer
 	JR	BufferText				; Continue
+EndAnsiPrint:
+	CALL	EndBuffer			; Enable sprite back, if needed
+	RET
+
+; PrintText - Will handle text in address pointed by HL, zero terminated
 PrintText:
 PrintText.RLP:	
 	LD	A,(HL)					; Load the character
@@ -699,10 +748,6 @@ ANSI_ED.ED2:
 
 
 ANSI_EL:						; ANSI Erase in Line
-	;DEC	HL
-	;DEC	HL
-	;LD	A,(HL)
-	;CP	#'['
 	LD	A,B
 	OR	A
 	JP	Z,V9938_ErLin0
@@ -854,6 +899,15 @@ ANSI_SGR.SWP:
 	JR      ANSI_SGR.CLR
 
 VT52_ENCURSOR:
+	LD	A,(#CursorOn)
+	OR	A
+	RET	NZ					; If already on, nothing to do
+	LD	A,#0x01
+	LD	(#CursorOn),A		; Other than 0, on
+	LD	A,(#CursorVis)
+	OR	A
+	RET	Z					; If not visible, need not to worry setting it up
+EnCursorSub:
 	DI
 	LD	A,(#VDP_08)			; Get a copy of register 8
 	AND	#0b11111101			; Clear bit to enable sprites	
@@ -862,9 +916,19 @@ VT52_ENCURSOR:
 	LD	A,#0x80+8				
 	OUT	(#0x99),A			; Write to register 8	
 	EI
+	LD	(#CursorVis),A		; It is now visible
 	RET
 
 VT52_DISCURSOR:
+	LD	A,(#CursorOn)
+	OR	A
+	RET	Z					; If already off, nothing to do
+	XOR	A
+	LD	(#CursorOn),A		; Other than 0, on
+	LD	A,(#CursorVis)
+	OR	A
+	RET	Z					; If not visible, need not to worry setting it up
+DisCursorSub:
 	DI
 	LD	A,(#VDP_08)			; Get a copy of register 8
 	OR	#0b00000010			; Set bit to disable sprites	
@@ -1235,6 +1299,8 @@ V9938_InitCursor.ATTRLOOP:
 	LD	A,#0x80+8				
 	OUT	(#0x99),A			; Write to register 8
 	EI
+	LD	(#CursorOn),A		; Other than 0, on
+	LD	(#CursorVis),A		; Other than 0, on
 	RET
 
 V9938_CursorColor:
@@ -1267,7 +1333,7 @@ V9938_CursorColor.CCLRLOOP:
 	EI
 	RET
 
-V9938_MoveCursorY:		
+V9938_MoveCursorY:
 	;SET VDP TO WRITE @ #0x1F600 - Attribute Table
 	LD	A,#0b00000111		; A16, A15 and A14 set to 1
 	LD	(#VDP_14),A			; Save our value
@@ -1288,7 +1354,7 @@ V9938_MoveCursorY:
 	EI
 	RET
 
-V9938_MoveCursorX:		
+V9938_MoveCursorX:
 	;SET VDP TO WRITE @ #0x1F601 - Attribute Table
 	LD	A,#0b00000111		; A16, A15 and A14 set to 1
 	LD	(#VDP_14),A			; Save our value
@@ -1399,6 +1465,9 @@ V9938_LineFeed:
 
 
 V9938_SetCursorX:
+	LD	A,(#CursorVis)
+	OR	A
+	RET	Z					; Nothing to do if cursor is of
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
@@ -1411,6 +1480,9 @@ V9938_SetCursorX:
 
 
 V9938_SetCursorY:
+	LD	A,(#CursorVis)
+	OR	A
+	RET	Z					; Nothing to do if cursor is of
 	LD	A,(#CursorRow)
 	ADD	A,A
 	ADD	A,A
@@ -1581,6 +1653,12 @@ V9938_DelChr.SL:	LD	HL,(#EndAddress)
 V9938_ErDis0:
 	LD	A,(#CursorCol)
 	LD	B,A
+	;LD	A,(#CursorRow)
+	;OR	B
+	;JR	NZ,V9938_ErDis0_NotAllScreen
+	;CALL V9938_ClearScreen
+	;JP	PrintText.RLP
+;V9938_ErDis0_NotAllScreen:		
 	ADD	A,A
 	ADD	A,B
 	LD	(#HMMV_CMD.DXL),A	; DX = Number of column * 3 (this mode has doubled pixels in X axis)
@@ -1600,9 +1678,9 @@ V9938_ErDis0.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
 	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
 	LD	A,#0x08				
 	LD	(#HMMV_CMD.NYL),A	; To clear a single line it is 8 pixels height number of dots height
-	XOR	A
-	LD	(#HMMV_CMD.DYH),A	; DYH and NYH 0
-	LD	(#HMMV_CMD.NYH),A
+	XOR	A	 
+	LD	(#HMMV_CMD.DYH),A	; DYH 0
+	LD	(#HMMV_CMD.NYH),A	; NYH 0
 	CALL	DO_HMMV			; Aaaand.... Clear!
 	; Now, do we need to clear below cursor?
 	LD	A,(#CursorRow)		; Let's see how many pixels we need to fill
@@ -1615,10 +1693,10 @@ V9938_ErDis0.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
 	ADD	A,A
 	ADD	A,A
 	LD	(#HMMV_CMD.NYL),A	; To clear remaining lines it is 8 pixels height multiplied by number of lines
-	XOR	A				
-	LD	(#HMMV_CMD.DYH),A	; DYH and NYH and DXL 0
-	LD	(#HMMV_CMD.NYH),A	;
+	XOR	A					 
+	LD	(#HMMV_CMD.NYH),A	; NYH and DXL 0
 	LD	(#HMMV_CMD.DXL),A	; 
+	LD	(#HMMV_CMD.DYH),A	; DYH	0
 	LD	A,#0xE0				; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
 	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
 	LD	A,#1				;
@@ -1843,34 +1921,65 @@ DO_HMMC.DXH:	OUT	(C),A	; And send DXH to #37
 
 
 DO_HMMV:
-	CALL	V9938_WaitCmd
+	CALL	V9938_WaitCmd	; Wait if any command is pending
 	DI
-	LD	A,#0x24
+	LD	A,#0x24				; Register 36 as value for...
 	OUT	(#0x99),A
-	LD	A,#0x91
+	LD	A,#0x91				; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
-	LD	HL,#HMMV_CMD
-	LD	C,#0x9B
-	LD	A,(HL)
+	LD	HL,#HMMV_CMD		; The HMMV buffer
+	LD	C,#0x9B				; And port for indirect access
+	LD	A,(HL)				; LD DXL in A
 	INC	HL
+	INC	HL					; HL pointing to DYL
+	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A					; Multiply by 2
+	OUT	(C),A				; And send DXL to #36
+	LD	A,#0x00				; DXH could be 0
+	JR	NC,DO_HMMV.DXH		; If no carry, it is 0
+	INC	A					; Otherwise it is 1
+DO_HMMV.DXH:	OUT	(C),A	; And send DXH to #37
+	LD	A,(HL)				; Load DYL in A
 	INC	HL
-	ADD	#0x08
-	ADD	A,A
-	OUT	(C),A
-	LD	A,#0x00
-	JR	NC,DO_HMMV.DXH
-	INC	A
-DO_HMMV.DXH:	OUT	(C),A
-	LD	A,(HL)
-	INC	HL
-	INC	HL
-	LD	B,A
-	LD	A,(#VDP_23)
-	ADD	A,B
-	OUT	(C),A
-	XOR	A
-	OUT	(C),A
+	INC	HL					; HL pointing @ NXL
+	LD	B,A					; Copy DYL to B
+	LD	A,(#VDP_23)			; Get current vertical offset
+	ADD	A,B					; Add our DYL to it
+	OUT	(C),A				; Send it to #38
+	LD	B,A					; Copy adjusted DYL to B
+	LD	A,(#HMMV_CMD.NYL)	; NYL
+	ADD	A,B					; Ok, now let's check if there is an overflow
+	LD	(#HMMV_CMD.NYL2),A	; Save just in case it is a split operation :D
+	JR	NC,DO_HMMV.ONESTEP	; If not carry, last line is within the page constraints so it is a single step
+	JR	Z,DO_HMMV.ONESTEP	; If zero, no second step
+	LD	B,A					; This is the remainder
+	LD	A,(#HMMV_CMD.NYL)	; NYL
+	SUB A,B					; First step lenght 
+	LD	(#HMMV_CMD.NYL),A	; New NYL	
+	;Now finish first step here, and follow-up with a second step
+	XOR	A					; DYH always 0
+	OUT	(C),A				; Send it
+	OUTI					; And now send the rest of buffer
 	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	EI
+	;Ok, so now for the second step
+	LD	A,(#HMMV_CMD.NYL)	; NYL has the number of lines deleted so far
+	LD	B,A					; Save in B
+	LD	A,(#HMMV_CMD.DYL)	; Get the initial line
+	ADD	A,B					; Add the lines deleted
+	LD	(#HMMV_CMD.DYL),A	; New DYL, from line picking up from where NYL left
+	LD	A,(#HMMV_CMD.NYL2)	; The remaining lenght at Y
+	LD	(#HMMV_CMD.NYL),A	; Now at NYL
+	JP	DO_HMMV				; And go execute the second step :)
+DO_HMMV.ONESTEP:	
+	XOR	A					; DYH always 0
+	OUT	(C),A				; Send it
+	OUTI					; And now send the rest of buffer
 	OUTI
 	OUTI
 	OUTI
@@ -1880,7 +1989,7 @@ DO_HMMV.DXH:	OUT	(C),A
 	EI
 	RET
 	
-
+; This function is safe for a single line only, if spanning over more than one line, it might potentially miss data
 DO_HMMM:
 	CALL	V9938_WaitCmd	; Wait if any command is pending
 	DI
@@ -1966,6 +2075,8 @@ CursorRow:	.db	#0x00
 
 CursorVis:	.db	#0x00
 
+CursorOn:	.db	#0x00
+
 BackColor:	.db	#0x00
 
 ForeColor:	.db	#0x07
@@ -2019,6 +2130,7 @@ HMMV_CMD.NYH:	.db	#0x00
 HMMV_CMD.CLR:	.db	#0x00
 HMMV_CMD.ARG:	.db	#0x00
 HMMV_CMD.CMD:	.db	#0xC0
+HMMV_CMD.NYL2:	.db #0x00
 
 HMMM_CMD:
 HMMM_CMD.SXL:	.db	#0x00

@@ -17,6 +17,23 @@ As an usage example, check my TELNET terminal source code:
 
 https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
 
+# MSX2ANSI v1.5: 
+
+This version has lots of fixes kindly provided by Piter Punk:
+Added Support to CSI\#d (ANSI VPA), CSI\#e (ANSI VPR), CSI\#G (ANSI CHA), 
+CSI\#I (ANSI CHT) and CSI\#Z (ANSI CBT)
+Added Support to CSInb, ANSI REP, which repeats the last char
+Rewrite HorizontalTab routine to move cursor to a tabstop
+Added back HorizontalTab (0x09) handling
+Added save and restore cursor VT100 control codes
+This was fixed by me:
+CSI\#J had issues depending how many lines were scrolled
+This has been improved by me:
+Added the possibility of disabling cursor while putting text with 
+AnsiPutChar through AnsiStartBuffer and AnsiEndBuffer, this might generate a 
+more pleasant screen rendering without the cursor moving and also speed up 
+certain operations like screen clearing and line deletions
+
 # MSX2ANSI v1.4
 
 When "printing" character 7 (BELL) now it BEEPs properly
@@ -51,6 +68,6 @@ All source code and binaries:
 (c)Tobias Keizer (original version of ANSI-DRV.BIN)
 (c)2019 - 2020 Oduvaldo Pavan Junior - ducasp@gmail.com (modified version, adding sprite cursor and fixing a few bugs and adding some features, remember, all hard work on the rendering engine was done by Toby!)
 
-Thanks to Piter Punk for his contribution on fixing CSIm behavior!
+Thanks to Piter Punk for his contributions on making msx2ansi better suited to present text from Linux daemons!
 
 All code can be re-used, re-written, as long as the source code of changes is made public as well and the original authors are credited.
