@@ -9,6 +9,18 @@ void initPrint()
     usingAnsiDrv = 0;
 }
 
+void StartPrintBuffer()
+{
+    if (usingAnsiDrv)
+        AnsiStartBuffer();
+}
+
+void EndPrintBuffer()
+{
+    if (usingAnsiDrv)
+        AnsiEndBuffer();
+}
+
 // This print function has been copied from HGET / Konamiman
 // Using it as fusion-c Print uses bios calls, and do not work with PUT9000
 // That hooks the dos call.

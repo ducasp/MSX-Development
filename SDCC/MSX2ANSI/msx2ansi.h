@@ -40,6 +40,28 @@ void AnsiInit();
 void AnsiFinish();
 
 /*
+ * AnsiStartBuffer needs no parameters
+ *
+ * Will turn off sprite cursor if it is on, idea is to make rendering faster and
+ * there is no need to have the cursor enabled while rendering a live buffer. For
+ * some applications it is faster to use putchar than print, thus the need to indicate
+ * start and end of buffer printing
+ *
+ */
+void AnsiStartBuffer();
+
+/*
+ * AnsiEndBuffer needs no parameters
+ *
+ * Will turn sprite cursor back on if it was on, idea is to make rendering faster and
+ * there is no need to have the cursor enabled while rendering a live buffer. For
+ * some applications it is faster to use putchar than print, thus the need to indicate
+ * start and end of buffer printing
+ *
+ */
+void AnsiEndBuffer();
+
+/*
  * AnsiCallBack - parameter in HL, 16 byte address to callback function
  *
  * Will call a __z88dk_fastcall function with Column/Line as a parameter 
