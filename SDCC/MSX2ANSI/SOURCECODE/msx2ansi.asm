@@ -20,6 +20,8 @@
 ; Changelog:
 ;
 ; v1.5: 
+; Piter Punk - Added Support to ESC[#X (ANSI ECH) and SGR 8 (Concealed),
+; SGR 39 (Default Foreground Color), SGR 49 (Default Background Color)
 ; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), ESC[#G
 ; (ANSI CHA), ESC[#I (ANSI CHT) and ESC[#Z (ANSI CBT)
 ; Piter Punk - Added Support to ESC[nb, ANSI REP, which repeats the last char
@@ -498,6 +500,8 @@ Parameters.SETOMT:
 	JP	Z,ANSI_CHT
 	CP	#'Z'
 	JP	Z,ANSI_CBT
+	CP	#'X'
+	JP	Z,ANSI_ECH
 
 	JP	Parameters.ERR
 
@@ -707,7 +711,7 @@ ANSI_REP.RLP:
 	CALL	V9938_SetCursorX	; Set cursor on screen	
 	POP	AF		
 	CP	#80				
-	JP	C,ANSI_REP.ELP		; If up to position 80, done
+	JR	C,ANSI_REP.ELP		; If up to position 80, done
 	XOR	A				
 	LD	(#CursorCol),A		; Otherwise cursor is back to position 0
 	CALL	LFeedSub		; And feed the line
@@ -805,6 +809,40 @@ ANSI_CBT.RLP:
 	JP	PrintText.RLP
 
 
+ANSI_ECH:				; ANSI Erase Character
+	LD	A,B
+	LD	B,#1			; No number is erase one
+	OR	A
+	JR	Z,ANSI_ECH.ADJ
+	LD	A,(#CursorCol)		; Preserve Cursor Position
+ANSI_ECH.ADJ:
+	LD	C,A
+	LD	A,(#Parameters.PRM)
+	ADD	C
+	CP	#80
+	JR	C,ANSI_ECH.SLP
+	LD	A,#80
+ANSI_ECH.SLP:
+	SUB	C
+	LD	B,A			; How many characters to be erased?
+ANSI_ECH.RLP:
+	LD	A,#0x20
+	PUSH	BC
+	PUSH	HL			
+	CALL	V9938_PrintChar		; Call the print routine for our chip
+	LD	A,(#CursorCol)		; Get Current Cursor Position
+	INC	A			; Increment it
+	LD	(#CursorCol),A		; Save
+	CALL	V9938_SetCursorX	; Set cursor on screen	
+	POP	HL
+	POP	BC
+	DJNZ	ANSI_ECH.RLP		; It's the end? No? Repeat!
+	LD	A,C			
+	LD	(#CursorCol),A		; Restore Cursor Position
+	CALL	V9938_SetCursorX	
+	JP	PrintText.RLP
+
+
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
 	OR	A
@@ -823,16 +861,22 @@ ANSI_SGR.RLP:
 	JR	Z,ANSI_SGR.BLD			; SET FONT TO BOLD
 	CP      #7
 	JR      Z,ANSI_SGR.REV                  ; REVERSE COLORS
+	CP      #8
+	JR      Z,ANSI_SGR.CON                  ; CONCEALED (INVISIBLE)
 	CP      #27
 	JR      Z,ANSI_SGR.URV                  ; UN-REVERSE COLORS
 	CP	#30
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#38
 	JR	C,ANSI_SGR.SFC			; SET FOREGROUND COLOR
+	CP	#39
+	JR	Z,ANSI_SGR.RFC			; RESET FOREGROUND COLOR
 	CP	#40
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#48
 	JR	C,ANSI_SGR.SBC			; SET BACKGROUND COLOR
+	CP	#49
+	JR	Z,ANSI_SGR.RBC			; RESET BACKGROUND COLOR
 ANSI_SGR.UNK:	
 	POP	BC
 	DJNZ	ANSI_SGR.RLP
@@ -848,10 +892,11 @@ ANSI_SGR.RES:					; RESET ATTRIBUTES
 					;	7 Reverse Video on
 					;	8 Concealed on
 					;     By now, this library supports
-					;     BOLD and REVERSE
+					;     BOLD, CONCEALED and REVERSE
 	XOR	A				
 	LD	(#HiLighted),A
 	LD	(#Reversed),A
+	LD	(#Concealed),A
 					; PK: Some softwares expects that 
 					;     reset restore the text and
 					;     background colors to a sane 
@@ -871,6 +916,10 @@ ANSI_SGR.REV:
 	LD      A,#0x01
 	LD      (#Reversed),A
 	JR      ANSI_SGR.SWP
+ANSI_SGR.CON:
+	LD	A,#0x01
+	LD	(#Concealed),A
+	JR	ANSI_SGR.CLR
 ANSI_SGR.URV:
 	LD      A,(#Reversed)
 	OR      A
@@ -878,10 +927,14 @@ ANSI_SGR.URV:
 	XOR	A
 	LD      (#Reversed),A
 	JR      ANSI_SGR.SWP
+ANSI_SGR.RFC:
+	LD	A,#37
 ANSI_SGR.SFC:	
 	SUB	#30
 	LD	(#ForeColor),A
 	JR	ANSI_SGR.CLR
+ANSI_SGR.RBC:
+	LD	A,#40
 ANSI_SGR.SBC:	
 	SUB	#40
 	LD	(#BackColor),A
@@ -1375,6 +1428,11 @@ V9938_MoveCursorX:
 ;END OPJ Changes Sprite	
 
 V9938_PrintChar:
+	LD	B,A
+	LD	A,(#Concealed)
+	OR	A
+	JR	NZ,V9938_PrintChar.SPC
+	LD	A,B
 	CP	#0x20
 	JR	Z,V9938_PrintChar.SPC
 	CP	#0xDB
@@ -2086,6 +2144,8 @@ FontColor:	.db	#0x07
 HiLighted:	.db	#0x00
 
 Reversed:	.db	#0x00
+
+Concealed:	.db	#0x00
 
 LastChar:	.db	#0x65
 
