@@ -35,6 +35,15 @@
 ; AnsiPutChar through AnsiStartBuffer and AnsiEndBuffer, this might generate
 ; a more pleasant screen rendering without the cursor moving and also speed up
 ; certain operations like screen clearing and line deletions
+; OPJ - Improved ESC[#X to use VDP HMMV to delete as it is faster
+; OPJ - Fixed Scroll Down, it was pushing the last line down and still visible
+; OPJ - Fixed Scroll Up and Down and LineFeed, the line being excluded might be
+; pushed into visible are, better have it in the border color than background
+; color, as border color only changes when screen is cleared, using the 
+; same color as the background
+; OPJ - Fixed quite a few characters below 0x20, those should be as faithful as
+; 6x8 and my bad pixel art talent allows :D
+; OPJ - Form Feed (12 or 0x0C) should clear screen and go to home, fixed that
 ;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
@@ -99,6 +108,7 @@ _AnsiFinish::
 	POP	IX						; Restore IX so C won't have issues
 	RET
 
+
 ; AnsiStartBuffer needs no parameters
 ;
 ; Will turn off sprite cursor if it is on, idea is to make rendering faster and
@@ -114,6 +124,7 @@ StartBuffer:
 	RET	Z
 	CALL	DisCursorSub
 	RET
+
 
 ; AnsiEndBuffer needs no parameters
 ;
@@ -159,6 +170,7 @@ _AnsiGetCursorPosition::
 	INC	A						; Increment it (internally it is 0-24)
 	LD	H,A						; Place row in H
 	RET
+
 
 ; AnsiPutChar - will put the char in register L on screen or buffer if part of
 ; ANSI / VT sequence
@@ -225,24 +237,21 @@ BufferChar.PRT:
 	LD	(#ANSI_S+0),A			; Put the char in our buffer
 	XOR	A				
 	LD	(#ANSI_S+1),A			; Now the terminator
-	JR	BufferChar.RET			; And print it :-)
-	
+	JR	BufferChar.RET			; And print it :-)	
 BufferChar.XorY:	
 	CP	#'x'					; modify cursor behavior / disable?	
 	JR	Z,BufferChar.CH2a		; So if the second character is x, let's move on
 	CP	#'y'					; modify cursor behavior / enable?
 	JR	Z,BufferChar.CH2a		; So if the second character is not y won't jump
 	; print the ESC sequence and life goes on
-	JR	NZ,BufferChar.END		; So if the second character is not [, print the ESC sequence and life goes on
-	
+	JR	NZ,BufferChar.END		; So if the second character is not [, print the ESC sequence and life goes on	
 BufferChar.X:
 	LD	A,C						; Restore character
 	CP	#'5'					; ESC x5?
 	LD	A,#0					; Do not want to clear flag
 	LD	(#ANSI_M),A				; No longer processing
 	JP	Z,VT52_DISCURSOR		; yes, disable cursor
-	JR BufferChar.Y.END			; no, print the contents and end processing
-	
+	JR BufferChar.Y.END			; no, print the contents and end processing	
 BufferChar.Y:
 	LD	A,C						; Restore character
 	CP	#'5'					; ESC x5?
@@ -254,6 +263,7 @@ BufferChar.Y.END:
 	INC	HL
 	LD	(#ANSI_P),HL			; new buffer position
 	JR	BufferChar.END			; not a parameter I understand, so print on the screen
+
 
 ; AnsiPrint - will proccess and print the string whose address is in HL (zero terminated)
 ; void __z88dk_fastcall AnsiPrint(unsigned char * ucString)
@@ -272,13 +282,31 @@ EndAnsiPrint:
 	CALL	EndBuffer			; Enable sprite back, if needed
 	RET
 
+
 ; PrintText - Will handle text in address pointed by HL, zero terminated
 PrintText:
 PrintText.RLP:	
 	LD	A,(HL)					; Load the character
 	INC	HL						; Increment the pointer
 	CP	#0x20				
-	JP	C,ControlCode			; If less than 0x20 (space), a control character
+	JP	NC,PrintText.RLP.CCPrint; If less than 0x20 (space), a control character
+	; Check if it is a control character and do the action, otherwise print it
+	OR	A
+	RET	Z						; If 0, done
+	CP	#8
+	JP	Z,BackSpace		
+	CP	#10
+	JP	Z,LineFeed
+	CP	#12						; FF, clear screen and home
+	JP	Z,ANSI_ED.ED2
+	CP	#13
+	JP	Z,CarriageReturn
+	CP	#27
+	JP	Z,EscapeCode			; If an Escape code, let's check it
+	CP	#9
+	JP	Z,HorizontalTab
+	CP	#7
+	JP	Z,Bell					
 PrintText.RLP.CCPrint:	
 	LD	(#LastChar),A
 	PUSH	HL					; Save Pointer
@@ -296,29 +324,12 @@ PrintText.RLP.CCPrint:
 	LD	(#CursorCol),A			; Otherwise cursor is back to position 0
 	JP	LineFeed				; And feed the line
 
+
 ;
 ; Internal Functions area
 ;
 ; In this section, functions for the rendering engine use
 ;
-
-ControlCode:
-	OR	A
-	RET	Z				; If 0, done
-	CP	#8
-	JP	Z,BackSpace		
-	CP	#10
-	JP	Z,LineFeed
-	CP	#13
-	JP	Z,CarriageReturn
-	CP	#27
-	JP	Z,EscapeCode			; If an Escape code, let's check it
-	CP	#9
-	JP	Z,HorizontalTab
-	CP	#7
-	JP	Z,Bell					
-	JP	PrintText.RLP.CCPrint
-
 Bell:
 	PUSH	HL
 	PUSH	AF
@@ -359,7 +370,6 @@ EscapeCode:
 	JP	PrintText.RLP
 
 
-
 Parameters:
 	LD	(#OrgAddress),HL
 	LD	DE,#Parameters.PRM
@@ -367,7 +377,7 @@ Parameters:
 	XOR	A
 	LD	(#Parameters.PCT),A
 Parameters.RLP:	
-	LD	DE,#Parameters.PST			; PARAMETER STRING
+	LD	DE,#Parameters.PST		; PARAMETER STRING
 	LD	C,#0
 Parameters.SCN:	
 	LD	A,(HL)
@@ -383,24 +393,19 @@ Parameters.SCN:
 	INC	DE
 	JR	Parameters.SCN
 Parameters.END:	
-	LD	(#Parameters.TRM),A			; SAVE TERMINATING CHAR
+	LD	(#Parameters.TRM),A		; SAVE TERMINATING CHAR
 	LD	A,C
 	OR	A
-	;JR	Z,Parameters.OMT			; OMITTED VALUE
 	JR	Z,Parameters.SETOMT
 	CP	#1
-	JR	Z,Parameters.RD1			; READ ONE DIGIT
+	JR	Z,Parameters.RD1		; READ ONE DIGIT
 	CP	#2
-	JR	Z,Parameters.RD2			; READ TWO DIGITS
+	JR	Z,Parameters.RD2		; READ TWO DIGITS
 	CP	#3
-	JR	Z,Parameters.RD3			; READ THREE DIGITS
+	JR	Z,Parameters.RD3		; READ THREE DIGITS
 Parameters.ERR:	
 	XOR	A
 	JP	PrintText.RLP
-;Parameters.OMT:	
-	;If ommited, why 1 parameter?? Should be 0 parameters...
-	;INC	A
-	;JR	Parameters.SET	
 Parameters.RD1:	
 	LD	A,(#Parameters.PST)
 	SUB	#48
@@ -454,9 +459,7 @@ Parameters.SETOMT:
 	JP	Z,Parameters.RLP
 	CP	#20
 	JP	C,Parameters.ERR
-
 	LD	(#EndAddress),HL
-
 	CP	#'H'
 	JP	Z,ANSI_CUP
 	CP	#'f'
@@ -507,8 +510,8 @@ Parameters.SETOMT:
 	JP	Z,ANSI_SU
 	CP	#'T'
 	JP	Z,ANSI_SD
-
 	JP	Parameters.ERR
+
 
 ; OPJ - Add possibility to current cursor position be sent to a callback function
 ANSI_CGP:						; ANSI Cursor Get Position
@@ -562,7 +565,6 @@ ANSI_CUP.RET:
 	JP	PrintText.RLP
 
 
-
 ANSI_CUU:						; ANSI Cursor Up
 	LD	A,B
 	LD	B,#1
@@ -613,7 +615,6 @@ ANSI_CUD.SCP:
 	JP	PrintText.RLP
 
 
-
 ANSI_CHA:				; ANSI Cursor Horizontal Absolute
 	LD	A,#255
 	LD	(#CursorCol),A
@@ -643,7 +644,6 @@ ANSI_CUF.SCP:
 	JP	PrintText.RLP
 
 
-
 ANSI_CUB:						; ANSI Cursor Back
 	LD	A,B
 	LD	B,#1
@@ -664,7 +664,6 @@ ANSI_CUB.SCP:
 	JP	PrintText.RLP
 
 
-
 ANSI_SCP:						; ANSI Save Cursor Position
 	LD	A,(#CursorCol)
 	LD	(#SavedCol),A
@@ -672,7 +671,6 @@ ANSI_SCP:						; ANSI Save Cursor Position
 	LD	(#SavedRow),A
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
-
 
 
 ANSI_RCP:						; ANSI Restore Cursor Position
@@ -684,6 +682,7 @@ ANSI_RCP:						; ANSI Restore Cursor Position
 	CALL	V9938_SetCursorY
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
+
 
 ANSI_DCH:						; ANSI Delelete Characters
 	LD	A,B
@@ -697,29 +696,29 @@ ANSI_DCH.GP:
 	JP	V9938_DelChr
 
 	
-ANSI_REP:				; ANSI Repeat Last Character
+ANSI_REP:						; ANSI Repeat Last Character
 	LD	A,B
-	LD	B,#1			; No number is repeat once	
+	LD	B,#1					; No parameter means repeat once	
 	OR	A
 	JR	Z,ANSI_REP.RLP
 	LD	A,(#Parameters.PRM)
-	LD	B,A			; Load the number of repeats
+	LD	B,A						; Load the number of repeats
 ANSI_REP.RLP:
 	LD	A,(#LastChar)
 	PUSH	BC
 	PUSH	HL			
 	CALL	V9938_PrintChar		; Call the print routine for our chip
-	LD	A,(#CursorCol)		; Get Current Cursor Position
-	INC	A			; Increment it
-	LD	(#CursorCol),A		; Save
+	LD	A,(#CursorCol)			; Get Current Cursor Position
+	INC	A						; Increment it
+	LD	(#CursorCol),A			; Save
 	PUSH	AF			
 	CALL	V9938_SetCursorX	; Set cursor on screen	
 	POP	AF		
 	CP	#80				
-	JR	C,ANSI_REP.ELP		; If up to position 80, done
+	JR	C,ANSI_REP.ELP			; If up to position 80, done
 	XOR	A				
-	LD	(#CursorCol),A		; Otherwise cursor is back to position 0
-	CALL	LFeedSub		; And feed the line
+	LD	(#CursorCol),A			; Otherwise cursor is back to position 0
+	CALL	LFeedSub			; And feed the line
 ANSI_REP.ELP:
 	POP	HL
 	POP	BC
@@ -755,7 +754,6 @@ ANSI_ED.ED2:
 	JP	PrintText.RLP
 
 
-
 ANSI_EL:						; ANSI Erase in Line
 	LD	A,B
 	OR	A
@@ -768,11 +766,11 @@ ANSI_EL:						; ANSI Erase in Line
 	JP	V9938_ErLin0
 
 
-
 ANSI_IL:
 	; TODO: Missing Handling of inserting lines from current
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
+
 
 ANSI_DL:
 	; TODO: Missing Handling of deleting lines from current
@@ -780,102 +778,87 @@ ANSI_DL:
 	JP	PrintText.RLP
 
 
-ANSI_CHT:				; ANSI Horizontal Tab
+ANSI_CHT:						; ANSI Horizontal Tab
 	LD	A,B
-	LD	B,#1			; No number is one Tab
+	LD	B,#1					; No number is one Tab
 	OR	A
 	JR	Z,ANSI_CHT.RLP
 	LD	A,(#Parameters.PRM)
-	LD	B,A			; Load the number of repeats
+	LD	B,A						; Load the number of repeats
 ANSI_CHT.RLP:
 	PUSH	BC
 	PUSH	HL
-	CALL	HTabSub			;
+	CALL	HTabSub
 	POP	HL
 	POP	BC
 	DJNZ	ANSI_CHT.RLP		; It's the end? No? Repeat!
 	JP	PrintText.RLP
-	
 
-ANSI_CBT:				; ANSI Cursor Backwards Tabulation
+
+ANSI_CBT:						; ANSI Cursor Backwards Tabulation
 	LD	A,B
-	LD	B,#1			; No number is one Tab
+	LD	B,#1					; No number is one Tab
 	OR	A
 	JR	Z,ANSI_CBT.RLP
 	LD	A,(#Parameters.PRM)
-	LD	B,A			; Load the number of repeats
+	LD	B,A						; Load the number of repeats
 ANSI_CBT.RLP:
 	PUSH	BC
 	PUSH	HL
-	CALL	CBTabSub			;
+	CALL	CBTabSub
 	POP	HL
 	POP	BC
 	DJNZ	ANSI_CBT.RLP		; It's the end? No? Repeat!
 	JP	PrintText.RLP
 
 
-ANSI_ECH:				; ANSI Erase Character
+ANSI_ECH:						; ANSI Erase Character
 	LD	A,B
-	LD	B,#1			; No number is erase one
+	LD	C,#1					; No parameter means erase one character
 	OR	A
-	JR	Z,ANSI_ECH.ADJ
-	LD	A,(#CursorCol)		; Preserve Cursor Position
-ANSI_ECH.ADJ:
-	LD	C,A
-	LD	A,(#Parameters.PRM)
-	ADD	C
-	CP	#80
-	JR	C,ANSI_ECH.SLP
-	LD	A,#80
+	JR	Z,ANSI_ECH.DO			; No parameter, no need to calculate, just do it
+	LD	A,(#CursorCol)			
+	LD	C,A						; Cursor Position in C
+	LD	A,(#Parameters.PRM)		; How many chars to delete in A
+	ADD	C						;
+	CP	#80						; Let's check if it is lower than 80 (meaning is within our line)
+	JR	C,ANSI_ECH.SLP			; If carry, ok, within, so no need to adjust value
+	LD	A,#80					; Otherwise let's just say it is 80 to adjust value
 ANSI_ECH.SLP:
-	SUB	C
-	LD	B,A			; How many characters to be erased?
-ANSI_ECH.RLP:
-	LD	A,#0x20
-	PUSH	BC
-	PUSH	HL			
-	CALL	V9938_PrintChar		; Call the print routine for our chip
-	LD	A,(#CursorCol)		; Get Current Cursor Position
-	INC	A			; Increment it
-	LD	(#CursorCol),A		; Save
-	CALL	V9938_SetCursorX	; Set cursor on screen	
-	POP	HL
-	POP	BC
-	DJNZ	ANSI_ECH.RLP		; It's the end? No? Repeat!
-	LD	A,C			
-	LD	(#CursorCol),A		; Restore Cursor Position
-	CALL	V9938_SetCursorX	
-	JP	PrintText.RLP
+	SUB	C						; Subtract cursor position, this will be original B or what would be the chars up to the 80th character to keep it in the same line
+	LD	C,A						; Characters to be erased in C
+ANSI_ECH.DO:	
+	JP	V9938_ErChar0			; Erase those characters
 
 
-ANSI_SD:				; ANSI Scroll Down
+ANSI_SD:						; ANSI Scroll Down
 	LD	A,B
-	LD	B,#1			; No number is one line scroll
+	LD	B,#1					; No number is one line scroll
 	OR	A
 	JR	Z,ANSI_SD.RLP
 	LD	A,(#Parameters.PRM)
-	LD	B,A			; Load the number of lines to scroll
+	LD	B,A						; Load the number of lines to scroll
 ANSI_SD.RLP:
 	PUSH	BC
 	CALL	V9938_ScrollDown
 	POP	BC
-	DJNZ	ANSI_SD.RLP		; It's the end? No? Repeat!
+	DJNZ	ANSI_SD.RLP			; It's the end? No? Repeat!
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 
-ANSI_SU:				; ANSI Scroll Up
+ANSI_SU:						; ANSI Scroll Up
 	LD	A,B
-	LD	B,#1			; No number is one line scroll
+	LD	B,#1					; No number is one line scroll
 	OR	A
 	JR	Z,ANSI_SU.RLP
 	LD	A,(#Parameters.PRM)
-	LD	B,A			; Load the number of lines to scroll
+	LD	B,A						; Load the number of lines to scroll
 ANSI_SU.RLP:
 	PUSH	BC
 	CALL	V9938_ScrollUp
 	POP	BC
-	DJNZ	ANSI_SU.RLP		; It's the end? No? Repeat!
+	DJNZ	ANSI_SU.RLP			; It's the end? No? Repeat!
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
@@ -896,12 +879,12 @@ ANSI_SGR.RLP:
 	JR	Z,ANSI_SGR.RES			; RESET ATTRIBUTES
 	CP	#1
 	JR	Z,ANSI_SGR.BLD			; SET FONT TO BOLD
-	CP      #7
-	JR      Z,ANSI_SGR.REV                  ; REVERSE COLORS
-	CP      #8
-	JR      Z,ANSI_SGR.CON                  ; CONCEALED (INVISIBLE)
-	CP      #27
-	JR      Z,ANSI_SGR.URV                  ; UN-REVERSE COLORS
+	CP	#7
+	JR	Z,ANSI_SGR.REV			; REVERSE COLORS
+	CP	#8
+	JR 	Z,ANSI_SGR.CON			; CONCEALED (INVISIBLE)
+	CP	#27
+	JR	Z,ANSI_SGR.URV			; UN-REVERSE COLORS
 	CP	#30
 	JR	C,ANSI_SGR.UNK			; UNKNOWN / UNSUPPORTED
 	CP	#38
@@ -914,30 +897,30 @@ ANSI_SGR.RLP:
 	JR	C,ANSI_SGR.SBC			; SET BACKGROUND COLOR
 	CP	#49
 	JR	Z,ANSI_SGR.RBC			; RESET BACKGROUND COLOR
-ANSI_SGR.UNK:	
+ANSI_SGR.UNK:
 	POP	BC
 	DJNZ	ANSI_SGR.RLP
 ANSI_SGR.RET:	
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 ANSI_SGR.RES:					; RESET ATTRIBUTES
-					; PK: Reset text attributes, they 
-					;     are:
-					;	1 Bold
-					;	4 Underscore
-					;	5 Blink on
-					;	7 Reverse Video on
-					;	8 Concealed on
-					;     By now, this library supports
-					;     BOLD, CONCEALED and REVERSE
+	; PK: Reset text attributes, they 
+	;     are:
+	;	1 Bold
+	;	4 Underscore
+	;	5 Blink on
+	;	7 Reverse Video on
+	;	8 Concealed on
+	;     By now, this library supports
+	;     BOLD, CONCEALED and REVERSE
 	XOR	A				
 	LD	(#HiLighted),A
 	LD	(#Reversed),A
 	LD	(#Concealed),A
-					; PK: Some softwares expects that 
-					;     reset restore the text and
-					;     background colors to a sane 
-					;     default
+	; PK: Some softwares expects that 
+	;     reset restore the text and
+	;     background colors to a sane 
+	;     default
 	LD	(#BackColor),A
 	LD	A,#0x07
 	LD	(#ForeColor),A
@@ -947,23 +930,23 @@ ANSI_SGR.BLD:
 	LD	(#HiLighted),A
 	JR	ANSI_SGR.CLR
 ANSI_SGR.REV:
-	LD      A,(#Reversed)
-	OR      A
-	JR      NZ,ANSI_SGR.CLR
-	LD      A,#0x01
-	LD      (#Reversed),A
-	JR      ANSI_SGR.SWP
+	LD	A,(#Reversed)
+	OR	A
+	JR	NZ,ANSI_SGR.CLR
+	LD	A,#0x01
+	LD	(#Reversed),A
+	JR	ANSI_SGR.SWP
 ANSI_SGR.CON:
 	LD	A,#0x01
 	LD	(#Concealed),A
 	JR	ANSI_SGR.CLR
 ANSI_SGR.URV:
-	LD      A,(#Reversed)
-	OR      A
-	JR      Z,ANSI_SGR.CLR
+	LD	A,(#Reversed)
+	OR	A
+	JR	Z,ANSI_SGR.CLR
 	XOR	A
-	LD      (#Reversed),A
-	JR      ANSI_SGR.SWP
+	LD	(#Reversed),A
+	JR	ANSI_SGR.SWP
 ANSI_SGR.RFC:
 	LD	A,#37
 ANSI_SGR.SFC:	
@@ -980,54 +963,57 @@ ANSI_SGR.CLR:
 	CALL	V9938_SetColors
 	JR	ANSI_SGR.UNK
 ANSI_SGR.SWP:
-	LD      A,(#ForeColor)
-	LD      B,A
-	LD      A,(#BackColor)
-	LD      (#ForeColor),A
-	LD      A,B
-	LD      (#BackColor),A
-	JR      ANSI_SGR.CLR
+	LD	A,(#ForeColor)
+	LD	B,A
+	LD	A,(#BackColor)
+	LD	(#ForeColor),A
+	LD	A,B
+	LD	(#BackColor),A
+	JR	ANSI_SGR.CLR
+
 
 VT52_ENCURSOR:
 	LD	A,(#CursorOn)
 	OR	A
-	RET	NZ					; If already on, nothing to do
+	RET	NZ						; If already on, nothing to do
 	LD	A,#0x01
-	LD	(#CursorOn),A		; Other than 0, on
+	LD	(#CursorOn),A			; Other than 0, on
 	LD	A,(#CursorVis)
 	OR	A
-	RET	Z					; If not visible, need not to worry setting it up
+	RET	Z						; If not visible, need not to worry setting it up
 EnCursorSub:
 	DI
-	LD	A,(#VDP_08)			; Get a copy of register 8
-	AND	#0b11111101			; Clear bit to enable sprites	
-	LD	(#VDP_08),A			; Save our value
-	OUT	(#0x99),A			; Send value to VDP
+	LD	A,(#VDP_08)				; Get a copy of register 8
+	AND	#0b11111101				; Clear bit to enable sprites	
+	LD	(#VDP_08),A				; Save our value
+	OUT	(#0x99),A				; Send value to VDP
 	LD	A,#0x80+8				
-	OUT	(#0x99),A			; Write to register 8	
+	OUT	(#0x99),A				; Write to register 8	
 	EI
-	LD	(#CursorVis),A		; It is now visible
+	LD	(#CursorVis),A			; It is now visible
 	RET
+
 
 VT52_DISCURSOR:
 	LD	A,(#CursorOn)
 	OR	A
-	RET	Z					; If already off, nothing to do
+	RET	Z						; If already off, nothing to do
 	XOR	A
-	LD	(#CursorOn),A		; Other than 0, on
+	LD	(#CursorOn),A			; Other than 0, on
 	LD	A,(#CursorVis)
 	OR	A
-	RET	Z					; If not visible, need not to worry setting it up
+	RET	Z						; If not visible, need not to worry setting it up
 DisCursorSub:
 	DI
-	LD	A,(#VDP_08)			; Get a copy of register 8
-	OR	#0b00000010			; Set bit to disable sprites	
-	LD	(#VDP_08),A			; Save our value
-	OUT	(#0x99),A			; Send value to VDP
+	LD	A,(#VDP_08)				; Get a copy of register 8
+	OR	#0b00000010				; Set bit to disable sprites	
+	LD	(#VDP_08),A				; Save our value
+	OUT	(#0x99),A				; Send value to VDP
 	LD	A,#0x80+8				
-	OUT	(#0x99),A			; Write to register 8	
+	OUT	(#0x99),A				; Write to register 8	
 	EI
 	RET
+
 
 VT52_UP:
 	LD	A,(#CursorRow)
@@ -1037,7 +1023,6 @@ VT52_UP:
 	LD	(#CursorRow),A
 	CALL	V9938_SetCursorY
 	JP	PrintText.RLP
-
 
 
 VT52_DW:
@@ -1050,7 +1035,6 @@ VT52_DW:
 	JP	PrintText.RLP
 
 
-
 VT52_LE:
 	LD	A,(#CursorCol)
 	OR	A
@@ -1059,7 +1043,6 @@ VT52_LE:
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
 	JP	PrintText.RLP
-
 
 
 VT52_RI:
@@ -1072,7 +1055,6 @@ VT52_RI:
 	JP	PrintText.RLP
 
 
-
 VT52_HOME:
 	XOR	A
 	LD	(#CursorCol),A
@@ -1082,17 +1064,14 @@ VT52_HOME:
 	JP	PrintText.RLP
 
 
-
 VT100_SCP:
 	LD	(#EndAddress),HL
 	JP	ANSI_SCP
 
 
-
 VT100_RCP:
 	LD	(#EndAddress),HL
 	JP	ANSI_RCP
-
 
 
 BackSpace:
@@ -1110,32 +1089,30 @@ HorizontalTab:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 HTabSub:
-	LD	A,(#CursorCol)		; Get the current column
-	OR	#7			; Goes to the next tabstop
-					; Tabstops traditionally were
-					; in each 8th column
+	LD	A,(#CursorCol)			; Get the current column
+	OR	#7						; Goes to the next tabstop
+								; Tabstops traditionally are
+								; in each 8th column
 	CP	#79
 	JP	Z,HTabSub.SCP
-	INC	A			; Some adjusts here and there...
+	INC	A						; Some adjusts here and there...
 HTabSub.SCP:
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
 	RET
 
 
-
 CBTabSub:
-	LD	A,(#CursorCol)		; Get the current column
+	LD	A,(#CursorCol)			; Get the current column
 	DEC	A
-	AND	#248			; Goes to the previous tabstop
-					; Tabstops traditionally were
-					; in each 8th column
+	AND	#248					; Goes to the previous tabstop
+								; Tabstops traditionally were
+								; in each 8th column
 	CP	#248
 	JP	NZ,CBTabSub.SCP
-	XOR	A			; Positions belows 0 are 0
+	XOR	A						; Positions belows 0 are 0
 CBTabSub.SCP:
 	JR	HTabSub.SCP
-
 
 
 LineFeed:
@@ -1154,6 +1131,7 @@ LFeedSub.NNL:
 	CALL	V9938_SetCursorY
 	RET
 
+
 CarriageReturn:
 	XOR	A
 	LD	(#CursorCol),A
@@ -1161,7 +1139,7 @@ CarriageReturn:
 	JP	PrintText.RLP
 
 
-_BIOS_C:				; BIOS_C: [IX]
+_BIOS_C:						; BIOS_C: [IX]
 	LD	IY,(#0xFCC0)
 	JP	0x001C
 
@@ -1207,150 +1185,138 @@ H_NMI	.equ	#0xFDD6
 ;
 CALSUB:  
 	EXX
-	EX     AF,AF'       ; store all registers
+	EX     AF,AF'       		; store all registers
 	LD     HL,#EXTROM
 	PUSH   HL
 	LD     HL,#0xC300
-	PUSH   HL           ; push NOP ; JP EXTROM
+	PUSH   HL         			; push NOP ; JP EXTROM
 	PUSH   IX
 	LD     HL,#0x21DD
-	PUSH   HL           ; push LD IX,<entry>
+	PUSH   HL					; push LD IX,<entry>
 	LD     HL,#0x3333
-	PUSH   HL           ; push INC SP; INC SP
+	PUSH   HL					; push INC SP; INC SP
 	LD     HL,#0
-	ADD    HL,SP        ; HL = offset of routine
+	ADD    HL,SP				; HL = offset of routine
 	LD     A,#0xC3
 	LD     (#H_NMI),A
-	LD     (#H_NMI+1),HL ; JP <routine> in NMI hook
+	LD     (#H_NMI+1),HL		; JP <routine> in NMI hook
 	EX     AF,AF'
-	EXX                 ; restore all registers
+	EXX							; restore all registers
 	LD     IX,#NMI
 	LD     IY,(#EXPTBL-1)
-	CALL   CALSLT       ; call NMI-hook via NMI entry in ROMBIOS
-					 ; NMI-hook will call SUBROM
+	CALL   CALSLT				; call NMI-hook via NMI entry in ROMBIOS
+								; NMI-hook will call SUBROM
 	EXX
-	EX     AF,AF'       ; store all returned registers
+	EX     AF,AF'				; store all returned registers
 	LD     HL,#10
 	ADD    HL,SP
-	LD     SP,HL        ; remove routine from stack
+	LD     SP,HL				; remove routine from stack
 	EX     AF,AF'
-	EXX                 ; restore all returned registers
+	EXX							; restore all returned registers
 	RET
 
 
 V9938_Init:
-
 	LD	A,#0x07
 	LD	IX,#0x005F
-	CALL	_BIOS_C			; Interslot call to set screen 7	
-	
+	CALL	_BIOS_C				; Interslot call to set screen 7		
 	; Now let's set a lot of registers :)
 	LD	A,#0x00
-	LD	(#VDP_23),A			; R#23, first line to draw is 0
-	
+	LD	(#VDP_23),A				; R#23, first line to draw is 0	
 	DI
-	LD	A,#0xF0				; Text1 and Text2 color 15, Border and Background color 0
+	LD	A,#0xF0					; Text1 and Text2 color 15, Border and Background color 0
 	OUT	(#0x99),A
 	LD	A,#0x80+7
-	OUT	(#0x99),A			; Write to register 7
-	
-	LD	A,(#VDP_08)			; Get a copy of register 8
-	OR	#0b00100010			; Set bit so color 0 is 0 in palette and disable sprites	
-	LD	(#VDP_08),A			; Save our value
-	OUT	(#0x99),A			; Send value to VDP
-	LD	A,#0x80+8				
-	OUT	(#0x99),A			; Write to register 8	
-	
-	LD	A,(#VDP_09)			; Get a copy of register 9
-	OR	#0b10000000			; 212 Lines by seting 8th bit
-	LD	(#VDP_09),A			; Save our new value
-	OUT	(#0x99),A			; Send value to VDP	
+	OUT	(#0x99),A				; Write to register 7	
+	LD	A,(#VDP_08)				; Get a copy of register 8
+	OR	#0b00100010				; Set bit so color 0 is 0 in palette and disable sprites	
+	LD	(#VDP_08),A				; Save our value
+	OUT	(#0x99),A				; Send value to VDP
+	LD	A,#0x80+8
+	OUT	(#0x99),A				; Write to register 8		
+	LD	A,(#VDP_09)				; Get a copy of register 9
+	OR	#0b10000000				; 212 Lines by seting 8th bit
+	LD	(#VDP_09),A				; Save our new value
+	OUT	(#0x99),A				; Send value to VDP	
 	LD	A,#0x80+9
-	OUT	(#0x99),A			; Write to register 9	
-	
-	LD	A,#0x00				; Palette register pointer set to 0
-	OUT	(#0x99),A			; Send value to VDP
-	LD	A,#0x80+16			; 
-	OUT	(#0x99),A			; Write to register 16, new palette pointer
-	EI						; Ok to have interrupts now
-	LD	HL,#ANSI_PAL		; Address of our palette
-	LD	BC,#0x209A			; 32 bytes to move to port 0x9a which will auto-increment palette registers
-	OTIR					; Send it
-	RET						; Done!
+	OUT	(#0x99),A				; Write to register 9		
+	LD	A,#0x00					; Palette register pointer set to 0
+	OUT	(#0x99),A				; Send value to VDP
+	LD	A,#0x80+16
+	OUT	(#0x99),A				; Write to register 16, new palette pointer
+	EI							; Ok to have interrupts now
+	LD	HL,#ANSI_PAL			; Address of our palette
+	LD	BC,#0x209A				; 32 bytes to move to port 0x9a which will auto-increment palette registers
+	OTIR						; Send it
+	RET							; Done!
+
 
 V9938_Finish:
 	DI
 	LD	A,#0x00
 	OUT	(#0x99),A
 	LD	A,#0x80+23
-	OUT	(#0x99),A			; Register 23 goes to 0 to reset vertical offset
-	
+	OUT	(#0x99),A				; Register 23 goes to 0 to reset vertical offset	
 	LD	IX,#0xD2
-	LD	IY,(#0xFCC0)		; Call TOTEXT bios function
+	LD	IY,(#0xFCC0)			; Call TOTEXT bios function
 	CALL CALSLT
-	EI
-	
+	EI	
 	LD	IX,#iniPlt
 	CALL	CALSUB	
-	LD	IX,#rstPlt			; Restore the saved palette
+	LD	IX,#rstPlt				; Restore the saved palette
 	CALL CALSUB
-	EI
-	
-	RET						; Done!
+	EI	
+	RET							; Done!
+
 
 ;OPJ - Sprite Cursor initialization		
 V9938_InitCursor:
 	DI
 	; First Set Pattern Table Address
-	LD	A,#0b00111111		; sprite pattern table = #1F800-#1FFFF
-	LD	(#VDP_06),A			; Save our value
-	OUT	(#0x99),A			; Send value
+	LD	A,#0b00111111			; sprite pattern table = #1F800-#1FFFF
+	LD	(#VDP_06),A				; Save our value
+	OUT	(#0x99),A				; Send value
 	LD	A,#0x80+6	
-	OUT	(#0x99),A			; Write in register
-	
+	OUT	(#0x99),A				; Write in register	
 	; Now Set Sprite Attribute Table Address
-	LD	A,#0b11101111		; sprite attribute table = #1F600 / So Color Table will be #1F400 (14 - 10 and 3 1s)
-	LD	(#VDP_05),A			; Save our value
-	OUT	(#0x99),A			; Send value
+	LD	A,#0b11101111			; sprite attribute table = #1F600 / So Color Table will be #1F400 (14 - 10 and 3 1s)
+	LD	(#VDP_05),A				; Save our value
+	OUT	(#0x99),A				; Send value
 	LD	A,#0x80+5	
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000011		; A16 - 1 And A15 - 1
-	LD	(#VDP_11),A			; Save our value
-	OUT	(#0x99),A			; Send value
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000011			; A16 - 1 And A15 - 1
+	LD	(#VDP_11),A				; Save our value
+	OUT	(#0x99),A				; Send value
 	LD	A,#0x80+11	
-	OUT	(#0x99),A			; Write in register
-	
+	OUT	(#0x99),A				; Write in register	
 	;SET VDP TO WRITE @ Color Table starting at Sprite 0 (#1F400)
-	LD	A,#0b00000111		; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A			; Save our value	
-	OUT	(#0x99),A			; Send value	
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value	
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000000		; Now A7 to A0, all 0's
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01110100		; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10 to 1 and A9-A8 to 0 (4)
-	OUT	(#0x99),A			; High Address	
-	
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000000			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110100			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10 to 1 and A9-A8 to 0 (4)
+	OUT	(#0x99),A				; High Address		
 	;Colors for 2 sprites is 32 bytes long
 	LD	HL,#SPRITE_COLORS
 	LD	BC,#0x2098
-V9938_InitCursor.COLRLOOP:	
+V9938_InitCursor.COLRLOOP:
 	OUTI
 	NOP
 	NOP
-	JR	NZ,V9938_InitCursor.COLRLOOP		
-	
+	JR	NZ,V9938_InitCursor.COLRLOOP	
 	;SET VDP TO WRITE @ Pattern Table starting at Sprite 0 (#1F800)
-	LD	A,#0b00000111		; A16/15/14 set to 1
-	LD	(#VDP_14),A			; Save our value
-	OUT	(#0x99),A			; Send value	
+	LD	A,#0b00000111			; A16/15/14 set to 1
+	LD	(#VDP_14),A				; Save our value
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000000		; Now A7 to A0, all 0's
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01111000		; Write (bit 6),  A12 1 
-	OUT	(#0x99),A			; High Address	
-	
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000000			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01111000			; Write (bit 6),  A12 1 
+	OUT	(#0x99),A				; High Address		
 	;Patterns for 2 sprites is 16 bytes long
 	LD	HL,#PATTERN_CURSOR
 	LD	BC,#0x1098
@@ -1358,19 +1324,17 @@ V9938_InitCursor.PATRNLOOP:
 	OUTI
 	NOP
 	NOP
-	JR	NZ,V9938_InitCursor.PATRNLOOP
-	
+	JR	NZ,V9938_InitCursor.PATRNLOOP	
 	;SET VDP TO WRITE @ Attribute Table starting at Sprite 0 (#1F600)
-	LD	A,#0b00000111		; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A			; Save our value
-	OUT	(#0x99),A			; Send value	
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000000		; Now A7 to A0, all 0's
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01110110		; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
-	OUT	(#0x99),A			; High Address	
-	
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000000			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
+	OUT	(#0x99),A				; High Address		
 	;Attributes for 2 sprites is 8 bytes long
 	LD	HL,#SPRITE_TABLE
 	LD	BC,#0x0898
@@ -1378,41 +1342,40 @@ V9938_InitCursor.ATTRLOOP:
 	OUTI
 	NOP
 	NOP
-	JR	NZ,V9938_InitCursor.ATTRLOOP
-		
+	JR	NZ,V9938_InitCursor.ATTRLOOP		
 	; Done with setting
 	DI
-	LD	A,(#VDP_08)			; Get a copy of register 8
-	AND #0b11111101			; Enable Sprites (cursor)
-	LD	(#VDP_08),A			; Save our value
-	OUT	(#0x99),A			; Send value to VDP
-	LD	A,#0x80+8				
-	OUT	(#0x99),A			; Write to register 8
+	LD	A,(#VDP_08)				; Get a copy of register 8
+	AND #0b11111101				; Enable Sprites (cursor)
+	LD	(#VDP_08),A				; Save our value
+	OUT	(#0x99),A				; Send value to VDP
+	LD	A,#0x80+8
+	OUT	(#0x99),A				; Write to register 8
 	EI
-	LD	(#CursorOn),A		; Other than 0, on
-	LD	(#CursorVis),A		; Other than 0, on
+	LD	(#CursorOn),A			; Other than 0, on
+	LD	(#CursorVis),A			; Other than 0, on
 	RET
+
 
 V9938_CursorColor:
 	;SET VDP TO WRITE @ Color Table starting at Sprite 0 Line 6 (#1F405)
-	LD	A,#0b00000111		; A16, A15 and A14 set to 1
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
 	DI
-	LD	(#VDP_14),A			; Save our value	
-	OUT	(#0x99),A			; Send value	
+	LD	(#VDP_14),A				; Save our value	
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000101		; Now A7 to A0
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01110100		; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10 to 1 and A9-A8 to 0 (4)
-	OUT	(#0x99),A			; High Address	
-
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000101			; Now A7 to A0
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110100			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10 to 1 and A9-A8 to 0 (4)
+	OUT	(#0x99),A				; High Address	
 	LD	A,(#HiLighted)
 	OR	A
 	LD	A,(#ForeColor)
 	JR	Z,V9938_CursorColor.NHA
 	ADD	#0x08
 V9938_CursorColor.NHA:	
-	OR	#0x20				; Color attribute
+	OR	#0x20					; Color attribute
 	LD	B,#2
 V9938_CursorColor.CCLRLOOP:	
 	;Update 1st line
@@ -1423,46 +1386,49 @@ V9938_CursorColor.CCLRLOOP:
 	EI
 	RET
 
+
 V9938_MoveCursorY:
 	;SET VDP TO WRITE @ #0x1F600 - Attribute Table
-	LD	A,#0b00000111		; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A			; Save our value
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value
 	DI
-	OUT	(#0x99),A			; Send value	
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000000		; Now A7 to A0, all 0's
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01110110		; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
-	OUT	(#0x99),A			; High Address		
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000000			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
+	OUT	(#0x99),A				; High Address		
 	; Y Position
 	LD	A,(#HMMC_CMD.DYL)
-	LD	B,A					; Copy IYL to B
-	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our IYL to it
-	OUT	(#0x98),A			; Set Y
+	LD	B,A						; Copy IYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our IYL to it
+	OUT	(#0x98),A				; Set Y
 	EI
 	RET
 
+
 V9938_MoveCursorX:
 	;SET VDP TO WRITE @ #0x1F601 - Attribute Table
-	LD	A,#0b00000111		; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A			; Save our value
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value
 	DI
-	OUT	(#0x99),A			; Send value	
+	OUT	(#0x99),A				; Send value	
 	LD	A,#0x80+14
-	OUT	(#0x99),A			; Write in register
-	LD	A,#0b00000001		; Now A7 to A0, all 0's
-	OUT	(#0x99),A			; Low Address
-	LD	A,#0b01110110		; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
-	OUT	(#0x99),A			; High Address		
-	; X Position	
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000001			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
+	OUT	(#0x99),A				; High Address		
+	; X Position
 	LD	A,(#HMMC_CMD.DXL)
 	ADD	A,#8
-	OUT	(#0x98),A			; Set X
+	OUT	(#0x98),A				; Set X
 	EI
-	RET	
-;END OPJ Changes Sprite	
+	RET
+;END OPJ Changes Sprite
+
 
 V9938_PrintChar:
 	LD	B,A
@@ -1486,7 +1452,7 @@ V9938_PrintChar:
 	AND	#0b11000000
 	RLC	A
 	RLC	A
-	ADD	A,#ColorTable; AND 255
+	ADD	A,#ColorTable			; AND 255
 	LD	E,A
 	LD	A,(DE)
 	LD	(#HMMC_CMD.CLR),A
@@ -1499,7 +1465,7 @@ V9938_PrintChar.BP0:	LD	A,(HL)
 	AND	#0b11000000
 	RLC	A
 	RLC	A
-	ADD	A,#ColorTable; AND 255
+	ADD	A,#ColorTable			; AND 255
 	LD	E,A
 	LD	A,(DE)
 	OUT	(C),A
@@ -1509,7 +1475,7 @@ V9938_PrintChar.BP1:	LD	A,(HL)
 	RRCA
 	RRCA
 	RRCA
-	ADD	A,#ColorTable; AND 255
+	ADD	A,#ColorTable			; AND 255
 	LD	E,A
 	LD	A,(DE)
 	OUT	(C),A
@@ -1517,7 +1483,7 @@ V9938_PrintChar.BP2:	LD	A,(HL)
 	AND	#0b00001100
 	RRCA
 	RRCA
-	ADD	A,#ColorTable; AND 255
+	ADD	A,#ColorTable			; AND 255
 	LD	E,A
 	LD	A,(DE)
 	OUT	(C),A
@@ -1539,12 +1505,13 @@ V9938_PrintChar.FIL:	LD	A,(#ColorTable+3)
 	JR	V9938_PrintChar.OUT
 
 
-
 V9938_ScrollUp:
 	PUSH	HL
 	LD	A,#25
+	LD	B,#0					;Indicates to use background color
 	CALL	V9938_ClearLine
 	; OPJ - To avoid previous lines to show in the bottom when rolling multiple lines
+	LD	B,#1					;Indicates to use border color
 	CALL	V9938_ClearTop
 	POP	HL
 	LD	A,(#VDP_23)
@@ -1558,13 +1525,11 @@ V9938_ScrollUp:
 	RET
 
 
-
 V9938_ScrollDown:
 	PUSH	HL
-	LD	A,#1
-	; PK - Ok... we'll need this?
-	; CALL	V9938_ClearLine
-	; CALL	V9938_ClearBottom
+	LD	A,#24
+	LD	B,#1					;Indicates to use border color
+	CALL	V9938_ClearLine
 	POP	HL
 	LD	A,(#VDP_23)
 	SUB	#0x08
@@ -1574,6 +1539,9 @@ V9938_ScrollDown:
 	LD	A,#0x80+23
 	OUT	(#0x99),A
 	EI
+	; Make sure the first line now has the correct color attribute
+	LD	B,#0					;Indicates to use background color
+	CALL	V9938_ClearTop
 	RET
 
 
@@ -1581,7 +1549,7 @@ V9938_ScrollDown:
 V9938_SetCursorX:
 	LD	A,(#CursorVis)
 	OR	A
-	RET	Z					; Nothing to do if cursor is of
+	RET	Z						; Nothing to do if cursor is of
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
@@ -1589,14 +1557,12 @@ V9938_SetCursorX:
 	LD	(#HMMC_CMD.DXL),A
 	;OPJ - Update Cursor Position
 	JP	V9938_MoveCursorX
-	;RET
-
 
 
 V9938_SetCursorY:
 	LD	A,(#CursorVis)
 	OR	A
-	RET	Z					; Nothing to do if cursor is of
+	RET	Z						; Nothing to do if cursor is of
 	LD	A,(#CursorRow)
 	ADD	A,A
 	ADD	A,A
@@ -1604,91 +1570,103 @@ V9938_SetCursorY:
 	LD	(#HMMC_CMD.DYL),A
 	;OPJ - Update Cursor Position
 	JP	V9938_MoveCursorY
-	;RET
-
 
 
 V9938_ClearLine:
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
-	LD	(#HMMV_CMD.DYL),A ; Number of lines * 8 = position of the last line
+	LD	(#HMMV_CMD.DYL),A		; Number of lines * 8 = position of the last line
 	LD	A,#0x08
-	LD	(#HMMV_CMD.NYL),A ; Will paint a rectangle with 8 pixels on the Y axys
+	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with 8 pixels on the Y axys
 	XOR	A
 	LD	(#HMMV_CMD.NYH),A
-	LD	(#HMMV_CMD.DXL),A ; 
+	LD	(#HMMV_CMD.DXL),A
 	LD	A,#0xE0
 	LD	(#HMMV_CMD.NXL),A
 	LD	A,#0x01
-	LD	(#HMMV_CMD.NXH),A ; The rectangle is 480 pixels on the X axis
+	LD	(#HMMV_CMD.NXH),A		; The rectangle is 480 pixels on the X axis
+	LD	A,B
+	OR	A
 	LD	A,(#BackColor)
+	JR	Z,V9938_ClearLine.Cont
+	LD	A,(#BorderColor)
+V9938_ClearLine.Cont:
+	LD	(#ClearColor),A
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	LD	B,A
-	LD	A,(#BackColor)
-	OR	B				; Adjust color in the right format
-	LD	(#HMMV_CMD.CLR),A; Color to paint the rectangle
+	LD	A,(#ClearColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	JP	DO_HMMV
+
 
 ; OPJ - To avoid previous lines to show in the bottom when rolling multiple lines
 V9938_ClearTop:
 	XOR	A
-	LD	(#HMMV_CMD.DYL),A ; position of the first line
+	LD	(#HMMV_CMD.DYL),A		; position of the first line
 	LD	A,#0x08
-	LD	(#HMMV_CMD.NYL),A ; Will paint a rectangle with 8 pixels on the Y axys
+	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with 8 pixels on the Y axys
 	XOR	A
 	LD	(#HMMV_CMD.NYH),A
-	LD	(#HMMV_CMD.DXL),A ; 
+	LD	(#HMMV_CMD.DXL),A
 	LD	A,#0xE0
 	LD	(#HMMV_CMD.NXL),A
 	LD	A,#0x01
-	LD	(#HMMV_CMD.NXH),A ; The rectangle is 480 pixels on the X axis
+	LD	(#HMMV_CMD.NXH),A		; The rectangle is 480 pixels on the X axis
+	LD	A,B
+	OR	A
 	LD	A,(#BackColor)
+	JR	Z,V9938_ClearTop.Cont
+	LD	A,(#BorderColor)
+V9938_ClearTop.Cont:
+	LD	(#ClearColor),A
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	LD	B,A
-	LD	A,(#BackColor)
-	OR	B				; Adjust color in the right format
-	LD	(#HMMV_CMD.CLR),A; Color to paint the rectangle
+	LD	A,(#ClearColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	JP	DO_HMMV
 
 
 V9938_ClearScreen:
-	CALL	V9938_WaitCmd	; Make sure VDP is not processing any command
+	CALL	V9938_WaitCmd		; Make sure VDP is not processing any command
 	DI
 	;OPJ - Set border color same as back color
-	LD	A,(#BackColor)		; Text1 and Text2 color 15, Border and Background color 0
+	LD	A,(#BackColor)			; Text1 and Text2 color 15, Border and Background color 0
+	LD (#BorderColor),A			; Save the new border color
 	OUT	(#0x99),A
 	LD	A,#0x80+7
 	OUT	(#0x99),A				; Write to register 7
 	;OPJ - End
-	LD	A,#0x24				;
+	LD	A,#0x24
 	OUT	(#0x99),A
 	LD	A,#0x91
 	OUT	(#0x99),A				; Indirect access to registers, starting at #36
 	EI
-	LD	C,#0x9B				;Now indirect writes starting at register 36
+	LD	C,#0x9B					;Now indirect writes starting at register 36
 	XOR	A
-	OUT	(C),A	; DXL = 0
+	OUT	(C),A					; DXL = 0
 	NOP
-	OUT	(C),A	; DXH = 0
+	OUT	(C),A					; DXH = 0
 	NOP
-	OUT	(C),A	; DYL = 0
+	OUT	(C),A					; DYL = 0
 	NOP
-	OUT	(C),A	; DYH = 0
+	OUT	(C),A					; DYH = 0
 	NOP
-	OUT	(C),A	; NXL  = 0
+	OUT	(C),A					; NXL  = 0
 	LD	A,#0x02
-	OUT	(C),A	; NXH = 2 (512 dots)
+	OUT	(C),A					; NXH = 2 (512 dots)
 	XOR	A
-	OUT	(C),A	; NYL = 0
+	OUT	(C),A					; NYL = 0
 	INC	A
-	OUT	(C),A	; NYH = 1 (256 dots)
+	OUT	(C),A					; NYH = 1 (256 dots)
 	LD	A,(#BackColor)
 	ADD	A,A
 	ADD	A,A
@@ -1697,180 +1675,209 @@ V9938_ClearScreen:
 	LD	B,A
 	LD	A,(#BackColor)
 	OR	B
-	OUT	(C),A	; CLR
+	OUT	(C),A					; CLR
 	LD	A,#0x00
-	OUT	(C),A	; ARG
+	OUT	(C),A					; ARG
 	LD	A,#0xC0
-	OUT	(C),A	; CMD	
+	OUT	(C),A					; CMD	
 	RET
+
 
 	; Observing Windows 10 terminal behavior as well as XTERM, Del Char only deletes characters in the same line
 	; Lines below are left untouched even if # of chars to delete surpass the # of chars in the line, and it does
 	; not shift lines below up. 
 V9938_DelChr:
-	LD	C,A					; Number of characters to delete in C
-	LD	A,(#CursorCol)		;
-	LD	B,A					; Cursor column in B
-	ADD	A,C					; Lets Check if cursor pos + deleted characters equals or exceed a line limit
-	CP	#79					; So, if 78 (79 columns) or less, will carry
-	JP	NC,V9938_ErLin0		; If no carry, no need to move blocks, we can just use a line deletion that will be way faster
+	LD	C,A						; Number of characters to delete in C
+	LD	A,(#CursorCol)			;
+	LD	B,A						; Cursor column in B
+	ADD	A,C						; Lets Check if cursor pos + deleted characters equals or exceed a line limit
+	CP	#79						; So, if 78 (79 columns) or less, will carry
+	JP	NC,V9938_ErLin0			; If no carry, no need to move blocks, we can just use a line deletion that will be way faster
 	; If here cursor pos + deleted characters less than a line, so we need to do the following:
 	; - Calculate the size of the block to move (End of screen - (Cursor Position + Deleted Chars))
 	; - Move the block
 	; - Erase # of Deleted Chars after the end of the block
 	LD	A,#80
-	SUB	A,B					; Ok, how many characters do we have including the one in cursor?
-	SUB	A,C					; And this is how many characters we need to copy to cursor position
-	INC A					;
-	PUSH	AF				; Save this, we will use it later to delete characters by fake positioning cursor @ cursor pos + moved characters +1 and deleting from there to the end of line :)
-	LD	B,A					; B contains character width of block being moved
+	SUB	A,B						; Ok, how many characters do we have including the one in cursor?
+	SUB	A,C						; And this is how many characters we need to copy to cursor position
+	INC A						;
+	PUSH	AF					; Save this, we will use it later to delete characters by fake positioning cursor @ cursor pos + moved characters +1 and deleting from there to the end of line :)
+	LD	B,A						; B contains character width of block being moved
 	ADD	A,A
-	ADD	A,B					; Multiply it by 3, number of "double pixels" (6 pixel width, 3 double pixels width)
-	ADD	A,A					; And now double it to adjust lsb not considered
-	LD	(#HMMM_CMD.NXL),A	; Store as NX lower byte
-	LD	A,#0x00				; Probably will be 0 NX higher byte
-	JR	NC,V9938_DelChr.NXH	; But if carry, means it is 1
-	INC	A					; If carry, NXh is 1
-V9938_DelChr.NXH:	LD	(#HMMM_CMD.NXH),A	; Store it
+	ADD	A,B						; Multiply it by 3, number of "double pixels" (6 pixel width, 3 double pixels width)
+	ADD	A,A						; And now double it to adjust lsb not considered
+	LD	(#HMMM_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#0x00					; Probably will be 0 NX higher byte
+	JR	NC,V9938_DelChr.NXH		; But if carry, means it is 1
+	INC	A						; If carry, NXh is 1
+V9938_DelChr.NXH:
+	LD	(#HMMM_CMD.NXH),A		; Store it
 	LD	A,#0x08
 	LD	(#HMMM_CMD.NYL),A
 	; No need to change NYH, always 0
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
-	ADD	A,B					; Just adjust to count of "double pixels", HMMM function will handle DXH and shifting it
-	LD	(#HMMM_CMD.DXL),A	; Destination is current cursor position
-	LD	D,A					; Save A in D
-	LD	A,C					; Now source is what is in D + 3 times what is in C
+	ADD	A,B						; Just adjust to count of "double pixels", HMMM function will handle DXH and shifting it
+	LD	(#HMMM_CMD.DXL),A		; Destination is current cursor position
+	LD	D,A						; Save A in D
+	LD	A,C						; Now source is what is in D + 3 times what is in C
 	LD	B,A
 	ADD	A,A
-	ADD	A,B					; A contains 3xdeleted characters
-	ADD A,D					; + cursor position, this is the position of source X :D
-	LD	(#HMMM_CMD.SXL),A	; Source is current cursor position + deleted characters
-	LD	A,(#CursorRow)		; Current cursor line
+	ADD	A,B						; A contains 3xdeleted characters
+	ADD A,D						; + cursor position, this is the position of source X :D
+	LD	(#HMMM_CMD.SXL),A		; Source is current cursor position + deleted characters
+	LD	A,(#CursorRow)			; Current cursor line
 	ADD	A,A
 	ADD	A,A
-	ADD	A,A					; Multiply it by 8, it is the first line of that character line (8 pixels high character)
-	LD	(#HMMM_CMD.DYL),A	; This is the Y destination
-	LD	(#HMMM_CMD.SYL),A	; As well as the Y source
-	CALL	DO_HMMM			; All set, let's move
-	POP	BC					; What we need to Add to Cursor is restored in B
-	LD	A,(#CursorCol)		; Current Cursor Column
-	ADD	A,B					; Our fake cursor position
-	JP	V9938_ErLin0.1		; Erase Line, but using what is in A, our fake cursor position, and return to processing after done
-
-	
-	
+	ADD	A,A						; Multiply it by 8, it is the first line of that character line (8 pixels high character)
+	LD	(#HMMM_CMD.DYL),A		; This is the Y destination
+	LD	(#HMMM_CMD.SYL),A		; As well as the Y source
+	CALL	DO_HMMM				; All set, let's move
+	POP	BC						; What we need to Add to Cursor is restored in B
+	LD	A,(#CursorCol)			; Current Cursor Column
+	ADD	A,B						; Our fake cursor position
+	JP	V9938_ErLin0.1			; Erase Line, but using what is in A, our fake cursor position, and return to processing after done	
 V9938_DelChr.SL:	LD	HL,(#EndAddress)
 	JP	PrintText.RLP	
+
 
 V9938_ErDis0:
 	LD	A,(#CursorCol)
 	LD	B,A
-	;LD	A,(#CursorRow)
-	;OR	B
-	;JR	NZ,V9938_ErDis0_NotAllScreen
-	;CALL V9938_ClearScreen
-	;JP	PrintText.RLP
-;V9938_ErDis0_NotAllScreen:		
 	ADD	A,A
 	ADD	A,B
-	LD	(#HMMV_CMD.DXL),A	; DX = Number of column * 3 (this mode has doubled pixels in X axis)
+	LD	(#HMMV_CMD.DXL),A		; DX = Number of column * 3 (this mode has doubled pixels in X axis)
 	LD	B,A
-	LD	A,#240				; We draw up to 240 double-pixels (6 pixels wide characters * 80 columns)
-	SUB	A,B					; Except the  pixels data up to the cursor position
-	ADD	A,A					; And now double  it
-	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
-	LD	A,#0x00				; Probably will be 0 NX higher byte
-	JR	NC,V9938_ErDis0.NXH	; But if carry, means it is 1
-	INC	A					; If carry, NXh is 1
-V9938_ErDis0.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
-	LD	A,(#CursorRow)		; Now get the row / line
-	ADD	A,A					; 8 pixels height each character, multiply it per 8
+	LD	A,#240					; We draw up to 240 double-pixels (6 pixels wide characters * 80 columns)
+	SUB	A,B						; Except the  pixels data up to the cursor position
+	ADD	A,A						; And now double  it
+	LD	(#HMMV_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#0x00					; Probably will be 0 NX higher byte
+	JR	NC,V9938_ErDis0.NXH		; But if carry, means it is 1
+	INC	A						; If carry, NXh is 1
+V9938_ErDis0.NXH:	
+	LD	(#HMMV_CMD.NXH),A		; Store it
+	LD	A,(#CursorRow)			; Now get the row / line
+	ADD	A,A						; 8 pixels height each character, multiply it per 8
 	ADD	A,A
 	ADD	A,A
-	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
+	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
 	LD	A,#0x08				
-	LD	(#HMMV_CMD.NYL),A	; To clear a single line it is 8 pixels height number of dots height
+	LD	(#HMMV_CMD.NYL),A		; To clear a single line it is 8 pixels height number of dots height
 	XOR	A	 
-	LD	(#HMMV_CMD.DYH),A	; DYH 0
-	LD	(#HMMV_CMD.NYH),A	; NYH 0
-	CALL	DO_HMMV			; Aaaand.... Clear!
+	LD	(#HMMV_CMD.DYH),A		; DYH 0
+	LD	(#HMMV_CMD.NYH),A		; NYH 0
+	CALL	DO_HMMV				; Aaaand.... Clear!
 	; Now, do we need to clear below cursor?
-	LD	A,(#CursorRow)		; Let's see how many pixels we need to fill
-	LD	B,A					; Now get the row / line in B
-	LD	A,#24				; Up to 25 lines, 0 is first, 24 is the 25th line
-	SUB	A,B					; Let's check how many extra lines need to be cleared
-	JR	Z,V9938_ErDis0.SL	; If last line, done
+	LD	A,(#CursorRow)			; Let's see how many pixels we need to fill
+	LD	B,A						; Now get the row / line in B
+	LD	A,#24					; Up to 25 lines, 0 is first, 24 is the 25th line
+	SUB	A,B						; Let's check how many extra lines need to be cleared
+	JR	Z,V9938_ErDis0.SL		; If last line, done
 	; Not last, so multiply it per 8
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
-	LD	(#HMMV_CMD.NYL),A	; To clear remaining lines it is 8 pixels height multiplied by number of lines
+	LD	(#HMMV_CMD.NYL),A		; To clear remaining lines it is 8 pixels height multiplied by number of lines
 	XOR	A					 
-	LD	(#HMMV_CMD.NYH),A	; NYH and DXL 0
-	LD	(#HMMV_CMD.DXL),A	; 
-	LD	(#HMMV_CMD.DYH),A	; DYH	0
-	LD	A,#0xE0				; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
-	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
-	LD	A,#1				;
-	LD	(#HMMV_CMD.NXH),A	; Store NX higher byte
-	LD	A,(#CursorRow)		; Now get the row / line
-	INC	A					; Next line
-	ADD	A,A					; 8 pixels height each character, multiply it per 8
-	ADD	A,A					;
-	ADD	A,A					;	
-	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
-	CALL	DO_HMMV			; Aaaand.... Clear!	
+	LD	(#HMMV_CMD.NYH),A		; NYH and DXL 0
+	LD	(#HMMV_CMD.DXL),A
+	LD	(#HMMV_CMD.DYH),A		; DYH	0
+	LD	A,#0xE0					; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
+	LD	(#HMMV_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#1
+	LD	(#HMMV_CMD.NXH),A		; Store NX higher byte
+	LD	A,(#CursorRow)			; Now get the row / line
+	INC	A						; Next line
+	ADD	A,A						; 8 pixels height each character, multiply it per 8
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
+	CALL	DO_HMMV				; Aaaand.... Clear!	
 V9938_ErDis0.SL:	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
+
 V9938_ErDis1:
 	XOR	A
-	LD	(#HMMV_CMD.DXL),A	; DX = Beginning of line, 0
-	LD	(#HMMV_CMD.DXH),A	; DX = Beginning of line, 0
+	LD	(#HMMV_CMD.DXL),A		; DX = Beginning of line, 0
+	LD	(#HMMV_CMD.DXH),A		; DX = Beginning of line, 0
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
-	ADD	A,B					; Column * 6 = X coordinate of current cursor position
-	ADD	A,A					; And now double  it
-	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
-	LD	A,#0x00				; Probably will be 0 NX higher byte
-	JR	NC,V9938_ErDis1.NXH	; But if carry, means it is 1
-	INC	A					; If carry, NXh is 1
-V9938_ErDis1.NXH:	LD	(#HMMV_CMD.NXH),A	; Store it
-	LD	A,(#CursorRow)		; Now get the row / line
-	ADD	A,A					; 8 pixels height each character, multiply it per 8
+	ADD	A,B						; Column * 6 = X coordinate of current cursor position
+	ADD	A,A						; And now double  it
+	LD	(#HMMV_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#0x00					; Probably will be 0 NX higher byte
+	JR	NC,V9938_ErDis1.NXH		; But if carry, means it is 1
+	INC	A						; If carry, NXh is 1
+V9938_ErDis1.NXH:
+	LD	(#HMMV_CMD.NXH),A		; Store it
+	LD	A,(#CursorRow)			; Now get the row / line
+	ADD	A,A						; 8 pixels height each character, multiply it per 8
 	ADD	A,A
 	ADD	A,A
-	LD	(#HMMV_CMD.DYL),A	; This is the Y axys start
+	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
 	LD	A,#0x08				
-	LD	(#HMMV_CMD.NYL),A	; To clear a single line it is 8 pixels height number of dots height
+	LD	(#HMMV_CMD.NYL),A		; To clear a single line it is 8 pixels height number of dots height
 	XOR	A
-	LD	(#HMMV_CMD.DYH),A	; DYH and NYH 0
+	LD	(#HMMV_CMD.DYH),A		; DYH and NYH 0
 	LD	(#HMMV_CMD.NYH),A
-	CALL	DO_HMMV			; Aaaand.... Clear!
+	CALL	DO_HMMV				; Aaaand.... Clear!
 	; Now, do we need to clear above cursor?
-	LD	A,(#CursorRow)		; Let's see how many pixels we need to fill
-	OR	A					; First row/line?
-	JR	Z,V9938_ErDis1.SL	; If first line, done
+	LD	A,(#CursorRow)			; Let's see how many pixels we need to fill
+	OR	A						; First row/line?
+	JR	Z,V9938_ErDis1.SL		; If first line, done
 	; Not first, so multiply it per 8
-	LD	A,A					;
-	LD	A,A					;	
-	LD	(#HMMV_CMD.NYL),A	; To clear remaining lines it is 8 pixels height multiplied by number of lines - 1 (which is cursor row)
+	LD	A,A
+	LD	A,A
+	LD	(#HMMV_CMD.NYL),A		; To clear remaining lines it is 8 pixels height multiplied by number of lines - 1 (which is cursor row)
 	XOR	A				
-	LD	(#HMMV_CMD.DYH),A	; DYH, DYL, DXL ,DXH  and and NYH 0
-	LD	(#HMMV_CMD.DYL),A	; 
-	LD	(#HMMV_CMD.NYH),A	;
-	LD	(#HMMV_CMD.DXL),A	; 
-	LD	(#HMMV_CMD.DXH),A	; 
-	LD	A,#0xE0				; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
-	LD	(#HMMV_CMD.NXL),A	; Store as NX lower byte
-	LD	A,#1				;
-	LD	(#HMMV_CMD.NXH),A	; Store NX higher byte
-	CALL	DO_HMMV			; Aaaand.... Clear!	
+	LD	(#HMMV_CMD.DYH),A		; DYH, DYL, DXL ,DXH  and and NYH 0
+	LD	(#HMMV_CMD.DYL),A
+	LD	(#HMMV_CMD.NYH),A
+	LD	(#HMMV_CMD.DXL),A
+	LD	(#HMMV_CMD.DXH),A
+	LD	A,#0xE0					; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
+	LD	(#HMMV_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#1
+	LD	(#HMMV_CMD.NXH),A		; Store NX higher byte
+	CALL	DO_HMMV				; Aaaand.... Clear!	
 V9938_ErDis1.SL:	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
+
+
+V9938_ErChar0:
+	LD	A,(#CursorCol)			; Will start from current column
+	LD	B,A
+	ADD	A,A
+	ADD	A,B						; A has column * 3
+	LD	(#HMMV_CMD.DXL),A		; Store in the destination X
+	LD	A,C						; Characters to delete in C
+	ADD	A,A
+	ADD	A,C					
+	ADD	A,A						; And now double it, chars * 6
+	LD	(#HMMV_CMD.NXL),A		; This is the number of pixels to erase
+	LD	A,#0x00					; High byte could be 0
+	JR	NC,V9938_ErChar0.NXH	; If did not carry, it is
+	INC	A						; Otherwise it is 1
+V9938_ErChar0.NXH:	
+	LD	(#HMMV_CMD.NXH),A		; High Byte number of pixels to erase
+	LD	A,(#CursorRow)			; Now calculate destination Y
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.DYL),A		; Row * 8 is the Y position
+	LD	A,#0x08
+	LD	(#HMMV_CMD.NYL),A		; And delete 8 pixels in Y direction, one line
+	XOR	A
+	LD	(#HMMV_CMD.DYH),A
+	LD	(#HMMV_CMD.NYH),A		; Those two are 0
+	CALL	DO_HMMV				; And erase this
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+
 
 V9938_ErLin0:
 	LD	A,(#CursorCol)
@@ -1903,7 +1910,6 @@ V9938_ErLin0.NXH:	LD	(#HMMV_CMD.NXH),A
 	JP	PrintText.RLP
 
 
-
 V9938_ErLin1:
 	XOR	A
 	LD	(#HMMV_CMD.DXL),A
@@ -1921,16 +1927,15 @@ V9938_ErLin1.CNT:	LD	(#HMMV_CMD.NXL),A
 	JP	V9938_ErLin0.NXH
 
 
-
 V9938_ErLin2:
-	LD	A,(#CursorRow)	; Clear Entire Line
+	LD	A,(#CursorRow)			; Clear Entire Line
+	LD	B,#0					; Background color
 	CALL	V9938_ClearLine
 	XOR	A
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
-
 
 
 V9938_SetColors:
@@ -1969,8 +1974,6 @@ V9938_SetColors.NHA:	LD	B,A
 	LD	(#ColorTable+03),A
 	;OPJ - Sprite Cursor added
 	JP	V9938_CursorColor
-	;RET
-
 
 
 V9938_WaitCmd:
@@ -1991,41 +1994,41 @@ V9938_WaitCmd:
 
 
 DO_HMMC:
-	CALL	V9938_WaitCmd	; Wait if any command is pending
+	CALL	V9938_WaitCmd		; Wait if any command is pending
 	DI
-	LD	A,#0x24				; Register 36 as value for...
+	LD	A,#0x24					; Register 36 as value for...
 	OUT	(#0x99),A
-	LD	A,#0x91				; Register #17 (indirect register access auto increment)
+	LD	A,#0x91					; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
-	LD	HL,#HMMC_CMD		; The HMMC buffer
-	LD	C,#0x9B				; And port for indirect access
-	LD	A,(HL)				; LD DXL in A
+	LD	HL,#HMMC_CMD			; The HMMC buffer
+	LD	C,#0x9B					; And port for indirect access
+	LD	A,(HL)					; LD DXL in A
 	INC	HL
-	INC	HL					; HL pointing to DYL
-	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A					; Multiply by 2
-	OUT	(C),A				; And send DXL to #36
-	LD	A,#0x00				; DXH could be 0
-	JR	NC,DO_HMMC.DXH		; If no carry, it is 0
-	INC	A					; Otherwise it is 1
-DO_HMMC.DXH:	OUT	(C),A	; And send DXH to #37
-	LD	A,(HL)				; Load DYL in A
-	INC	HL					
-	INC	HL					; HL pointing @ NXL
-	LD	B,A					; Copy DYL to B
-	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our DYL to it
-	OUT	(C),A				; Send it to #38
-	XOR	A					; DYH always 0
-	OUT	(C),A				; Send it
-	OUTI					; And now send the rest of buffer
+	INC	HL						; HL pointing to DYL
+	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
+	OUT	(C),A					; And send DXL to #36
+	LD	A,#0x00					; DXH could be 0
+	JR	NC,DO_HMMC.DXH			; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+DO_HMMC.DXH:	OUT	(C),A		; And send DXH to #37
+	LD	A,(HL)					; Load DYL in A
+	INC	HL
+	INC	HL						; HL pointing @ NXL
+	LD	B,A						; Copy DYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our DYL to it
+	OUT	(C),A					; Send it to #38
+	XOR	A						; DYH always 0
+	OUT	(C),A					; Send it
+	OUTI						; And now send the rest of buffer
 	OUTI
 	OUTI
 	OUTI
 	OUTI
 	OUTI
 	OUTI
-	LD	A,#0xAC				
+	LD	A,#0xAC
 	OUT	(#0x99),A
 	LD	A,#0x91				
 	OUT	(#0x99),A
@@ -2033,47 +2036,46 @@ DO_HMMC.DXH:	OUT	(C),A	; And send DXH to #37
 	RET
 
 
-
 DO_HMMV:
-	CALL	V9938_WaitCmd	; Wait if any command is pending
+	CALL	V9938_WaitCmd		; Wait if any command is pending
 	DI
-	LD	A,#0x24				; Register 36 as value for...
+	LD	A,#0x24					; Register 36 as value for...
 	OUT	(#0x99),A
-	LD	A,#0x91				; Register #17 (indirect register access auto increment)
+	LD	A,#0x91					; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
-	LD	HL,#HMMV_CMD		; The HMMV buffer
-	LD	C,#0x9B				; And port for indirect access
-	LD	A,(HL)				; LD DXL in A
+	LD	HL,#HMMV_CMD			; The HMMV buffer
+	LD	C,#0x9B					; And port for indirect access
+	LD	A,(HL)					; LD DXL in A
 	INC	HL
-	INC	HL					; HL pointing to DYL
-	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A					; Multiply by 2
-	OUT	(C),A				; And send DXL to #36
-	LD	A,#0x00				; DXH could be 0
-	JR	NC,DO_HMMV.DXH		; If no carry, it is 0
-	INC	A					; Otherwise it is 1
-DO_HMMV.DXH:	OUT	(C),A	; And send DXH to #37
-	LD	A,(HL)				; Load DYL in A
+	INC	HL						; HL pointing to DYL
+	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
+	OUT	(C),A					; And send DXL to #36
+	LD	A,#0x00					; DXH could be 0
+	JR	NC,DO_HMMV.DXH			; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+DO_HMMV.DXH:	OUT	(C),A		; And send DXH to #37
+	LD	A,(HL)					; Load DYL in A
 	INC	HL
-	INC	HL					; HL pointing @ NXL
-	LD	B,A					; Copy DYL to B
-	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our DYL to it
-	OUT	(C),A				; Send it to #38
-	LD	B,A					; Copy adjusted DYL to B
-	LD	A,(#HMMV_CMD.NYL)	; NYL
-	ADD	A,B					; Ok, now let's check if there is an overflow
-	LD	(#HMMV_CMD.NYL2),A	; Save just in case it is a split operation :D
-	JR	NC,DO_HMMV.ONESTEP	; If not carry, last line is within the page constraints so it is a single step
-	JR	Z,DO_HMMV.ONESTEP	; If zero, no second step
-	LD	B,A					; This is the remainder
-	LD	A,(#HMMV_CMD.NYL)	; NYL
-	SUB A,B					; First step lenght 
-	LD	(#HMMV_CMD.NYL),A	; New NYL	
+	INC	HL						; HL pointing @ NXL
+	LD	B,A						; Copy DYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our DYL to it
+	OUT	(C),A					; Send it to #38
+	LD	B,A						; Copy adjusted DYL to B
+	LD	A,(#HMMV_CMD.NYL)		; NYL
+	ADD	A,B						; Ok, now let's check if there is an overflow
+	LD	(#HMMV_CMD.NYL2),A		; Save just in case it is a split operation :D
+	JR	NC,DO_HMMV.ONESTEP		; If not carry, last line is within the page constraints so it is a single step
+	JR	Z,DO_HMMV.ONESTEP		; If zero, no second step
+	LD	B,A						; This is the remainder
+	LD	A,(#HMMV_CMD.NYL)		; NYL
+	SUB A,B						; First step lenght 
+	LD	(#HMMV_CMD.NYL),A		; New NYL	
 	;Now finish first step here, and follow-up with a second step
-	XOR	A					; DYH always 0
-	OUT	(C),A				; Send it
-	OUTI					; And now send the rest of buffer
+	XOR	A						; DYH always 0
+	OUT	(C),A					; Send it
+	OUTI						; And now send the rest of buffer
 	OUTI
 	OUTI
 	OUTI
@@ -2082,18 +2084,18 @@ DO_HMMV.DXH:	OUT	(C),A	; And send DXH to #37
 	OUTI
 	EI
 	;Ok, so now for the second step
-	LD	A,(#HMMV_CMD.NYL)	; NYL has the number of lines deleted so far
-	LD	B,A					; Save in B
-	LD	A,(#HMMV_CMD.DYL)	; Get the initial line
-	ADD	A,B					; Add the lines deleted
-	LD	(#HMMV_CMD.DYL),A	; New DYL, from line picking up from where NYL left
-	LD	A,(#HMMV_CMD.NYL2)	; The remaining lenght at Y
-	LD	(#HMMV_CMD.NYL),A	; Now at NYL
-	JP	DO_HMMV				; And go execute the second step :)
+	LD	A,(#HMMV_CMD.NYL)		; NYL has the number of lines deleted so far
+	LD	B,A						; Save in B
+	LD	A,(#HMMV_CMD.DYL)		; Get the initial line
+	ADD	A,B						; Add the lines deleted
+	LD	(#HMMV_CMD.DYL),A		; New DYL, from line picking up from where NYL left
+	LD	A,(#HMMV_CMD.NYL2)		; The remaining lenght at Y
+	LD	(#HMMV_CMD.NYL),A		; Now at NYL
+	JP	DO_HMMV					; And go execute the second step :)
 DO_HMMV.ONESTEP:	
-	XOR	A					; DYH always 0
-	OUT	(C),A				; Send it
-	OUTI					; And now send the rest of buffer
+	XOR	A						; DYH always 0
+	OUT	(C),A					; Send it
+	OUTI						; And now send the rest of buffer
 	OUTI
 	OUTI
 	OUTI
@@ -2103,71 +2105,73 @@ DO_HMMV.ONESTEP:
 	EI
 	RET
 	
+	
 ; This function is safe for a single line only, if spanning over more than one line, it might potentially miss data
 DO_HMMM:
-	CALL	V9938_WaitCmd	; Wait if any command is pending
+	CALL	V9938_WaitCmd		; Wait if any command is pending
 	DI
-	LD	A,#0x20				; Register 32 as value for...
+	LD	A,#0x20					; Register 32 as value for...
 	OUT	(#0x99),A
-	LD	A,#0x91				; Register #17 (indirect register access auto increment)
+	LD	A,#0x91					; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
-	LD	HL,#HMMM_CMD		; The HMMC buffer
-	LD	C,#0x9B				; And port for indirect access
-	LD	A,(HL)				; LD SXL in A
+	LD	HL,#HMMM_CMD			; The HMMC buffer
+	LD	C,#0x9B					; And port for indirect access
+	LD	A,(HL)					; LD SXL in A
 	INC	HL
-	INC	HL					; HL pointing to SYL
-	ADD	#0x08				; Add 8 to SXL (A) - Border of 16 pixels
-	ADD	A,A					; Multiply by 2
-	OUT	(C),A				; And send SXL to #32
-	LD	A,#0x00				; SXH could be 0
-	JR	NC,DO_HMMM.SXH		; If no carry, it is 0
-	INC	A					; Otherwise it is 1
-DO_HMMM.SXH:	OUT	(C),A	; And send SXH to #33
-	LD	A,(HL)				; Load SYL in A
-	INC	HL					
-	INC	HL					; HL pointing @ DXL
-	LD	B,A					; Copy SYL to B
-	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our SYL to it
-	OUT	(C),A				; Send it to #34
-	XOR	A					; SYH always 0
-	OUT	(C),A				; Send it to #35
-	LD	A,(HL)				; LD DXL in A
+	INC	HL						; HL pointing to SYL
+	ADD	#0x08					; Add 8 to SXL (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
+	OUT	(C),A					; And send SXL to #32
+	LD	A,#0x00					; SXH could be 0
+	JR	NC,DO_HMMM.SXH			; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+DO_HMMM.SXH:	OUT	(C),A		; And send SXH to #33
+	LD	A,(HL)					; Load SYL in A
 	INC	HL
-	INC	HL					; HL pointing to DYL
-	ADD	#0x08				; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A					; Multiply by 2
-	OUT	(C),A				; And send DXL to #36
-	LD	A,#0x00				; DXH could be 0
-	JR	NC,DO_HMMM.DXH		; If no carry, it is 0
-	INC	A					; Otherwise it is 1
-DO_HMMM.DXH:	OUT	(C),A	; And send DXH to #37
-	LD	A,(HL)				; Load DYL in A
-	INC	HL					
-	INC	HL					; HL pointing @ DYL
-	LD	B,A					; Copy DYL to B
-	LD	A,(#VDP_23)			; Get current vertical offset
-	ADD	A,B					; Add our DYL to it
-	OUT	(C),A				; Send it to #38
-	XOR	A					; DYH always 0
-	OUT	(C),A				; Send it to #38
+	INC	HL						; HL pointing @ DXL
+	LD	B,A						; Copy SYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our SYL to it
+	OUT	(C),A					; Send it to #34
+	XOR	A						; SYH always 0
+	OUT	(C),A					; Send it to #35
+	LD	A,(HL)					; LD DXL in A
+	INC	HL
+	INC	HL						; HL pointing to DYL
+	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
+	OUT	(C),A					; And send DXL to #36
+	LD	A,#0x00					; DXH could be 0
+	JR	NC,DO_HMMM.DXH			; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+DO_HMMM.DXH:	OUT	(C),A		; And send DXH to #37
+	LD	A,(HL)					; Load DYL in A
+	INC	HL
+	INC	HL						; HL pointing @ DYL
+	LD	B,A						; Copy DYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our DYL to it
+	OUT	(C),A					; Send it to #38
+	XOR	A						; DYH always 0
+	OUT	(C),A					; Send it to #38
 	; And now send the rest of buffer,
-	OUTI					; NXL -> #40
-	OUTI					; NXH -> #41
-	OUTI					; NYL -> #42
-	OUTI					; NYH -> #43
+	OUTI						; NXL -> #40
+	OUTI						; NXH -> #41
+	OUTI						; NYL -> #42
+	OUTI						; NYH -> #43
 	; And now we skip #44 and go to#45 and #46
-	LD	A,(HL)				; Load ARG in A
-	INC	HL					; HL pointing to CMD
-	OUT	(#0x99),A			; Send it
-	LD	A,#0xAD				; #45				
-	OUT	(#0x99),A			; Send it
-	LD	A,(HL)				; Load CMD in A
-	OUT	(#0x99),A			; Send it
-	LD	A,#0xAE				; #46
-	OUT	(#0x99),A			; Send it
+	LD	A,(HL)					; Load ARG in A
+	INC	HL						; HL pointing to CMD
+	OUT	(#0x99),A				; Send it
+	LD	A,#0xAD					; #45				
+	OUT	(#0x99),A				; Send it
+	LD	A,(HL)					; Load CMD in A
+	OUT	(#0x99),A				; Send it
+	LD	A,#0xAE					; #46
+	OUT	(#0x99),A				; Send it
 	EI
 	RET
+	
 	
 ;
 ;	DATA Portion
@@ -2193,6 +2197,10 @@ CursorOn:	.db	#0x00
 
 BackColor:	.db	#0x00
 
+BorderColor:.db	#0x00
+
+ClearColor:	.db	#0x00
+
 ForeColor:	.db	#0x07
 
 FontColor:	.db	#0x07
@@ -2205,10 +2213,10 @@ Concealed:	.db	#0x00
 
 LastChar:	.db	#0x65
 
-ANSI_M:		.db	#0x00		; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
-ANSI_P:		.dw	#ANSI_S		; Point the next free position in buffer
-ANSI_S:		.ds	0x10		; Buffer to hold the ANSI command or data received to print
-ANSI_CB:	.db	#0x00		; Wheter we have a callback for cursor position requests or not
+ANSI_M:		.db	#0x00			; If ESC was the previous character will hold ESC, if processing ESC command, will hold [, otherwise 00
+ANSI_P:		.dw	#ANSI_S			; Point the next free position in buffer
+ANSI_S:		.ds	0x10			; Buffer to hold the ANSI command or data received to print
+ANSI_CB:	.db	#0x00			; Wheter we have a callback for cursor position requests or not
 
 Parameters.PST:	.ascii	"0123456789ABCDEF0123456789ABCDEF"
 Parameters.TRM:	.db	#0x00
@@ -2269,8 +2277,8 @@ ANSI_PAL:
 	.db	#0x22,#0x02,#0x72,#0x02,#0x22,#0x07,#0x72,#0x07,#0x27,#0x02,#0x77,#0x02,#0x27,#0x07,#0x77,#0x07
 
 SPRITE_TABLE:
-	.db	#0x00,#0x00,#0x00,#0x00 ; Cursor is first, start at line 0, colum 0, uses pattern 0 reserved byte whatever
-	.db	#0xD8,#0x00,#0x01,#0x00 ; Next line D8 to make invisible, use pattern 1 (all 0)
+	.db	#0x00,#0x00,#0x00,#0x00	; Cursor is first, start at line 0, colum 0, uses pattern 0 reserved byte whatever
+	.db	#0xD8,#0x00,#0x01,#0x00	; Next line D8 to make invisible, use pattern 1 (all 0)
 	
 PATTERN_CURSOR:
 	.db	#0x00,#0x00,#0x00,#0x00,#0x00,#0xE0,#0xE0,#0x00
@@ -2284,38 +2292,38 @@ SPRITE_COLORS:
 
 FontData:
 	.db #0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00	;000 / 0x00 - NUL - Not printable
-	.db #0x3C,#0x40,#0xA4,#0x80,#0xA4,#0x98,#0x40,#0x3C	;001 / 0x01 - 
-	.db #0x3C,#0x7C,#0xD8,#0xFC,#0xFC,#0xD8,#0x64,#0x3C ;002 / 0x02 - 
-	.db #0x6C,#0xFC,#0xFC,#0xFC,#0x7C,#0x38,#0x10,#0x00 ;003 / 0x03 - 
-	.db #0x10,#0x38,#0x7C,#0xFC,#0x7C,#0x38,#0x10,#0x00 ;004 / 0x04 - 
-	.db #0x10,#0x38,#0x54,#0xFC,#0x54,#0x10,#0x38,#0x00 ;005 / 0x05 - 
-	.db #0x10,#0x38,#0x7C,#0xFC,#0xFC,#0x10,#0x38,#0x00 ;006 / 0x06 - 
-	.db #0x00,#0x00,#0x00,#0x30,#0x30,#0x00,#0x00,#0x00 ;007 / 0x07 - 
-	.db #0xFC,#0xFC,#0xFC,#0xE4,#0xE4,#0xFC,#0xFC,#0xFC ;008 / 0x08 - 
-	.db #0x38,#0x44,#0x80,#0x80,#0x80,#0x44,#0x38,#0x00 ;009 / 0x09 - 
-	.db #0xC4,#0xB8,#0x7C,#0x7C,#0x7C,#0xB8,#0xC4,#0xFC ;010 / 0x0A - 
-	.db #0x0C,#0x00,#0x04,#0x78,#0x88,#0x88,#0x88,#0x70 ;011 / 0x0B - 
-	.db #0x38,#0x44,#0x44,#0x44,#0x38,#0x10,#0x7C,#0x10 ;012 / 0x0C - 
-	.db #0x30,#0x28,#0x24,#0x24,#0x28,#0x20,#0xE0,#0xC0 ;013 / 0x0D - 
-	.db #0x3C,#0x24,#0x3C,#0x24,#0x24,#0xE4,#0xDC,#0x18 ;014 / 0x0E - 
-	.db #0x10,#0x54,#0x38,#0xEC,#0x38,#0x54,#0x10,#0x00 ;015 / 0x0F - 
+	.db #0x3C,#0x40,#0xA4,#0x80,#0xA4,#0x98,#0x40,#0x3C	;001 / 0x01 - Smile face
+	.db #0x78,#0xFC,#0xB4,#0xFC,#0xB4,#0xCC,#0xFC,#0x00 ;002 / 0x02 - Dark Smile Face
+	.db #0x6C,#0xFC,#0xFC,#0xFC,#0x7C,#0x38,#0x10,#0x00 ;003 / 0x03 - Heart
+	.db #0x10,#0x38,#0x7C,#0xFC,#0x7C,#0x38,#0x10,#0x00 ;004 / 0x04 - Diamond
+	.db #0x10,#0x38,#0x54,#0xFC,#0x54,#0x10,#0x38,#0x00 ;005 / 0x05 - Club
+	.db #0x10,#0x38,#0x7C,#0xFC,#0xFC,#0x10,#0x38,#0x00 ;006 / 0x06 - Spade
+	.db #0x00,#0x00,#0x00,#0x30,#0x30,#0x00,#0x00,#0x00 ;007 / 0x07 - Bell, not printable
+	.db #0xFC,#0xFC,#0xFC,#0xE4,#0xE4,#0xFC,#0xFC,#0xFC ;008 / 0x08 - Backspace, not printable
+	.db #0x38,#0x44,#0x80,#0x80,#0x80,#0x44,#0x38,#0x00 ;009 / 0x09 - Tab, not printable
+	.db #0xC4,#0xB8,#0x7C,#0x7C,#0x7C,#0xB8,#0xC4,#0xFC ;010 / 0x0A - Line Feed, not printable
+	.db #0x38,#0x08,#0x28,#0x70,#0x88,#0x88,#0x88,#0x70 ;011 / 0x0B - Male Sign
+	.db #0x38,#0x44,#0x44,#0x44,#0x38,#0x10,#0x7C,#0x10 ;012 / 0x0C - Form Feed, not printable, clear screen
+	.db #0x30,#0x28,#0x24,#0x24,#0x28,#0x20,#0xE0,#0xC0 ;013 / 0x0D - Carriage Return, not printable
+	.db #0x3C,#0x24,#0x3C,#0x24,#0x24,#0xE4,#0xDC,#0x18 ;014 / 0x0E - Beamed note
+	.db #0x10,#0x54,#0x38,#0xEC,#0x38,#0x54,#0x10,#0x00 ;015 / 0x0F - Sun Ray
 	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;016 / 0x10 - Arrow tip to right
 	.db #0x10,#0x30,#0x70,#0xF0,#0x70,#0x30,#0x10,#0x00 ;017 / 0x11 - Arrow tip to left
-	.db #0x40,#0x60,#0x70,#0x78,#0x70,#0x60,#0x40,#0x00 ;018 / 0x12 - Arrow tip to right
-	.db #0x10,#0x10,#0x10,#0xF0,#0x10,#0x10,#0x10,#0x10 ;019 / 0x13 - 
-	.db #0x10,#0x10,#0x10,#0x1C,#0x10,#0x10,#0x10,#0x10 ;020 / 0x14 - 
-	.db #0x10,#0x10,#0x10,#0xFC,#0x10,#0x10,#0x10,#0x10 ;021 / 0x15 - 
-	.db #0x10,#0x10,#0x10,#0x10,#0x10,#0x10,#0x10,#0x10 ;022 / 0x16 - 
-	.db #0x00,#0x00,#0x00,#0xFC,#0x00,#0x00,#0x00,#0x00 ;023 / 0x17 - 
+	.db #0x20,#0x70,#0xA8,#0x20,#0x20,#0xA8,#0x70,#0x20 ;018 / 0x12 - UpDown arrow
+	.db #0x48,#0x48,#0x48,#0x48,#0x00,#0x48,#0x48,#0x00 ;019 / 0x13 - Double Exclamation Mark
+	.db #0x7C,#0xE1,#0xE1,#0x28,#0x28,#0x28,#0x28,#0x00 ;020 / 0x14 - Pilcrow
+	.db #0x18,#0x24,#0x30,#0x48,#0x48,#0x30,#0x90,#0x60 ;021 / 0x15 - Section Sign
+	.db #0x00,#0x00,#0x00,#0xFC,#0xFC,#0x00,#0x00,#0x00 ;022 / 0x16 - Black Rectangle
+	.db #0x20,#0x70,#0xA8,#0x20,#0x20,#0xA8,#0x70,#0xFC ;023 / 0x17 - UpDown arrow with base
 	.db #0x20,#0x70,#0xA8,#0x20,#0x20,#0x20,#0x20,#0x00 ;024 / 0x18 - Arrow Up
 	.db #0x20,#0x20,#0x20,#0x20,#0xA8,#0x70,#0x20,#0x00 ;025 / 0x19 - Arrow Down
 	.db #0x00,#0xC0,#0x30,#0xF8,#0x30,#0xC0,#0x00,#0x00 ;026 / 0x1A - Arrow Right
-	.db #0x00,#0x18,#0x60,#0xF8,#0x60,#0x18,#0x00,#0x00 ;027 / 0x1B - Arrow Left
-	.db #0x80,#0x40,#0x24,#0x18,#0x18,#0x24,#0x40,#0x80 ;028 / 0x1C - 
-	.db #0x00,#0x00,#0x04,#0x08,#0x10,#0x20,#0x40,#0x80 ;029 / 0x1D - 
+	.db #0x00,#0x18,#0x60,#0xF8,#0x60,#0x18,#0x00,#0x00 ;027 / 0x1B - ESC, not printables
+	.db #0x00,#0x40,#0x40,#0x40,#0x40,#0x7C,#0x00,#0x00 ;028 / 0x1C - Right Angle
+	.db #0x00,#0x00,#0x20,#0x48,#0xFC,#0x48,#0x10,#0x00 ;029 / 0x1D - Left-Right Arrow
 	.db #0x20,#0x20,#0x70,#0x70,#0xF8,#0xF8,#0x00,#0x00 ;030 / 0x1E - Arrow tip up
 	.db #0xF8,#0xF8,#0x70,#0x70,#0x20,#0x20,#0x00,#0x00 ;031 / 0x1F - Arrow tip down
-	.db #0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00 ;032 / 0x20 - 
+	.db #0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00 ;032 / 0x20 - Space
 	.db #0x20,#0x20,#0x20,#0x20,#0x00,#0x00,#0x20,#0x00 ;033 / 0x21 - 
 	.db #0x50,#0x50,#0x50,#0x00,#0x00,#0x00,#0x00,#0x00 ;034 / 0x22 - 
 	.db #0x50,#0x50,#0xF8,#0x50,#0xF8,#0x50,#0x50,#0x00 ;035 / 0x23 - 
