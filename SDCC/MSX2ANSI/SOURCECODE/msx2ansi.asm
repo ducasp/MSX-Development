@@ -19,7 +19,8 @@
 ;
 ; Changelog:
 ;
-; v1.5: 
+; v1.5:
+; Piter Punk - Added scrolling support (ESC[#S and ESC[#T)
 ; Piter Punk - Added Support to ESC[#X (ANSI ECH) and SGR 8 (Concealed),
 ; SGR 39 (Default Foreground Color), SGR 49 (Default Background Color)
 ; Piter Punk - Added Support to ESC[#d (ANSI VPA),  ESC[#e (ANSI VPR), ESC[#G
@@ -502,6 +503,10 @@ Parameters.SETOMT:
 	JP	Z,ANSI_CBT
 	CP	#'X'
 	JP	Z,ANSI_ECH
+	CP	#'S'
+	JP	Z,ANSI_SU
+	CP	#'T'
+	JP	Z,ANSI_SD
 
 	JP	Parameters.ERR
 
@@ -843,6 +848,38 @@ ANSI_ECH.RLP:
 	JP	PrintText.RLP
 
 
+ANSI_SD:				; ANSI Scroll Down
+	LD	A,B
+	LD	B,#1			; No number is one line scroll
+	OR	A
+	JR	Z,ANSI_SD.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of lines to scroll
+ANSI_SD.RLP:
+	PUSH	BC
+	CALL	V9938_ScrollDown
+	POP	BC
+	DJNZ	ANSI_SD.RLP		; It's the end? No? Repeat!
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+
+
+ANSI_SU:				; ANSI Scroll Up
+	LD	A,B
+	LD	B,#1			; No number is one line scroll
+	OR	A
+	JR	Z,ANSI_SU.RLP
+	LD	A,(#Parameters.PRM)
+	LD	B,A			; Load the number of lines to scroll
+ANSI_SU.RLP:
+	PUSH	BC
+	CALL	V9938_ScrollUp
+	POP	BC
+	DJNZ	ANSI_SU.RLP		; It's the end? No? Repeat!
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+
+
 ANSI_SGR:						; ANSI Set Graphics Rendition
 	LD	A,B
 	OR	A
@@ -1109,7 +1146,7 @@ LFeedSub:
 	INC	A
 	CP	#25
 	JR	C,LFeedSub.NNL
-	CALL	V9938_LineFeed
+	CALL	V9938_ScrollUp
 	LD	A,#24
 LFeedSub.NNL:	
 	LD	(#CursorRow),A
@@ -1503,7 +1540,7 @@ V9938_PrintChar.FIL:	LD	A,(#ColorTable+3)
 
 
 
-V9938_LineFeed:
+V9938_ScrollUp:
 	PUSH	HL
 	LD	A,#25
 	CALL	V9938_ClearLine
@@ -1512,6 +1549,25 @@ V9938_LineFeed:
 	POP	HL
 	LD	A,(#VDP_23)
 	ADD	#0x08
+	LD	(#VDP_23),A
+	DI
+	OUT	(#0x99),A
+	LD	A,#0x80+23
+	OUT	(#0x99),A
+	EI
+	RET
+
+
+
+V9938_ScrollDown:
+	PUSH	HL
+	LD	A,#1
+	; PK - Ok... we'll need this?
+	; CALL	V9938_ClearLine
+	; CALL	V9938_ClearBottom
+	POP	HL
+	LD	A,(#VDP_23)
+	SUB	#0x08
 	LD	(#VDP_23),A
 	DI
 	OUT	(#0x99),A
