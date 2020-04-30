@@ -46,6 +46,7 @@
 ; OPJ - Form Feed (12 or 0x0C) should clear screen and go to home, fixed that
 ; OPJ - Not all DO_HMMV commands were setting the desired color, causing that
 ; sometimes the color would be wrong after ANSI delete Commands
+; OPJ - Added ESC[#@ (Insert Chars)
 ;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
@@ -512,6 +513,8 @@ Parameters.SETOMT:
 	JP	Z,ANSI_SU
 	CP	#'T'
 	JP	Z,ANSI_SD
+	CP	#'@'
+	JP	Z,ANSI_ICH
 	JP	Parameters.ERR
 
 
@@ -832,6 +835,16 @@ ANSI_ECH.SLP:
 ANSI_ECH.DO:	
 	JP	V9938_ErChar0			; Erase those characters
 
+
+ANSI_ICH:						; ANSI Insert Characters
+	LD	A,B
+	LD	C,#1					; No number is one char inserted
+	OR	A
+	JR	Z,ANSI_ICH.RLP
+	LD	A,(#Parameters.PRM)
+	LD	C,A
+ANSI_ICH.RLP:	
+	JP	V9938_InsertChars
 
 ANSI_SD:						; ANSI Scroll Down
 	LD	A,B
@@ -1684,6 +1697,58 @@ V9938_ClearScreen:
 	OUT	(C),A					; CMD	
 	RET
 
+_AnsiInsertChars::
+V9938_InsertChars:
+	; Number of characters to insert in C
+	LD	A,(#CursorCol)			;
+	LD	B,A						; Cursor column in B
+	ADD	A,C						; Lets Check if cursor pos + inserted characters equals or exceed a line limit
+	CP	#79						; So, if 79 (80 columns) or less, will carry
+	JP	NC,V9938_ErLin0			; If no carry, no need to move blocks, we can just use a line deletion that will be way faster
+	; If here cursor pos + inserted characters less than a line, so we need to do the following:
+	; - Calculate the size of the block to move (End of screen - (Cursor Position + Inserted Chars))
+	; - Move the block (it should be a move to the left, from right edge - inserted chars
+	; - Erase # of Inserted Chars beginning in the cursor position
+	LD	A,#79
+	SUB	A,B						; Ok, how many characters do we have including the one in cursor?
+	SUB	A,C						; And this is how many characters we need to move to cursor position + inserted chars
+	INC	A
+	LD	B,A						; B contains character width of block being moved
+	ADD	A,A
+	ADD	A,B						; Multiply it by 3, number of "double pixels" (6 pixel width, 3 double pixels width)
+	ADD	A,A						; And now double it to adjust, length is in pixels
+	LD	(#HMMM_CMD.NXL),A		; Store as NX lower byte
+	LD	A,#0x00					; Probably will be 0 NX higher byte
+	JR	NC,V9938_InsChr.NXH		; But if carry, means it is 1
+	INC	A						; If carry, NXh is 1
+V9938_InsChr.NXH:
+	LD	(#HMMM_CMD.NXH),A		; Store it
+	LD	A,#0x08
+	LD	(#HMMM_CMD.NYL),A		; A line has 8 pixels, so NYL is 8
+	; No need to change NYH, always 0	
+	LD	A,C
+	ADD	A,A
+	ADD	A,C
+	LD	D,A						; Number of chars to insert *3 in D	
+	LD	A,#239					; Rightmost edge in double pixels
+	LD	(#HMMM_CMD.DXL),A		; Now destination is rightmost edge
+	SUB	A,D						; This is our source, rightmost edge - number of chars to insert
+	LD	(#HMMM_CMD.SXL),A		; Save source
+	LD	A,(#CursorRow)			; Current cursor line
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A						; Multiply it by 8, it is the first line of that character line (8 pixels high character)
+	LD	(#HMMM_CMD.DYL),A		; This is the Y destination
+	LD	(#HMMM_CMD.SYL),A		; As well as the Y source
+	LD	A,#0x04					; We need the direction of move to be to the left, otherwise it won't work properly
+	LD	(#HMMM_CMD.ARG),A		;
+	PUSH	BC					; Save Number of chars to insert
+	CALL	DO_HMMM				; All set, let's move
+	POP	BC						; Restore Number of chars to insert
+	; Number of chars to erase (where characters will be inserted) is in C, ErChar will do the rest and return
+	JP	V9938_ErChar0			
+
+
 
 	; Observing Windows 10 terminal behavior as well as XTERM, Del Char only deletes characters in the same line
 	; Lines below are left untouched even if # of chars to delete surpass the # of chars in the line, and it does
@@ -1710,6 +1775,7 @@ V9938_DelChr:
 	ADD	A,A						; And now double it to adjust lsb not considered
 	LD	(#HMMM_CMD.NXL),A		; Store as NX lower byte
 	LD	A,#0x00					; Probably will be 0 NX higher byte
+	LD	(#HMMM_CMD.ARG),A		; Take this chance to load CMD ARG we need for this operation (00)
 	JR	NC,V9938_DelChr.NXH		; But if carry, means it is 1
 	INC	A						; If carry, NXh is 1
 V9938_DelChr.NXH:
@@ -1724,9 +1790,8 @@ V9938_DelChr.NXH:
 	LD	(#HMMM_CMD.DXL),A		; Destination is current cursor position
 	LD	D,A						; Save A in D
 	LD	A,C						; Now source is what is in D + 3 times what is in C
-	LD	B,A
 	ADD	A,A
-	ADD	A,B						; A contains 3xdeleted characters
+	ADD	A,C						; A contains 3xdeleted characters
 	ADD A,D						; + cursor position, this is the position of source X :D
 	LD	(#HMMM_CMD.SXL),A		; Source is current cursor position + deleted characters
 	LD	A,(#CursorRow)			; Current cursor line

@@ -2,15 +2,18 @@
 
  HGETLIB.h
    Header for HGET.c application interface
-   Revision 0.2
+   Revision 0.3
 
-        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
+        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.3
 
    Based on HGET Unapi Utility that is a work from:
         Konamiman 1/2011 v1.1
         Oduvaldo Pavan Junior 07/2019 v1.3
 
    HGET Library history:
+   Version 0.3 - re-organized code and changed the way code was calling
+   Terminate a lot
+
    Version 0.2 - making code cleaner and trying to keep Konamiman style, also
    adding basic support to keep-alive connections, also, agent is defined in
    hgetlib.h so each application can define it own by changing it.
@@ -50,7 +53,6 @@
 #ifndef HGETLIB_H
 #define HGETLIB_H
 
-#define HGET_RETRIES 1
 #define HGET_AGENT "User-Agent: MSXHUBG (MSX-DOS)\r\n"
 
 #ifndef bool
@@ -101,9 +103,11 @@ enum HgetReturnCodes {
     ERR_HGET_INVALID_BUFFER //34
 };
 
+// Functions Related to Strings
+char* ltoa(unsigned long num, char *string);
+// Functions Related to HTTP
 int hgetinit (unsigned int addressforbuffer);
 void hgetfinish (void);
-char* ltoa(unsigned long num, char *string);
 #ifdef USE_TLS
 int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive);
 #else
