@@ -44,6 +44,8 @@
 ; OPJ - Fixed quite a few characters below 0x20, those should be as faithful as
 ; 6x8 and my bad pixel art talent allows :D
 ; OPJ - Form Feed (12 or 0x0C) should clear screen and go to home, fixed that
+; OPJ - Not all DO_HMMV commands were setting the desired color, causing that
+; sometimes the color would be wrong after ANSI delete Commands
 ;
 ; v1.4: 
 ; OPJ - Control code BELL (7) now beeps
@@ -1768,6 +1770,15 @@ V9938_ErDis0.NXH:
 	XOR	A	 
 	LD	(#HMMV_CMD.DYH),A		; DYH 0
 	LD	(#HMMV_CMD.NYH),A		; NYH 0
+	LD	A,(#BackColor)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	B,A
+	LD	A,(#BackColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	CALL	DO_HMMV				; Aaaand.... Clear!
 	; Now, do we need to clear below cursor?
 	LD	A,(#CursorRow)			; Let's see how many pixels we need to fill
@@ -1824,6 +1835,15 @@ V9938_ErDis1.NXH:
 	XOR	A
 	LD	(#HMMV_CMD.DYH),A		; DYH and NYH 0
 	LD	(#HMMV_CMD.NYH),A
+	LD	A,(#BackColor)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	B,A
+	LD	A,(#BackColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	CALL	DO_HMMV				; Aaaand.... Clear!
 	; Now, do we need to clear above cursor?
 	LD	A,(#CursorRow)			; Let's see how many pixels we need to fill
@@ -1874,38 +1894,57 @@ V9938_ErChar0.NXH:
 	XOR	A
 	LD	(#HMMV_CMD.DYH),A
 	LD	(#HMMV_CMD.NYH),A		; Those two are 0
+	LD	A,(#BackColor)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	B,A
+	LD	A,(#BackColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	CALL	DO_HMMV				; And erase this
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 
 V9938_ErLin0:
-	LD	A,(#CursorCol)
+	LD	A,(#CursorCol)			; Will start from current column
 V9938_ErLin0.1:
-	LD	B,A
+	LD	B,A						; Cursor column in B
 	ADD	A,A
-	ADD	A,B
-	LD	(#HMMV_CMD.DXL),A
-	LD	B,A
-	LD	A,#240
-	SUB	A,B
+	ADD	A,B						; A has column * 3
+	LD	(#HMMV_CMD.DXL),A		; Store in the destination X
+	LD	B,A						; Save it in B (this is a value in double pixels)
+	LD	A,#240					; 240 double pixels is a line width (80x6)
+	SUB	A,B						; Subtract the total width from the current width 
+	ADD	A,A						; Now this information is need in real pixels, so double it
+	LD	(#HMMV_CMD.NXL),A		; And this the X axys lenght of the command
+	LD	A,#0x00					; High Byte could be 0
+	JR	NC,V9938_ErLin0.NXH		; And it is zero if no carry
+	INC	A						; Ok, carry, so it is 1
+V9938_ErLin0.NXH:	
+	LD	(#HMMV_CMD.NXH),A		; High Byte of X axys lenght
+	LD	A,(#CursorRow)			; Now get the current line
 	ADD	A,A
-	LD	(#HMMV_CMD.NXL),A
-	LD	A,#0x00
-	JR	NC,V9938_ErLin0.NXH
-	INC	A
-V9938_ErLin0.NXH:	LD	(#HMMV_CMD.NXH),A
-	LD	A,(#CursorRow)
 	ADD	A,A
-	ADD	A,A
-	ADD	A,A
-	LD	(#HMMV_CMD.DYL),A
+	ADD	A,A						; Multiply per 8 as each line is 8 pixelslarge
+	LD	(#HMMV_CMD.DYL),A		; This is the destination Y
 	LD	A,#0x08
-	LD	(#HMMV_CMD.NYL),A
+	LD	(#HMMV_CMD.NYL),A		; a line is 8 pixes, so this the Y axys lenght of the command
 	XOR	A
 	LD	(#HMMV_CMD.DYH),A
-	LD	(#HMMV_CMD.NYH),A
-	CALL	DO_HMMV
+	LD	(#HMMV_CMD.NYH),A		; both are 0
+	LD	A,(#BackColor)
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	B,A
+	LD	A,(#BackColor)
+	OR	B						; Adjust color in the right format
+	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
+	CALL	DO_HMMV				; and perform the HMMV command to delete it
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 

@@ -38,6 +38,8 @@ certain operations like screen clearing and line deletions
 Improved performance of ECH and fixed scroll down
 Added proper support to FF (12 or 0x0C), it now clears the screen
 Fixed a few wrong characters in the table below 0x20
+Fixed an issue where sometimes the background color would be wrong after ANSI 
+delete commands
 
 # MSX2ANSI v1.4
 
