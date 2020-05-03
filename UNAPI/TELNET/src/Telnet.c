@@ -406,7 +406,13 @@ int main(char** argv, int argc)
         print(ucSWInfo);
     }
     else
+    {
         print(ucSWInfoANSI);
+        print(ucNyanCat);
+        print("\x1b[31mDedicated to the memory of GZIP, fly high little fella!\x1b[0m\r\n");
+        TickCount = 0;
+        while (TickCount<90);
+    }
 
     // Time to check for UNAPI availability
 	if (!InitializeTCPIPUnapi())
