@@ -10,13 +10,14 @@ If you have a MSX2 or better, ANSI will work. It is automatic, don't worry.
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-# CHANGELOG v1.32
+# CHANGELOG v1.32 - GZip Edition
 	- New version of MSX2ANSI library with better compatibility with nCurses
 	  applications running on host, changes in lib by PiterPunk
 	- New version of MSX2ANSI library also fixes CSIJ behavior, fix done by me
 	- New version of MSX2ANSI library allows to disable cursor while rendering
 	  text, this should get better speed on a few scenarios and a smoother 
 	  screen rendering without cursor going all over the place during animation
+	- Dedicated to the memory of GZip
 	  
 # CHANGELOG v1.31
 	- General code cleaning. Removing unused variables, made the negotiation

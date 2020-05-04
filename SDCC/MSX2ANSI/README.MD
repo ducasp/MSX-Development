@@ -28,8 +28,13 @@ Rewrite HorizontalTab routine to move cursor to a tabstop
 Added back HorizontalTab (0x09) handling
 Added save and restore cursor VT100 control codes
 Added support to concealed mode
+
 This has been fixed by me:
 CSI\#J had issues depending how many lines were scrolled
+Fixed a few wrong characters in the table below 0x20
+Fixed an issue where sometimes the background color would be wrong after ANSI 
+delete commands
+
 This has been improved by me:
 Added the possibility of disabling cursor while putting text with 
 AnsiPutChar through AnsiStartBuffer and AnsiEndBuffer, this might generate a 
@@ -37,7 +42,7 @@ more pleasant screen rendering without the cursor moving and also speed up
 certain operations like screen clearing and line deletions
 Improved performance of ECH and fixed scroll down
 Added proper support to FF (12 or 0x0C), it now clears the screen
-Fixed a few wrong characters in the table below 0x20
+Added support to CSI\#@ (ANSI Insert)
 
 # MSX2ANSI v1.4
 
