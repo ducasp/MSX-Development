@@ -2275,7 +2275,70 @@ DO_HMMM.DXH:	OUT	(C),A		; And send DXH to #37
 	OUT	(#0x99),A				; Send it
 	EI
 	RET
+
 	
+DO_YMMM:
+	CALL	V9938_WaitCmd		; Wait if any command is pending
+	DI
+	LD	A,#0x22			; Register 34 as value for...
+	OUT	(#0x99),A
+	LD	A,#0x91			; Register #17 (indirect register access auto increment)
+	OUT	(#0x99),A
+	LD	HL,#YMMM_CMD		; The YMMM buffer
+	LD	C,#0x9B			; And port for indirect access
+	; Set source Y coordinate
+	LD	A,(HL)			; Load SYL in A
+	INC	HL
+	INC	HL			; HL pointing @ DXL
+	LD	B,A			; Copy SYL to B
+	LD	A,(#VDP_23)		; Get current vertical offset
+	ADD	A,B			; Add our SYL to it
+	OUT	(C),A			; Send it to #34
+	XOR	A			; SYH always 0
+	OUT	(C),A			; Send it to #35
+	; Set X coordinate	
+	LD	A,(HL)			; LD DXL in A
+	INC	HL
+	INC	HL			; HL pointing to DYL
+	ADD	#0x08			; Add 8 to DXL (A) - Border of 16 pixels
+	ADD	A,A			; Multiply by 2
+	OUT	(C),A			; And send DXL to #36
+	XOR	A			; Our copy DXH is always 0
+	OUT	(C),A			; And send DXH to #37
+	; Set destination Y coordinate
+	LD	A,(HL)			; Load DYL in A
+	INC	HL
+	INC	HL			; HL pointing @ NYL
+	LD	B,A			; Copy DYL to B
+	LD	A,(#VDP_23)		; Get current vertical offset
+	ADD	A,B			; Add our DYL to it
+	OUT	(C),A			; Send it to #38
+	XOR	A			; DYH always 0
+	OUT	(C),A			; Send it to #38
+	; Skip #40 and #41
+	LD	A,(HL)			; Load NYL
+	INC	HL
+	INC	HL			; Points to ARG
+	OUT	(#0x99),A		
+	LD	A,#0xAA			; R#42
+	OUT	(#0x99),A
+	XOR	A			; NYH always 0
+	OUT	(#0x99),A
+	LD	A,#0xAB			; R#43
+	OUT	(#0x99),A
+	; And now we skip #44 and go to #45 and #46
+	LD	A,(HL)			; Load ARG in A
+	INC	HL			; HL pointing to CMD
+	OUT	(#0x99),A		; Send it
+	LD	A,#0xAD			; #45				
+	OUT	(#0x99),A		; Send it
+	LD	A,(HL)			; Load CMD in A
+	OUT	(#0x99),A		; Send it
+	LD	A,#0xAE			; #46
+	OUT	(#0x99),A		; Send it
+	EI
+	RET
+
 	
 ;
 ;	DATA Portion
@@ -2344,8 +2407,6 @@ HMMC_CMD.CLR:	.db	#0x00
 HMMC_CMD.ARG:	.db	#0x00
 HMMC_CMD.CMD:	.db	#0xF0
 
-
-
 HMMV_CMD:
 HMMV_CMD.DXL:	.db	#0x00
 HMMV_CMD.DXH:	.db	#0x00
@@ -2358,7 +2419,7 @@ HMMV_CMD.NYH:	.db	#0x00
 HMMV_CMD.CLR:	.db	#0x00
 HMMV_CMD.ARG:	.db	#0x00
 HMMV_CMD.CMD:	.db	#0xC0
-HMMV_CMD.NYL2:	.db #0x00
+HMMV_CMD.NYL2:	.db 	#0x00
 
 HMMM_CMD:
 HMMM_CMD.SXL:	.db	#0x00
@@ -2375,6 +2436,18 @@ HMMM_CMD.NYL:	.db	#0x00
 HMMM_CMD.NYH:	.db	#0x00
 HMMM_CMD.ARG:	.db	#0x00
 HMMM_CMD.CMD:	.db	#0xD0
+
+YMMM_CMD:
+YMMM_CMD.SYL:	.db	#0x00	; R#34	
+YMMM_CMD.SYH:	.db	#0x00	; R#35
+YMMM_CMD.DXL:	.db	#0x00	; R#36
+YMMM_CMD.DXH:	.db	#0x00	; R#37
+YMMM_CMD.DYL:	.db	#0x00	; R#38
+YMMM_CMD.DYH:	.db	#0x00	; R#39
+YMMM_CMD.NYL:	.db	#0x00	; R#42
+YMMM_CMD.NYH:	.db	#0x00	; R#43
+YMMM_CMD.ARG:	.db	#0x00	; R#45
+YMMM_CMD.CMD:	.db	#0xE0	; R#46
 
 ANSI_PAL:
 	.db	#0x00,#0x00,#0x50,#0x00,#0x00,#0x05,#0x50,#0x02,#0x05,#0x00,#0x55,#0x00,#0x05,#0x05,#0x55,#0x05
