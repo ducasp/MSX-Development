@@ -777,8 +777,35 @@ ANSI_IL:
 	JP	PrintText.RLP
 
 
-ANSI_DL:
-	; TODO: Missing Handling of deleting lines from current
+ANSI_DL:				; ANSI Delete Lines
+	;
+	; PK: 	There is something wrong here. 
+	;     	if the CursorRow is in first half of screen
+	;	undefined behavior happens.
+	;
+	LD	A,B
+	LD	B,#1			; No number is one Row
+	OR	A
+	JR	Z,ANSI_DL.RUN
+	LD	A,(#Parameters.PRM)	; Read how many Rows
+	LD	B,A
+ANSI_DL.RUN:
+	LD	A,(#CursorRow)
+	LD	C,A			; CopyDestination C (CursorRow)
+	ADD	A,B
+	CP	#26
+	JR	NC,ANSI_DL.END			
+	PUSH	BC
+	LD	B,A			; CopySource B
+	LD	A,#26			; 	(CursorRow + Rows)
+	SUB	B			; RowsToCopy A
+					;	(26 - CopySource)
+	CALL	V9938_CopyBlockY
+	POP	BC			; Load How many Rows
+	LD	A,#25
+	SUB	B			; Clear from the End Of Screen
+	CALL	V9938_ClearBlock
+ANSI_DL.END:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
@@ -1588,12 +1615,21 @@ V9938_SetCursorY:
 
 
 V9938_ClearLine:
+	LD	B,#1
+V9938_ClearBlock:
+;
+; A <- SourceRow
+; B <- Rows
+;
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	LD	(#HMMV_CMD.DYL),A		; Number of lines * 8 = position of the last line
-	LD	A,#0x08
-	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with 8 pixels on the Y axys
+	LD	A,B
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with B*8 pixels on the Y axys
 	XOR	A
 	LD	(#HMMV_CMD.NYH),A
 	LD	(#HMMV_CMD.DXL),A
@@ -1604,9 +1640,9 @@ V9938_ClearLine:
 	LD	A,B
 	OR	A
 	LD	A,(#BackColor)
-	JR	Z,V9938_ClearLine.Cont
+	JR	Z,V9938_ClearBlock.Cont
 	LD	A,(#BorderColor)
-V9938_ClearLine.Cont:
+V9938_ClearBlock.Cont:
 	LD	(#ClearColor),A
 	ADD	A,A
 	ADD	A,A
@@ -1617,7 +1653,6 @@ V9938_ClearLine.Cont:
 	OR	B						; Adjust color in the right format
 	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	JP	DO_HMMV
-
 
 ; OPJ - To avoid previous lines to show in the bottom when rolling multiple lines
 V9938_ClearTop:
@@ -2079,6 +2114,36 @@ V9938_SetColors.NHA:	LD	B,A
 	;OPJ - Sprite Cursor added
 	JP	V9938_CursorColor
 
+V9938_CopyBlockY:
+;
+; A <- HowManyRows
+; B <- SourceRow
+; C <- DestinationRow
+;
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with 
+						; B*8 pixels on the Y axis
+	LD	A,B
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.SYL),A		; From
+
+	LD	A,C
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.DYL),A		; To
+
+	XOR	A
+	LD	(#YMMM_CMD.NYH),A
+	LD	(#YMMM_CMD.DXL),A
+	LD	(#YMMM_CMD.DXH),A
+	
+	JP	DO_YMMM
+
 
 V9938_WaitCmd:
 	LD	A,#0x02
@@ -2301,41 +2366,27 @@ DO_YMMM:
 	INC	HL
 	INC	HL			; HL pointing to DYL
 	ADD	#0x08			; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A			; Multiply by 2
 	OUT	(C),A			; And send DXL to #36
 	XOR	A			; Our copy DXH is always 0
 	OUT	(C),A			; And send DXH to #37
 	; Set destination Y coordinate
 	LD	A,(HL)			; Load DYL in A
-	INC	HL
-	INC	HL			; HL pointing @ NYL
+	INC	HL			; points to DYH
 	LD	B,A			; Copy DYL to B
 	LD	A,(#VDP_23)		; Get current vertical offset
 	ADD	A,B			; Add our DYL to it
 	OUT	(C),A			; Send it to #38
-	XOR	A			; DYH always 0
-	OUT	(C),A			; Send it to #38
+	OUTI				; R#39 DYH
 	; Skip #40 and #41
-	LD	A,(HL)			; Load NYL
-	INC	HL
-	INC	HL			; Points to ARG
-	OUT	(#0x99),A		
-	LD	A,#0xAA			; R#42
-	OUT	(#0x99),A
-	XOR	A			; NYH always 0
-	OUT	(#0x99),A
-	LD	A,#0xAB			; R#43
-	OUT	(#0x99),A
-	; And now we skip #44 and go to #45 and #46
-	LD	A,(HL)			; Load ARG in A
-	INC	HL			; HL pointing to CMD
-	OUT	(#0x99),A		; Send it
-	LD	A,#0xAD			; #45				
-	OUT	(#0x99),A		; Send it
-	LD	A,(HL)			; Load CMD in A
-	OUT	(#0x99),A		; Send it
-	LD	A,#0xAE			; #46
-	OUT	(#0x99),A		; Send it
+	OUTI				; R#40 (dummy)
+	OUTI				; R#41 (dummy)
+	; Set how many dots will be copied Y direction
+	OUTI				; R#42 NYL
+	OUTI				; R#43 NYH
+	; Skip #44
+	OUTI				; R#44 (dummy)
+	OUTI				; R#45 ARG
+	OUTI				; R#46 CMD
 	EI
 	RET
 
@@ -2444,8 +2495,11 @@ YMMM_CMD.DXL:	.db	#0x00	; R#36
 YMMM_CMD.DXH:	.db	#0x00	; R#37
 YMMM_CMD.DYL:	.db	#0x00	; R#38
 YMMM_CMD.DYH:	.db	#0x00	; R#39
+YMMM_CMD.R40:	.db	#0x00	; R#40
+YMMM_CMD.R41:	.db	#0x00	; R#41
 YMMM_CMD.NYL:	.db	#0x00	; R#42
 YMMM_CMD.NYH:	.db	#0x00	; R#43
+YMMM_CMD.R44:	.db	#0x00	; R#44
 YMMM_CMD.ARG:	.db	#0x00	; R#45
 YMMM_CMD.CMD:	.db	#0xE0	; R#46
 
