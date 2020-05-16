@@ -8,14 +8,42 @@ It is a SDCC library that can be freely used on any MSX2 or higher project. :)
 
 It has the following features:
 
-- Supports most ANSI commands for a 16 color ANSI terminal
-- Supports most VT-52 terminal commands
+- Supports all ANSI commands expected for a 16 color ANSI terminal, as defined
+  in http://ansi-bbs.org/ansi-bbs-core-server.html (even though it supports all
+  commands, it doesn't support all renditions modes, Dim intensity and Blink 
+  are not supported and won't change rendition), blink might be supported at
+  some point, but faint won't ever be supported (G6 mode of V9938 is needed and
+  it only supports a 16 colors palette, we would need at least 24 colors 
+  palette for that extra set of colors)
+- Supports some VT-52 terminal commands
 - Supports attaching a callback function to handle sending cursor position information
 - Supports a sprite cursor
 
 As an usage example, check my TELNET terminal source code:
 
 https://github.com/ducasp/MSX-Development/tree/master/UNAPI/TELNET
+
+# MSX2ANSI v1.6: 
+
+Piter Punk provided an initial support to ANSI DL (Delete Lines)
+
+And I have done this:
+Changed the way HMMC is handled in the code, this resulted in 7% faster 
+rendering of HISPAMSX MSX boot logo Ansi Art on a z80 at regular speeds
+Changed the way HMMM is handled in the code, it should be faster but it is 
+difficult to determine the performance increase, anyway, code is cleaner and 
+easier to understand as well
+Changed how AnsiPrint and AnsiPutChar work, which results in 8% faster 
+rendering of HISPAMSXMSX boot logo Ansi Art on a z80 at regular speeds. Total
+is a 15% speed improvment!
+Reworked YMMM function provided by PK to work faster not having to calculate on
+the fly, doing all calculations before sending can save some time if VDP still 
+is processing a command
+Reworked CopyBlock provided by PK as CopyBlockDown and made it work calculating
+before calling YMMM
+Reworked ANSI DL provided by PK, it was not taking into consideration when 
+cursor is at the last line or if deleted lines exceed line capability of screen
+Created Insert Lines and CopyBlockUp that is used by it
 
 # MSX2ANSI v1.5: 
 
