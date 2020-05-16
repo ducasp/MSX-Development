@@ -861,35 +861,6 @@ ANSI_IL.END:
 	JP	PrintText.RLP
 
 
-<<<<<<< HEAD
-ANSI_DL:				; ANSI Delete Lines
-	;
-	; PK: 	There is something wrong here. 
-	;     	if the CursorRow is in first half of screen
-	;	undefined behavior happens.
-	;
-	LD	A,B
-	LD	B,#1			; No number is one Row
-	OR	A
-	JR	Z,ANSI_DL.RUN
-	LD	A,(#Parameters.PRM)	; Read how many Rows
-	LD	B,A
-ANSI_DL.RUN:
-	LD	A,(#CursorRow)
-	LD	C,A			; CopyDestination C (CursorRow)
-	ADD	A,B
-	CP	#26
-	JR	NC,ANSI_DL.END			
-	PUSH	BC
-	LD	B,A			; CopySource B
-	LD	A,#26			; 	(CursorRow + Rows)
-	SUB	B			; RowsToCopy A
-					;	(26 - CopySource)
-	CALL	V9938_CopyBlockY
-	POP	BC			; Load How many Rows
-	LD	A,#25
-	SUB	B			; Clear from the End Of Screen
-=======
 ANSI_DL:						; ANSI Delete Lines
 	LD	A,B
 	LD	B,#1					; No number is one Row
@@ -922,7 +893,6 @@ ANSI_DL.CONTINUE:
 	POP	BC						; Load How many Rows
 	LD	A,#25
 	SUB	B						; Clear from the End Of Screen
->>>>>>> 695970e766eea6348bb974d798bdca74d1461dc9
 	CALL	V9938_ClearBlock
 ANSI_DL.END:
 	LD	HL,(#EndAddress)
@@ -1776,6 +1746,7 @@ V9938_ClearBlock.Cont:
 	LD	(#HMMV_CMD.CLR),A		; Color to paint the rectangle
 	JP	DO_HMMV
 
+
 ; OPJ - To avoid previous lines to show in the bottom when rolling multiple lines
 V9938_ClearTop:
 	XOR	A
@@ -2268,36 +2239,6 @@ V9938_SetColors.NHA:	LD	B,A ; Ok, palete color index in B
 	;OPJ - Sprite Cursor added
 	JP	V9938_CursorColor
 
-V9938_CopyBlockY:
-;
-; A <- HowManyRows
-; B <- SourceRow
-; C <- DestinationRow
-;
-	ADD	A,A
-	ADD	A,A
-	ADD	A,A
-	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with 
-						; B*8 pixels on the Y axis
-	LD	A,B
-	ADD	A,A
-	ADD	A,A
-	ADD	A,A
-	LD	(#YMMM_CMD.SYL),A		; From
-
-	LD	A,C
-	ADD	A,A
-	ADD	A,A
-	ADD	A,A
-	LD	(#YMMM_CMD.DYL),A		; To
-
-	XOR	A
-	LD	(#YMMM_CMD.NYH),A
-	LD	(#YMMM_CMD.DXL),A
-	LD	(#YMMM_CMD.DXH),A
-	
-	JP	DO_YMMM
-
 
 V9938_CopyBlockYUp:
 ;
@@ -2645,56 +2586,7 @@ DO_HMMM:
 	OUTI
 	OUTI
 	RET
-
 	
-DO_YMMM:
-	CALL	V9938_WaitCmd		; Wait if any command is pending
-	DI
-	LD	A,#0x22			; Register 34 as value for...
-	OUT	(#0x99),A
-	LD	A,#0x91			; Register #17 (indirect register access auto increment)
-	OUT	(#0x99),A
-	LD	HL,#YMMM_CMD		; The YMMM buffer
-	LD	C,#0x9B			; And port for indirect access
-	; Set source Y coordinate
-	LD	A,(HL)			; Load SYL in A
-	INC	HL
-	INC	HL			; HL pointing @ DXL
-	LD	B,A			; Copy SYL to B
-	LD	A,(#VDP_23)		; Get current vertical offset
-	ADD	A,B			; Add our SYL to it
-	OUT	(C),A			; Send it to #34
-	XOR	A			; SYH always 0
-	OUT	(C),A			; Send it to #35
-	; Set X coordinate	
-	LD	A,(HL)			; LD DXL in A
-	INC	HL
-	INC	HL			; HL pointing to DYL
-	ADD	#0x08			; Add 8 to DXL (A) - Border of 16 pixels
-	OUT	(C),A			; And send DXL to #36
-	XOR	A			; Our copy DXH is always 0
-	OUT	(C),A			; And send DXH to #37
-	; Set destination Y coordinate
-	LD	A,(HL)			; Load DYL in A
-	INC	HL			; points to DYH
-	LD	B,A			; Copy DYL to B
-	LD	A,(#VDP_23)		; Get current vertical offset
-	ADD	A,B			; Add our DYL to it
-	OUT	(C),A			; Send it to #38
-	OUTI				; R#39 DYH
-	; Skip #40 and #41
-	OUTI				; R#40 (dummy)
-	OUTI				; R#41 (dummy)
-	; Set how many dots will be copied Y direction
-	OUTI				; R#42 NYL
-	OUTI				; R#43 NYH
-	; Skip #44
-	OUTI				; R#44 (dummy)
-	OUTI				; R#45 ARG
-	OUTI				; R#46 CMD
-	EI
-	RET
-
 	
 DO_YMMM:	
 	DI
@@ -2790,6 +2682,8 @@ HMMC_CMD.CLR:	.db	#0x00
 HMMC_CMD.ARG:	.db	#0x00
 HMMC_CMD.CMD:	.db	#0xF0
 
+
+
 HMMV_CMD:
 HMMV_CMD.DXL:	.db	#0x00
 HMMV_CMD.DXH:	.db	#0x00
@@ -2802,7 +2696,7 @@ HMMV_CMD.NYH:	.db	#0x00
 HMMV_CMD.CLR:	.db	#0x00
 HMMV_CMD.ARG:	.db	#0x00
 HMMV_CMD.CMD:	.db	#0xC0
-HMMV_CMD.NYL2:	.db 	#0x00
+HMMV_CMD.NYL2:	.db #0x00
 
 HMMM_CMD:
 HMMM_CMD.SXL:	.db	#0x00
@@ -2822,21 +2716,6 @@ HMMM_CMD.ARG:	.db	#0x00
 HMMM_CMD.CMD:	.db	#0xD0
 
 YMMM_CMD:
-<<<<<<< HEAD
-YMMM_CMD.SYL:	.db	#0x00	; R#34	
-YMMM_CMD.SYH:	.db	#0x00	; R#35
-YMMM_CMD.DXL:	.db	#0x00	; R#36
-YMMM_CMD.DXH:	.db	#0x00	; R#37
-YMMM_CMD.DYL:	.db	#0x00	; R#38
-YMMM_CMD.DYH:	.db	#0x00	; R#39
-YMMM_CMD.R40:	.db	#0x00	; R#40
-YMMM_CMD.R41:	.db	#0x00	; R#41
-YMMM_CMD.NYL:	.db	#0x00	; R#42
-YMMM_CMD.NYH:	.db	#0x00	; R#43
-YMMM_CMD.R44:	.db	#0x00	; R#44
-YMMM_CMD.ARG:	.db	#0x00	; R#45
-YMMM_CMD.CMD:	.db	#0xE0	; R#46
-=======
 YMMM_CMD.SYL:	.db	#0x00		; R#34	
 YMMM_CMD.SYH:	.db	#0x00		; R#35
 YMMM_CMD.DXL:	.db	#0x00		; R#36
@@ -2851,7 +2730,6 @@ YMMM_CMD.CLR:	.db	#0x00		; R#44, YMMM doesn't use but it is faster to send 0 her
 YMMM_CMD.ARG:	.db	#0x00		; R#45
 YMMM_CMD.CMD:	.db	#0xE0		; R#46
 YMMM_CMD.NYL2:	.db	#0x00		; R#42 for split operation second step
->>>>>>> 695970e766eea6348bb974d798bdca74d1461dc9
 
 ANSI_PAL:
 	.db	#0x00,#0x00,#0x50,#0x00,#0x00,#0x05,#0x50,#0x02,#0x05,#0x00,#0x55,#0x00,#0x05,#0x05,#0x55,#0x05
