@@ -27,6 +27,16 @@
 ; a z80 @3.58MHz it is not as fast as the unbuffered and optimized version of
 ; the lib, thus that version is the official one. On a faster CPU it is quite 
 ; promissing the extra performance we get, so who knows?
+; Piter Punk - Made a draft of Ansi Delete Lines and YMMM function, not working
+; on some scroll situations
+; OPJ - Reworked YMMM function to start faster not having to calculate on the
+; fly, doing all calculations before sending can save some time if VDP still is
+; processing a command
+; OPJ - Reworked CopyBlock as CopyBlockDown and made it work calculating before
+; calling YMMM
+; OPJ - Reworked Delete Lines, it was not taking into consideration when you 
+; are at the last line or if deleted lines exceed line capability
+; OPJ - Created Insert Lines and CopyBlockUp
 ;
 ;
 ; v1.5:
@@ -836,13 +846,83 @@ ANSI_EL:						; ANSI Erase in Line
 
 
 ANSI_IL:
-	; TODO: Missing Handling of inserting lines from current
+	LD	A,(#HMMC_BUF_COUNT)		; Will change cursor position, so if there is something in HMMC buffer, need to flush it
+	OR	A
+	CALL	NZ,DO_HMMC_FLUSH
+	LD	A,B
+	LD	B,#1					; No number is one Row
+	OR	A
+	JR	Z,ANSI_IL.RUN
+	LD	A,(#Parameters.PRM)		; Read how many Rows
+	LD	B,A
+ANSI_IL.RUN:
+	LD	A,(#CursorRow)
+	LD	C,A						; Copy Origin C (CursorRow)
+	ADD	A,B
+	CP	#25
+	JR	C,ANSI_IL.CONTINUE		; If less than 25, mean we need to move data before inserting lines
+	; If number of lines to move reach the end of screen or more, set cursor to first column and Erase Display 0, then return cursor, it is faster
+	LD	A,(#CursorCol)
+	PUSH	AF					; Save current Cursor Column
+	XOR	A
+	LD	(#CursorCol),A			; For now in first column
+	CALL	V9938_ErDis0Sub		; Make ED0
+	POP	AF						; Restore column
+	LD	(#CursorCol),A			; Back to the right column
+	JP	ANSI_IL.END				; And done
+ANSI_IL.CONTINUE:
+	; Ok, so we will need to move, delete and clear
+	PUSH	BC					; Save B (how many rows)
+	LD	B,A						; Copy Destination B
+	LD	A,#25					; 	(CursorRow + Rows)
+	SUB	B						; RowsToCopy in A
+								;	(25 - Destination Row)
+	CALL	V9938_CopyBlockYUp	
+	POP	BC						; Load How many Rows
+	LD	A,(#CursorRow)			; From current cursor row
+	CALL	V9938_ClearBlock
+ANSI_IL.END:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 
 ANSI_DL:
-	; TODO: Missing Handling of deleting lines from current
+	LD	A,(#HMMC_BUF_COUNT)		; Will change cursor position, so if there is something in HMMC buffer, need to flush it
+	OR	A
+	CALL	NZ,DO_HMMC_FLUSH
+	LD	A,B
+	LD	B,#1					; No number is one Row
+	OR	A
+	JR	Z,ANSI_DL.RUN
+	LD	A,(#Parameters.PRM)		; Read how many Rows
+	LD	B,A
+ANSI_DL.RUN:
+	LD	A,(#CursorRow)
+	LD	C,A						; CopyDestination C (CursorRow)
+	ADD	A,B
+	CP	#25
+	JR	C,ANSI_DL.CONTINUE		; If number of lines to move cursor to first column and Erase Display 0, then return cursor
+	LD	A,(#CursorCol)
+	PUSH	AF					; Save current Cursor Column
+	XOR	A
+	LD	(#CursorCol),A			; For now in first column
+	CALL	V9938_ErDis0Sub		; Make ED0
+	POP	AF						; Restore column
+	LD	(#CursorCol),A			; Back to the right column
+	JP	ANSI_DL.END				; And done
+ANSI_DL.CONTINUE:
+	; Ok, so we will need to move, delete and clear
+	PUSH	BC					; Save B (how many rows)
+	LD	B,A						; Copy Source B
+	LD	A,#26					; 	(CursorRow + Rows)
+	SUB	B						; RowsToCopy A
+								;	(26 - CopySource)
+	CALL	V9938_CopyBlockYDown	
+	POP	BC						; Load How many Rows
+	LD	A,#25
+	SUB	B						; Clear from the End Of Screen
+	CALL	V9938_ClearBlock
+ANSI_DL.END:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
@@ -1708,12 +1788,21 @@ V9938_SetCursorY:
 
 
 V9938_ClearLine:
+	LD	B,#1
+V9938_ClearBlock:
+;
+; A <- SourceRow
+; B <- Rows
+;
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	LD	(#HMMV_CMD.DYL),A		; Number of lines * 8 = position of the last line
-	LD	A,#0x08
-	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with 8 pixels on the Y axys
+	LD	A,B
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with B*8 pixels on the Y axys
 	XOR	A
 	LD	(#HMMV_CMD.NYH),A
 	LD	(#HMMV_CMD.DXL),A
@@ -1724,9 +1813,9 @@ V9938_ClearLine:
 	LD	A,B
 	OR	A
 	LD	A,(#BackColor)
-	JR	Z,V9938_ClearLine.Cont
+	JR	Z,V9938_ClearBlock.Cont
 	LD	A,(#BorderColor)
-V9938_ClearLine.Cont:
+V9938_ClearBlock.Cont:
 	LD	(#ClearColor),A
 	ADD	A,A
 	ADD	A,A
@@ -1958,6 +2047,10 @@ V9938_DelChr.SL:	LD	HL,(#EndAddress)
 
 
 V9938_ErDis0:
+	CALL 	V9938_ErDis0Sub
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+V9938_ErDis0Sub:
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
@@ -2228,6 +2321,206 @@ V9938_SetColors.NHA:	LD	B,A ; Ok, palete color index in B
 	JP	V9938_CursorColor
 
 
+V9938_CopyBlockYUp:
+;
+; A <- HowManyRows
+; B <- DestinationRow
+; C <- SourceRow
+;
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with A*8 pixels on the Y axis
+	LD	D,A						; Save NYL  in D
+	DEC	D						; Adjust for our math
+	LD	A,C						; Get Source Row
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	HL,(#VDP_23)			; Get current vertical offset
+	ADD	A,L						; Add it
+	ADD	A,D						; And add how many lines, as we are going from bottom to top, start at the last line
+	LD	(#YMMM_CMD.SYL),A		; Source Y coordinate
+	LD	H,A						; Save SYL in H
+	LD	A,B
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,L						; Add current vertical offset to it
+	ADD	A,D						; And add how many lines, as we are going from bottom to top, start at the last line
+	LD	(#YMMM_CMD.DYL),A		; To
+	; There are two possible splits here:
+	; 1st - SY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: SY as 0, DY as DY - 1st NY and NY being the remainder after carry
+	;
+	; 2nd - DY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: DY as 0, SY as SY - 1st NY and NY being the remainder after carry
+	; Need to test the 1s hypothesis
+	LD	A,H						; Source Y coordinate in A
+	SUB	A,D						; SY - NY
+	JR	C,V9938_CopyBlockYUp.DO1; If Carry, this is split case 1,do it
+	LD	A,(#YMMM_CMD.DYL)		; DY
+	SUB	A,D						; NY - DY
+	JR	C,V9938_CopyBlockYUp.DO2	; If Carry, this is split case 2,do it	
+	; Otherwise, it is a single operation so...
+	LD	A,#8
+	LD	(#YMMM_CMD.ARG),A		; Direction is Up
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	JP	DO_YMMM					; Do the single operation and YMMM will return for us	
+V9938_CopyBlockYUp.DO1:
+	; Here we are, source - number of lines will overflow
+	; Whatever is in A now is how much SY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	LD	A,#8					; Direction is Up
+	LD	(#YMMM_CMD.ARG),A		
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.SYL),A		; Second round Source
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B		
+	LD	A,(#YMMM_CMD.DYL)		; line of 1st operation destination
+	SUB	A,B						; Subtract first SYL to it 
+	LD	(#YMMM_CMD.DYL),A		; line of 2nd operation destination
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there	
+V9938_CopyBlockYUp.DO2:
+	; Here we are, destination - number of lines will overflow
+	; Whatever is in A now is how much NY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	LD	A,#8					; Direction is Up
+	LD	(#YMMM_CMD.ARG),A
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.DYL),A		; Second round To
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B
+	LD	A,(#YMMM_CMD.SYL)		; #of starting source lines of 1st operation in A
+	SUB	A,B						; Subtract both
+	LD	(#YMMM_CMD.SYL),A		; #of starting source lines of 2nd operation
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there
+
+
+V9938_CopyBlockYDown:
+;
+; A <- HowManyRows
+; B <- SourceRow
+; C <- DestinationRow
+;
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with A*8 pixels on the Y axis
+	LD	D,A						; Save NYL  in D
+	LD	A,B	
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	HL,(#VDP_23)			; Get current vertical offset
+	ADD	A,L						; Add it
+	LD	(#YMMM_CMD.SYL),A		; Source Y coordinate
+	LD	E,A						; Save SYL in E
+	LD	A,C
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,L						; Add current vertical offset to it
+	LD	(#YMMM_CMD.DYL),A		; To
+	; There are two possible splits here:
+	; 1st - SY + NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: SY as 0, DY as DY + 1st NY and NY being the remainder after carry
+	;
+	; 2nd - DY + NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: DY as 0, SY as SY + 1st NY and NY being the remainder after carry
+	; Need to test the 1s hypothesis
+	LD	A,E						; Source Y coordinate in A
+	ADD	A,D						; SY + NY
+	JR	C,V9938_CopyBlockYDown.DO1	; If Carry, this is split case 1,do it
+	LD	A,(#YMMM_CMD.DYL)		; DY
+	ADD	A,D						; NY + DY
+	JR	C,V9938_CopyBlockYDown.DO2	; If Carry, this is split case 2,do it	
+	; Otherwise, it is a single operation so...
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	JP	DO_YMMM					; Do the single operation and YMMM will return for us	
+V9938_CopyBlockYDown.DO1:
+	; Here we are, source + number of lines will overflow
+	; Whatever is in A now is how much SY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.SYL),A		; Second round Source
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B		
+	LD	A,(#YMMM_CMD.DYL)		; line of 1st operation destination
+	ADD	A,B						; Add first SYL to it 
+	LD	(#YMMM_CMD.DYL),A		; line of 2nd operation destination
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there	
+V9938_CopyBlockYDown.DO2:
+	; Here we are, destination + number of lines will overflow
+	; Whatever is in A now is how much NY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.DYL),A		; Second round To
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B
+	LD	A,(#YMMM_CMD.SYL)		; #of starting source lines of 1st operation in A
+	ADD	A,B						; Add both
+	LD	(#YMMM_CMD.SYL),A		; #of starting source lines of 2nd operation
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there
+	
+	
 V9938_WaitCmd:
 	LD	A,#0x02
 	DI
@@ -2410,6 +2703,32 @@ DO_HMMM:
 	RET
 	
 	
+DO_YMMM:	
+	DI
+	LD	A,#0x22					; Register 34 as value for...
+	OUT	(#0x99),A
+	LD	A,#0x91					; Register #17 (indirect register access auto increment)
+	OUT	(#0x99),A
+	EI	
+	LD	HL,#YMMM_CMD			; The YMMM buffer
+	LD	C,#0x9B					; And port for indirect access
+	CALL	V9938_WaitCmd		; Wait if any command is pending
+	OUTI						; And now send the buffer
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	RET	
+	
+	
 ;
 ;	DATA Portion
 ;
@@ -2526,6 +2845,22 @@ HMMC_BUF:
 	.db	#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00
 	.db	#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00
 	.db	#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00
+
+YMMM_CMD:
+YMMM_CMD.SYL:	.db	#0x00		; R#34	
+YMMM_CMD.SYH:	.db	#0x00		; R#35
+YMMM_CMD.DXL:	.db	#0x00		; R#36
+YMMM_CMD.DXH:	.db	#0x00		; R#37
+YMMM_CMD.DYL:	.db	#0x00		; R#38
+YMMM_CMD.DYH:	.db	#0x00		; R#39
+YMMM_CMD.NXL:	.db	#0x00		; R#40, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.NXH:	.db	#0x00		; R#41, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.NYL:	.db	#0x00		; R#42
+YMMM_CMD.NYH:	.db	#0x00		; R#43
+YMMM_CMD.CLR:	.db	#0x00		; R#44, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.ARG:	.db	#0x00		; R#45
+YMMM_CMD.CMD:	.db	#0xE0		; R#46
+YMMM_CMD.NYL2:	.db	#0x00		; R#42 for split operation second step
 
 ANSI_PAL:
 	.db	#0x00,#0x00,#0x50,#0x00,#0x00,#0x05,#0x50,#0x02,#0x05,#0x00,#0x55,#0x00,#0x05,#0x05,#0x55,#0x05
