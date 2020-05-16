@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.5
+; MSX2ANSI ANSI V9938 Library v.1.6
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -18,6 +18,27 @@
 ; credits to the original authors
 ;
 ; Changelog:
+;
+; v1.6:
+; OPJ - Changed the way HMMC is handled in the code, this resulted in 7% faster
+; rendering of HISPAMSX MSX boot logo Ansi Art on a z80 at regular speeds.
+; OPJ - Changed the way HMMM is handled in the code, it should be faster but it
+; is difficult to determine the performance increase, anyway, code is cleaner 
+; and easier to understand as well
+; OPJ - Changed how AnsiPrint and AnsiPutChar work, which results in 8% faster
+; rendering of HISPAMSXMSX boot logo Ansi Art on a z80 at regular speeds. Total
+; is a 15% speed improvment!
+; Piter Punk - Made a draft of Ansi Delete Lines and YMMM function, not working
+; on some scroll situations
+; OPJ - Reworked YMMM function to start faster not having to calculate on the
+; fly, doing all calculations before sending can save some time if VDP still is
+; processing a command
+; OPJ - Reworked CopyBlock as CopyBlockDown and made it work calculating before
+; calling YMMM
+; OPJ - Reworked Delete Lines, it was not taking into consideration when you 
+; are at the last line or if deleted lines exceed line capability
+; OPJ - Created Insert Lines and CopyBlockUp
+;
 ;
 ; v1.5:
 ; Piter Punk - Added scrolling support (ESC[#S and ESC[#T)
@@ -126,6 +147,8 @@ StartBuffer:
 	OR	A
 	RET	Z
 	CALL	DisCursorSub
+	XOR	A
+	LD (#CursorUpdt),A
 	RET
 
 
@@ -139,12 +162,14 @@ StartBuffer:
 ; void AnsiEndBuffer()
 _AnsiEndBuffer::
 EndBuffer:
+	LD	A,#1
+	LD (#CursorUpdt),A
+	CALL	V9938_SetCursorX
+	CALL	V9938_SetCursorY	; Set cursor position
 	LD	A,(#CursorOn)
 	OR	A
-	RET	Z
+	RET	Z	
 	CALL	EnCursorSub	
-	CALL	V9938_SetCursorX
-	CALL	V9938_SetCursorY
 	RET
 
 
@@ -190,7 +215,35 @@ BufferChar:
 	JR	NZ,BufferChar.CNT		; Esc processing going on
 	LD	A,C
 	CP	#27						; Is character ESC?
-	JR	NZ,BufferChar.PRT		; Nope, so print it
+	JR	Z,BufferChar.ESC		; Yes, so treat ESC buffer
+	; It is a printable character or control code, deal with it directly here
+	CP	#0x20				
+	JR	C,BufferChar.CCode		; If less than 0x20 (space), a control character
+BufferChar.NotCCode:	
+	LD	(#LastChar),A
+	CALL	V9938_PrintChar		; Call the print routine for our chip
+	LD	A,(#CursorCol)			; Get Current Cursor Position
+	INC	A						; Increment it
+	LD	(#CursorCol),A			; Save
+	CP	#80						; Time to line feed?
+	JP	NC,LFeedSub				; If 80 or greater feed the line, and line feed will return to printtext loop
+	; Otherwise
+	JP	V9938_SetCursorX		; Set cursor on screen, it will return from there as it is done after this
+BufferChar.CCode:	
+	; Check if it is a control character and do the action, otherwise print it
+	CP	#13
+	JP	Z,CarriageReturnSub
+	CP	#10
+	JP	Z,LFeedSub
+	CP	#8
+	JP	Z,BackSpaceSub			
+	CP	#12						; FF, clear screen and home
+	JP	Z,ANSI_ED.ED2Sub	
+	CP	#9
+	JP	Z,HTabSub
+	CP	#7
+	JP	Z,BellSub
+	JP	BufferChar.NotCCode
 	; It is ESC
 BufferChar.ESC:	
 	LD	(#ANSI_M),A				; Indicate ESC is in progress
@@ -213,10 +266,10 @@ BufferChar.CNT:
 	INC	HL
 	LD	(#ANSI_P),HL			; new buffer position
 	CP	#48
-	JR	C,BufferChar.END		; Character is less than '0', not a parameter I understand, so print on the screen
+	JR	C,BufferChar.END		; Character is less than '0', not a parameter I understand, so finished buffering code
 	; No, '0' or greater
 	CP	#60				
-	JR	NC,BufferChar.END		; If A > ';' not a parameter I understand, so print on the screen
+	JR	NC,BufferChar.END		; If A > ';' not a parameter I understand, so finished buffering code
 	;Otherwise it is between 0 and ; so ESC command has not finished yet
 	RET
 BufferChar.END:	
@@ -236,11 +289,7 @@ BufferChar.CH2a:
 	LD	(#ANSI_M),A				; Ok, now we are gathering parameters for the command
 	LD	(#ANSI_P),HL			; Save pointer
 	RET							; Done
-BufferChar.PRT:	
-	LD	(#ANSI_S+0),A			; Put the char in our buffer
-	XOR	A				
-	LD	(#ANSI_S+1),A			; Now the terminator
-	JR	BufferChar.RET			; And print it :-)	
+
 BufferChar.XorY:	
 	CP	#'x'					; modify cursor behavior / disable?	
 	JR	Z,BufferChar.CH2a		; So if the second character is x, let's move on
@@ -276,14 +325,11 @@ BufferText:
 	LD	A,(HL)					; Load the character
 	INC	HL						; Increment pointer
 	OR 	A						; 0?
-	JP	Z,EndAnsiPrint			; Yes, end of string
+	JP	Z,EndBuffer				; Yes, end of string, endbuffer will return for us
 	PUSH	HL					; Save pointer
 	CALL	BufferChar			; Process or print it
 	POP	HL						; Restore pointer
-	JR	BufferText				; Continue
-EndAnsiPrint:
-	CALL	EndBuffer			; Enable sprite back, if needed
-	RET
+	JP	BufferText				; Continue
 
 
 ; PrintText - Will handle text in address pointed by HL, zero terminated
@@ -292,25 +338,8 @@ PrintText.RLP:
 	LD	A,(HL)					; Load the character
 	INC	HL						; Increment the pointer
 	CP	#0x20				
-	JP	NC,PrintText.RLP.CCPrint; If less than 0x20 (space), a control character
-	; Check if it is a control character and do the action, otherwise print it
-	OR	A
-	RET	Z						; If 0, done
-	CP	#8
-	JP	Z,BackSpace		
-	CP	#10
-	JP	Z,LineFeed
-	CP	#12						; FF, clear screen and home
-	JP	Z,ANSI_ED.ED2
-	CP	#13
-	JP	Z,CarriageReturn
-	CP	#27
-	JP	Z,EscapeCode			; If an Escape code, let's check it
-	CP	#9
-	JP	Z,HorizontalTab
-	CP	#7
-	JP	Z,Bell					
-PrintText.RLP.CCPrint:	
+	JR	C,PrintText.RLP.CC		; If less than 0x20 (space), a control character
+PrintText.RLP.NOCC:	
 	LD	(#LastChar),A
 	PUSH	HL					; Save Pointer
 	CALL	V9938_PrintChar		; Call the print routine for our chip
@@ -318,14 +347,30 @@ PrintText.RLP.CCPrint:
 	LD	A,(#CursorCol)			; Get Current Cursor Position
 	INC	A						; Increment it
 	LD	(#CursorCol),A			; Save
-	PUSH	AF					; Save register
+	CP	#80						; Time to line feed?
+	JP	NC,LineFeed				; If 80 or greater feed the line, and line feed will return to printtext loop
+	; Otherwise
 	CALL	V9938_SetCursorX	; Set cursor on screen	
-	POP	AF						; Restore
-	CP	#80				
-	JR	C,PrintText.RLP			; If up to position 80, done
-	XOR	A				
-	LD	(#CursorCol),A			; Otherwise cursor is back to position 0
-	JP	LineFeed				; And feed the line
+	JP	PrintText.RLP			; If up to position 80, done	
+PrintText.RLP.CC:	
+	; Check if it is a control character and do the action, otherwise print it
+	OR	A
+	RET	Z						; If 0, done
+	CP	#13
+	JP	Z,CarriageReturn
+	CP	#10
+	JP	Z,LineFeed
+	CP	#8
+	JP	Z,BackSpace			
+	CP	#12						; FF, clear screen and home
+	JP	Z,ANSI_ED.ED2	
+	CP	#27
+	JP	Z,EscapeCode			; If an Escape code, let's check it
+	CP	#9
+	JP	Z,HorizontalTab
+	CP	#7
+	JP	Z,Bell					
+	JP	PrintText.RLP.NOCC
 
 
 ;
@@ -334,6 +379,9 @@ PrintText.RLP.CCPrint:
 ; In this section, functions for the rendering engine use
 ;
 Bell:
+	CALL BellSub
+	JP	PrintText.RLP
+BellSub:
 	PUSH	HL
 	PUSH	AF
 	PUSH	BC
@@ -348,7 +396,7 @@ Bell:
 	POP	BC
 	POP	AF
 	POP	HL
-	JP	PrintText.RLP
+	RET
 
 
 EscapeCode:
@@ -747,6 +795,11 @@ ANSI_ED.ED0:
 ANSI_ED.ED1:	
 	JP	V9938_ErDis1
 ANSI_ED.ED2:	
+	CALL	ANSI_ED.ED2Sub
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+	
+ANSI_ED.ED2Sub:
 	CALL	V9938_ClearScreen
 	; Usually should end-up here, but MS-DOS ANSI.SYS legacy place cursor on top left after ED
 	; Norm is cursor should be where it was, but, no one follows it, thanks to MS :D
@@ -755,8 +808,7 @@ ANSI_ED.ED2:
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
 	CALL	V9938_SetCursorY
-	LD	HL,(#EndAddress)
-	JP	PrintText.RLP
+	RET
 
 
 ANSI_EL:						; ANSI Erase in Line
@@ -772,11 +824,44 @@ ANSI_EL:						; ANSI Erase in Line
 
 
 ANSI_IL:
-	; TODO: Missing Handling of inserting lines from current
+	LD	A,B
+	LD	B,#1					; No number is one Row
+	OR	A
+	JR	Z,ANSI_IL.RUN
+	LD	A,(#Parameters.PRM)		; Read how many Rows
+	LD	B,A
+ANSI_IL.RUN:
+	LD	A,(#CursorRow)
+	LD	C,A						; Copy Origin C (CursorRow)
+	ADD	A,B
+	CP	#25
+	JR	C,ANSI_IL.CONTINUE		; If less than 25, mean we need to move data before inserting lines
+	; If number of lines to move reach the end of screen or more, set cursor to first column and Erase Display 0, then return cursor, it is faster
+	LD	A,(#CursorCol)
+	PUSH	AF					; Save current Cursor Column
+	XOR	A
+	LD	(#CursorCol),A			; For now in first column
+	CALL	V9938_ErDis0Sub		; Make ED0
+	POP	AF						; Restore column
+	LD	(#CursorCol),A			; Back to the right column
+	JP	ANSI_IL.END				; And done
+ANSI_IL.CONTINUE:
+	; Ok, so we will need to move, delete and clear
+	PUSH	BC					; Save B (how many rows)
+	LD	B,A						; Copy Destination B
+	LD	A,#25					; 	(CursorRow + Rows)
+	SUB	B						; RowsToCopy in A
+								;	(25 - Destination Row)
+	CALL	V9938_CopyBlockYUp	
+	POP	BC						; Load How many Rows
+	LD	A,(#CursorRow)			; From current cursor row
+	CALL	V9938_ClearBlock
+ANSI_IL.END:
 	LD	HL,(#EndAddress)
 	JP	PrintText.RLP
 
 
+<<<<<<< HEAD
 ANSI_DL:				; ANSI Delete Lines
 	;
 	; PK: 	There is something wrong here. 
@@ -804,6 +889,40 @@ ANSI_DL.RUN:
 	POP	BC			; Load How many Rows
 	LD	A,#25
 	SUB	B			; Clear from the End Of Screen
+=======
+ANSI_DL:						; ANSI Delete Lines
+	LD	A,B
+	LD	B,#1					; No number is one Row
+	OR	A
+	JR	Z,ANSI_DL.RUN
+	LD	A,(#Parameters.PRM)		; Read how many Rows
+	LD	B,A
+ANSI_DL.RUN:
+	LD	A,(#CursorRow)
+	LD	C,A						; CopyDestination C (CursorRow)
+	ADD	A,B
+	CP	#25
+	JR	C,ANSI_DL.CONTINUE		; If number of lines to move cursor to first column and Erase Display 0, then return cursor
+	LD	A,(#CursorCol)
+	PUSH	AF					; Save current Cursor Column
+	XOR	A
+	LD	(#CursorCol),A			; For now in first column
+	CALL	V9938_ErDis0Sub		; Make ED0
+	POP	AF						; Restore column
+	LD	(#CursorCol),A			; Back to the right column
+	JP	ANSI_DL.END				; And done
+ANSI_DL.CONTINUE:
+	; Ok, so we will need to move, delete and clear
+	PUSH	BC					; Save B (how many rows)
+	LD	B,A						; Copy Source B
+	LD	A,#26					; 	(CursorRow + Rows)
+	SUB	B						; RowsToCopy A
+								;	(26 - CopySource)
+	CALL	V9938_CopyBlockYDown	
+	POP	BC						; Load How many Rows
+	LD	A,#25
+	SUB	B						; Clear from the End Of Screen
+>>>>>>> 695970e766eea6348bb974d798bdca74d1461dc9
 	CALL	V9938_ClearBlock
 ANSI_DL.END:
 	LD	HL,(#EndAddress)
@@ -1018,11 +1137,9 @@ VT52_ENCURSOR:
 	LD	A,(#CursorOn)
 	OR	A
 	RET	NZ						; If already on, nothing to do
-	LD	A,#0x01
+	INC	A
 	LD	(#CursorOn),A			; Other than 0, on
-	LD	A,(#CursorVis)
-	OR	A
-	RET	Z						; If not visible, need not to worry setting it up
+	LD	(#CursorUpdt),A			; Other than 0, update its position
 EnCursorSub:
 	DI
 	LD	A,(#VDP_08)				; Get a copy of register 8
@@ -1032,7 +1149,6 @@ EnCursorSub:
 	LD	A,#0x80+8				
 	OUT	(#0x99),A				; Write to register 8	
 	EI
-	LD	(#CursorVis),A			; It is now visible
 	RET
 
 
@@ -1041,10 +1157,8 @@ VT52_DISCURSOR:
 	OR	A
 	RET	Z						; If already off, nothing to do
 	XOR	A
-	LD	(#CursorOn),A			; Other than 0, on
-	LD	A,(#CursorVis)
-	OR	A
-	RET	Z						; If not visible, need not to worry setting it up
+	LD	(#CursorOn),A			; 0, off
+	LD	(#CursorUpdt),A			; 0, do not update its position
 DisCursorSub:
 	DI
 	LD	A,(#VDP_08)				; Get a copy of register 8
@@ -1117,13 +1231,16 @@ VT100_RCP:
 
 
 BackSpace:
+	CALL	BackSpaceSub
+	JP	PrintText.RLP
+BackSpaceSub:
 	LD	A,(#CursorCol)
 	OR	A
 	JP	Z,PrintText.RLP
 	DEC	A
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
-	JP	PrintText.RLP
+	RET
 
 
 HorizontalTab:
@@ -1169,16 +1286,21 @@ LFeedSub:
 	LD	A,#24
 LFeedSub.NNL:	
 	LD	(#CursorRow),A
+	XOR	A
+	LD	(#CursorCol),A			; Cursor is back to position 0
 	CALL	V9938_SetCursorX
 	CALL	V9938_SetCursorY
 	RET
 
 
 CarriageReturn:
+	CALL	CarriageReturnSub;
+	JP	PrintText.RLP
+CarriageReturnSub:
 	XOR	A
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
-	JP	PrintText.RLP
+	RET
 
 
 _BIOS_C:						; BIOS_C: [IX]
@@ -1395,7 +1517,7 @@ V9938_InitCursor.ATTRLOOP:
 	OUT	(#0x99),A				; Write to register 8
 	EI
 	LD	(#CursorOn),A			; Other than 0, on
-	LD	(#CursorVis),A			; Other than 0, on
+	LD	(#CursorUpdt),A			; Other than 0, update it's position
 	RET
 
 
@@ -1429,122 +1551,81 @@ V9938_CursorColor.CCLRLOOP:
 	RET
 
 
-V9938_MoveCursorY:
-	;SET VDP TO WRITE @ #0x1F600 - Attribute Table
-	LD	A,#0b00000111			; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A				; Save our value
-	DI
-	OUT	(#0x99),A				; Send value	
-	LD	A,#0x80+14
-	OUT	(#0x99),A				; Write in register
-	LD	A,#0b00000000			; Now A7 to A0, all 0's
-	OUT	(#0x99),A				; Low Address
-	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
-	OUT	(#0x99),A				; High Address		
-	; Y Position
-	LD	A,(#HMMC_CMD.DYL)
-	LD	B,A						; Copy IYL to B
-	LD	A,(#VDP_23)				; Get current vertical offset
-	ADD	A,B						; Add our IYL to it
-	OUT	(#0x98),A				; Set Y
-	EI
-	RET
-
-
-V9938_MoveCursorX:
-	;SET VDP TO WRITE @ #0x1F601 - Attribute Table
-	LD	A,#0b00000111			; A16, A15 and A14 set to 1
-	LD	(#VDP_14),A				; Save our value
-	DI
-	OUT	(#0x99),A				; Send value	
-	LD	A,#0x80+14
-	OUT	(#0x99),A				; Write in register
-	LD	A,#0b00000001			; Now A7 to A0, all 0's
-	OUT	(#0x99),A				; Low Address
-	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
-	OUT	(#0x99),A				; High Address		
-	; X Position
-	LD	A,(#HMMC_CMD.DXL)
-	ADD	A,#8
-	OUT	(#0x98),A				; Set X
-	EI
-	RET
-;END OPJ Changes Sprite
-
-
 V9938_PrintChar:
 	LD	B,A
 	LD	A,(#Concealed)
 	OR	A
-	JR	NZ,V9938_PrintChar.SPC
+	JR	NZ,V9938_PrintChar.SPC	; Concealed = not visible -> space
 	LD	A,B
 	CP	#0x20
-	JR	Z,V9938_PrintChar.SPC
+	JR	Z,V9938_PrintChar.SPC	; Space -> just blank / background color
 	CP	#0xDB
-	JR	Z,V9938_PrintChar.FIL
-	LD	DE,#FontData
+	JR	Z,V9938_PrintChar.FIL	; Fill -> just filled / foreground color
+	LD	DE,#FontData			; Otherwise, let's get from our font
 	LD	L,A
-	LD	H,#0
+	LD	H,#0					; Character in HL
 	ADD	HL,HL
 	ADD	HL,HL
-	ADD	HL,HL
-	ADD	HL,DE
-	LD	DE,#ColorTable
-	LD	A,(HL)
-	AND	#0b11000000
-	RLC	A
-	RLC	A
-	ADD	A,#ColorTable			; AND 255
-	LD	E,A
-	LD	A,(DE)
-	LD	(#HMMC_CMD.CLR),A
-	PUSH	HL
-	CALL	DO_HMMC
-	POP	HL
-	LD	BC,#0x089B
+	ADD	HL,HL					; Each caracter is composed of 8 bytes, thus multiply by 8
+	ADD	HL,DE					; Add to font table start address and we got our character
+	LD	DE,#ColorTable			; Color Table address in DE
+	LD	A,(HL)					; First line of this character in A
+	AND	#0b11000000				; Dealing with the 8th and 7th bits, we are going to print every two pixels, left to right
+	RLCA
+	RLCA
+	ADD	A,#ColorTable			; Ok, so this is the base of color table (back/back, back/fore, fore/back, fore/fore) depending on each pixel
+	LD	E,A						; move it to E
+	LD	A,(DE)					; And A has the result of the two pixels
+	LD	(#HMMC_CMD.CLR),A		; Move it to HMMC color pair (the first two pixels of HMMC operation)
+	CALL	DO_HMMC				; Move this to VDP
+	LD	BC,#0x089B				; now going to do for the remaining 7 bytes
 	JR	V9938_PrintChar.BP1
 V9938_PrintChar.BP0:	LD	A,(HL)
-	AND	#0b11000000
-	RLC	A
-	RLC	A
-	ADD	A,#ColorTable			; AND 255
-	LD	E,A
-	LD	A,(DE)
-	OUT	(C),A
+	AND	#0b11000000				; Dealing with the 8th and 7th bits, we are going to print every two pixels, left to right
+	RLCA
+	RLCA
+	ADD	A,#ColorTable			; Ok, so this is the base of color table (back/back, back/fore, fore/back, fore/fore) depending on each pixel
+	LD	E,A						; move it to E
+	LD	A,(DE)					; And A has the result of the two pixels
+	OUT	(C),A					; Send it
 V9938_PrintChar.BP1:	LD	A,(HL)
-	AND	#0b00110000
+	AND	#0b00110000				; Now we are dealing with the 5th and 6th bits
 	RRCA
 	RRCA
 	RRCA
 	RRCA
-	ADD	A,#ColorTable			; AND 255
-	LD	E,A
-	LD	A,(DE)
-	OUT	(C),A
+	ADD	A,#ColorTable			; Ok, so this is the base of color table (back/back, back/fore, fore/back, fore/fore) depending on each pixel
+	LD	E,A						; move it to E
+	LD	A,(DE)					; And A has the result of the two pixels
+	OUT	(C),A					; Send it
 V9938_PrintChar.BP2:	LD	A,(HL)
-	AND	#0b00001100
+	AND	#0b00001100				; Now we are dealing with the 3rd and 4th bits
 	RRCA
 	RRCA
-	ADD	A,#ColorTable			; AND 255
-	LD	E,A
-	LD	A,(DE)
-	OUT	(C),A
-V9938_PrintChar.RLP:	INC	HL
-	DJNZ	V9938_PrintChar.BP0
-	RET
-V9938_PrintChar.SPC:	LD	A,(#ColorTable+0)
-	LD	(HMMC_CMD.CLR),A
-	CALL	DO_HMMC
-	LD	A,(#ColorTable+0)
-V9938_PrintChar.OUT:	LD	BC,#0x179B
-V9938_PrintChar.SPL:	OUT	(C),A
-	DJNZ	V9938_PrintChar.SPL
-	RET
-V9938_PrintChar.FIL:	LD	A,(#ColorTable+3)
-	LD	(#HMMC_CMD.CLR),A
-	CALL	DO_HMMC
+	ADD	A,#ColorTable			; Ok, so this is the base of color table (back/back, back/fore, fore/back, fore/fore) depending on each pixel
+	LD	E,A						; move it to E
+	LD	A,(DE)					; And A has the result of the two pixels
+	OUT	(C),A					; Send it (characters are contained in bits 8 to 3 (including), bits 1 and 2 are not used, 6 bits wide font
+V9938_PrintChar.RLP:	INC	HL	; Next row of pixels for this character
+	DJNZ	V9938_PrintChar.BP0	; If not fineshed, let's start for the next row of pixels (B has the count)
+	RET							; Otherwise, finished printing all 8 rows
+V9938_PrintChar.SPC:	
+	LD	A,(#ColorTable+0)		
+	LD	(HMMC_CMD.CLR),A		; Space is background and background
+	CALL	DO_HMMC				; setup HMMC and do the first two pixels
+	LD	A,(#ColorTable+0)		; Again, background on background
+V9938_PrintChar.OUT:	
+	LD	BC,#0x179B				; 8*3 (double pixels) = 24, lets do the reamaining 23			
+V9938_PrintChar.SPL:	
+	OUT	(C),A					; Send it
+	DJNZ	V9938_PrintChar.SPL	; Decrement counter, if not zero, do it again
+	RET							; Done
+V9938_PrintChar.FIL:	
 	LD	A,(#ColorTable+3)
-	JR	V9938_PrintChar.OUT
+	LD	(#HMMC_CMD.CLR),A		; Fill is foreground and foreground		
+	CALL	DO_HMMC				; setup HMMC and do the first two pixels
+	LD	A,(#ColorTable+3)		; Again foreground and foreground
+	JR	V9938_PrintChar.OUT		; Repeat the remaining pixels
 
 
 V9938_ScrollUp:
@@ -1589,29 +1670,70 @@ V9938_ScrollDown:
 
 
 V9938_SetCursorX:
-	LD	A,(#CursorVis)
-	OR	A
-	RET	Z						; Nothing to do if cursor is of
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
 	ADD	A,B
+	ADD	A,#8					; Border offset 16 pixels
+	LD	(#SPRITEPOS.X),A
+	ADD	A,A						; HMMC work with real pixel count, not double pixels
 	LD	(#HMMC_CMD.DXL),A
-	;OPJ - Update Cursor Position
-	JP	V9938_MoveCursorX
+	LD	A,#0					; Do not want to change carry
+	JR	NC,V9938_SetCursorX.SETDXH
+	INC	A						; If carry it is 1
+V9938_SetCursorX.SETDXH:	
+	LD	(#HMMC_CMD.DXH),A	
+	LD	A,(#CursorUpdt)			; If cursor is being updated, update its position in the table
+	OR	A
+	RET	Z
+	;SET VDP TO WRITE @ #0x1F601 - Attribute Table
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value
+	DI
+	OUT	(#0x99),A				; Send value	
+	LD	A,#0x80+14
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000001			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
+	OUT	(#0x99),A				; High Address		
+	; X Position
+	LD	A,(#SPRITEPOS.X)	
+	OUT	(#0x98),A				; Set X
+	EI
+	RET
+
 
 
 V9938_SetCursorY:
-	LD	A,(#CursorVis)
-	OR	A
-	RET	Z						; Nothing to do if cursor is of
 	LD	A,(#CursorRow)
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
+	LD	B,A						; Copy IYL to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our IYL to it
 	LD	(#HMMC_CMD.DYL),A
-	;OPJ - Update Cursor Position
-	JP	V9938_MoveCursorY
+	LD	A,(#CursorUpdt)			; If cursor is being updated, update its position in the table
+	OR	A
+	RET	Z
+	;SET VDP TO WRITE @ #0x1F600 - Attribute Table
+	LD	A,#0b00000111			; A16, A15 and A14 set to 1
+	LD	(#VDP_14),A				; Save our value
+	DI
+	OUT	(#0x99),A				; Send value	
+	LD	A,#0x80+14
+	OUT	(#0x99),A				; Write in register
+	LD	A,#0b00000000			; Now A7 to A0, all 0's
+	OUT	(#0x99),A				; Low Address
+	LD	A,#0b01110110			; Write (bit 6), A13/A12 to 1(1F) / A11 to 0 and A10/A9 to 1 and A8 to 0 (6)
+	OUT	(#0x99),A				; High Address		
+	; Y Position
+	LD	A,(#HMMC_CMD.DYL)
+	LD	B,A						; Copy IYL to B
+	OUT	(#0x98),A				; Set Y
+	EI
+	RET
 
 
 V9938_ClearLine:
@@ -1732,7 +1854,6 @@ V9938_ClearScreen:
 	OUT	(C),A					; CMD	
 	RET
 
-_AnsiInsertChars::
 V9938_InsertChars:
 	; Number of characters to insert in C
 	LD	A,(#CursorCol)			;
@@ -1765,14 +1886,26 @@ V9938_InsChr.NXH:
 	ADD	A,A
 	ADD	A,C
 	LD	D,A						; Number of chars to insert *3 in D	
-	LD	A,#239					; Rightmost edge in double pixels
+	LD	A,#0xEE					; Rightmost edge in pixels is 0x01DE
 	LD	(#HMMM_CMD.DXL),A		; Now destination is rightmost edge
+	LD	A,#0x01					; Rightmost edge in pixels is 0x01DE
+	LD	(#HMMM_CMD.DXH),A		; Now destination is rightmost edge
+	LD	A,#247					; Rightmost edge in double pixels 239 + 8 pixels from the border = 247
 	SUB	A,D						; This is our source, rightmost edge - number of chars to insert
+	ADD	A,A						; Multiply by 2
 	LD	(#HMMM_CMD.SXL),A		; Save source
+	LD	A,#0x00					; XH could be 0
+	JR	NC,V9938_InsChr.SXH		; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+V9938_InsChr.SXH:
+	LD	(#HMMM_CMD.SXH),A		; Save XH
 	LD	A,(#CursorRow)			; Current cursor line
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A						; Multiply it by 8, it is the first line of that character line (8 pixels high character)
+	LD	B,A						; Copy Y to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our Y to it
 	LD	(#HMMM_CMD.DYL),A		; This is the Y destination
 	LD	(#HMMM_CMD.SYL),A		; As well as the Y source
 	LD	A,#0x04					; We need the direction of move to be to the left, otherwise it won't work properly
@@ -1822,17 +1955,34 @@ V9938_DelChr.NXH:
 	LD	B,A
 	ADD	A,A
 	ADD	A,B						; Just adjust to count of "double pixels", HMMM function will handle DXH and shifting it
-	LD	(#HMMM_CMD.DXL),A		; Destination is current cursor position
 	LD	D,A						; Save A in D
+	ADD	#0x08					; Add 8 to X (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
+	LD	(#HMMM_CMD.DXL),A		; Destination is current cursor position
+	LD	A,#0x00					; XH could be 0
+	JR	NC,V9938_DelChr.DXH		; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+V9938_DelChr.DXH:
+	LD	(#HMMM_CMD.DXH),A		; Save XH	
 	LD	A,C						; Now source is what is in D + 3 times what is in C
 	ADD	A,A
 	ADD	A,C						; A contains 3xdeleted characters
 	ADD A,D						; + cursor position, this is the position of source X :D
+	ADD	#0x08					; Add 8 to X (A) - Border of 16 pixels
+	ADD	A,A						; Multiply by 2
 	LD	(#HMMM_CMD.SXL),A		; Source is current cursor position + deleted characters
+	LD	A,#0x00					; XH could be 0
+	JR	NC,V9938_DelChr.SXH		; If no carry, it is 0
+	INC	A						; Otherwise it is 1
+V9938_DelChr.SXH:
+	LD	(#HMMM_CMD.SXH),A		; Save XH
 	LD	A,(#CursorRow)			; Current cursor line
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A						; Multiply it by 8, it is the first line of that character line (8 pixels high character)
+	LD	B,A						; Copy Y to B
+	LD	A,(#VDP_23)				; Get current vertical offset
+	ADD	A,B						; Add our Y to it
 	LD	(#HMMM_CMD.DYL),A		; This is the Y destination
 	LD	(#HMMM_CMD.SYL),A		; As well as the Y source
 	CALL	DO_HMMM				; All set, let's move
@@ -1845,6 +1995,10 @@ V9938_DelChr.SL:	LD	HL,(#EndAddress)
 
 
 V9938_ErDis0:
+	CALL 	V9938_ErDis0Sub
+	LD	HL,(#EndAddress)
+	JP	PrintText.RLP
+V9938_ErDis0Sub:
 	LD	A,(#CursorCol)
 	LD	B,A
 	ADD	A,A
@@ -1885,7 +2039,7 @@ V9938_ErDis0.NXH:
 	LD	B,A						; Now get the row / line in B
 	LD	A,#24					; Up to 25 lines, 0 is first, 24 is the 25th line
 	SUB	A,B						; Let's check how many extra lines need to be cleared
-	JR	Z,V9938_ErDis0.SL		; If last line, done
+	RET	Z						; If last line, done
 	; Not last, so multiply it per 8
 	ADD	A,A
 	ADD	A,A
@@ -1906,8 +2060,8 @@ V9938_ErDis0.NXH:
 	ADD	A,A
 	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
 	CALL	DO_HMMV				; Aaaand.... Clear!	
-V9938_ErDis0.SL:	LD	HL,(#EndAddress)
-	JP	PrintText.RLP
+	RET
+	
 
 
 V9938_ErDis1:
@@ -2078,39 +2232,39 @@ V9938_ErLin2:
 
 
 V9938_SetColors:
-	LD	A,(#HiLighted)
-	OR	A
-	LD	A,(#ForeColor)
-	JR	Z,V9938_SetColors.NHA
-	ADD	#0x08
-V9938_SetColors.NHA:	LD	B,A
+	LD	A,(#HiLighted)			; Let's check if HiLighted
+	OR	A						
+	LD	A,(#ForeColor)			; And get the foreground color
+	JR	Z,V9938_SetColors.NHA	; If not HiLighted, move on
+	ADD	#0x08					; Otherwise, different color, add 8 to get colors 9 to 16 of our pallete
+V9938_SetColors.NHA:	LD	B,A ; Ok, palete color index in B
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
-	ADD	A,A
-	OR	B
-	LD	(#FontColor),A
-	LD	A,(#BackColor)
-	ADD	A,A
-	ADD	A,A
+	ADD	A,A						; Multiply by 16 -> Shift left 4 times -> Value in MSB
+	OR	B						; And value now in LSB as well, colors are pairs for G6
+	LD	(#FontColor),A			; And this is our font color (Fore / Fore)
+	LD	A,(#BackColor)			; Do the same to background color
 	ADD	A,A
 	ADD	A,A
-	LD	B,A
-	LD	A,(#BackColor)
-	OR	B
-	LD	(#ColorTable+00),A
+	ADD	A,A
+	ADD	A,A						; Multiply by 16 -> Shift left 4 times -> Value in MSB
+	LD	B,A						; B has background color in MSB and 0 in LSB
+	LD	A,(#BackColor)			; A has background color in LSB
+	OR	B						; And value now in LSB as well, colors are pairs for G6
+	LD	(#ColorTable+00),A		; ColorTable 0 -> Background and BackGround
 	LD	A,(#FontColor)
-	AND	#0x0F
-	OR	B
-	LD	(#ColorTable+01),A
+	AND	#0x0F					; Foreground color on LSB
+	OR	B						; Background color on MSB
+	LD	(#ColorTable+01),A		; Color table 1 ->Background and Foreground
 	LD	A,(#FontColor)
-	AND	#0xF0
-	LD	B,A
-	LD	A,(#BackColor)
+	AND	#0xF0					; Foreground color on MSB
+	LD	B,A						; Move it to B
+	LD	A,(#BackColor)			; Background color on LSC
 	OR	B
-	LD	(#ColorTable+02),A
+	LD	(#ColorTable+02),A		; Color table 2 -> Foreground and Background
 	LD	A,(#FontColor)
-	LD	(#ColorTable+03),A
+	LD	(#ColorTable+03),A		; Color table 3 -> Foreground and Foreground
 	;OPJ - Sprite Cursor added
 	JP	V9938_CursorColor
 
@@ -2145,6 +2299,206 @@ V9938_CopyBlockY:
 	JP	DO_YMMM
 
 
+V9938_CopyBlockYUp:
+;
+; A <- HowManyRows
+; B <- DestinationRow
+; C <- SourceRow
+;
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with A*8 pixels on the Y axis
+	LD	D,A						; Save NYL  in D
+	DEC	D						; Adjust for our math
+	LD	A,C						; Get Source Row
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	HL,(#VDP_23)			; Get current vertical offset
+	ADD	A,L						; Add it
+	ADD	A,D						; And add how many lines, as we are going from bottom to top, start at the last line
+	LD	(#YMMM_CMD.SYL),A		; Source Y coordinate
+	LD	H,A						; Save SYL in H
+	LD	A,B
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,L						; Add current vertical offset to it
+	ADD	A,D						; And add how many lines, as we are going from bottom to top, start at the last line
+	LD	(#YMMM_CMD.DYL),A		; To
+	; There are two possible splits here:
+	; 1st - SY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: SY as 0, DY as DY - 1st NY and NY being the remainder after carry
+	;
+	; 2nd - DY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: DY as 0, SY as SY - 1st NY and NY being the remainder after carry
+	; Need to test the 1s hypothesis
+	LD	A,H						; Source Y coordinate in A
+	SUB	A,D						; SY - NY
+	JR	C,V9938_CopyBlockYUp.DO1; If Carry, this is split case 1,do it
+	LD	A,(#YMMM_CMD.DYL)		; DY
+	SUB	A,D						; NY - DY
+	JR	C,V9938_CopyBlockYUp.DO2	; If Carry, this is split case 2,do it	
+	; Otherwise, it is a single operation so...
+	LD	A,#8
+	LD	(#YMMM_CMD.ARG),A		; Direction is Up
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	JP	DO_YMMM					; Do the single operation and YMMM will return for us	
+V9938_CopyBlockYUp.DO1:
+	; Here we are, source - number of lines will overflow
+	; Whatever is in A now is how much SY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	LD	A,#8					; Direction is Up
+	LD	(#YMMM_CMD.ARG),A		
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.SYL),A		; Second round Source
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B		
+	LD	A,(#YMMM_CMD.DYL)		; line of 1st operation destination
+	SUB	A,B						; Subtract first SYL to it 
+	LD	(#YMMM_CMD.DYL),A		; line of 2nd operation destination
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there	
+V9938_CopyBlockYUp.DO2:
+	; Here we are, destination - number of lines will overflow
+	; Whatever is in A now is how much NY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	LD	A,#8					; Direction is Up
+	LD	(#YMMM_CMD.ARG),A
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.DYL),A		; Second round To
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B
+	LD	A,(#YMMM_CMD.SYL)		; #of starting source lines of 1st operation in A
+	SUB	A,B						; Subtract both
+	LD	(#YMMM_CMD.SYL),A		; #of starting source lines of 2nd operation
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there
+
+
+V9938_CopyBlockYDown:
+;
+; A <- HowManyRows
+; B <- SourceRow
+; C <- DestinationRow
+;
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	(#YMMM_CMD.NYL),A		; Will copy a rectangle with A*8 pixels on the Y axis
+	LD	D,A						; Save NYL  in D
+	LD	A,B	
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	LD	HL,(#VDP_23)			; Get current vertical offset
+	ADD	A,L						; Add it
+	LD	(#YMMM_CMD.SYL),A		; Source Y coordinate
+	LD	E,A						; Save SYL in E
+	LD	A,C
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,L						; Add current vertical offset to it
+	LD	(#YMMM_CMD.DYL),A		; To
+	; There are two possible splits here:
+	; 1st - SY + NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: SY as 0, DY as DY + 1st NY and NY being the remainder after carry
+	;
+	; 2nd - DY + NY carry.... Then we have to split in two operations with different SY, DY and NY 
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: DY as 0, SY as SY + 1st NY and NY being the remainder after carry
+	; Need to test the 1s hypothesis
+	LD	A,E						; Source Y coordinate in A
+	ADD	A,D						; SY + NY
+	JR	C,V9938_CopyBlockYDown.DO1	; If Carry, this is split case 1,do it
+	LD	A,(#YMMM_CMD.DYL)		; DY
+	ADD	A,D						; NY + DY
+	JR	C,V9938_CopyBlockYDown.DO2	; If Carry, this is split case 2,do it	
+	; Otherwise, it is a single operation so...
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	JP	DO_YMMM					; Do the single operation and YMMM will return for us	
+V9938_CopyBlockYDown.DO1:
+	; Here we are, source + number of lines will overflow
+	; Whatever is in A now is how much SY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.SYL),A		; Second round Source
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B		
+	LD	A,(#YMMM_CMD.DYL)		; line of 1st operation destination
+	ADD	A,B						; Add first SYL to it 
+	LD	(#YMMM_CMD.DYL),A		; line of 2nd operation destination
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there	
+V9938_CopyBlockYDown.DO2:
+	; Here we are, destination + number of lines will overflow
+	; Whatever is in A now is how much NY we need to do the second time
+	LD	B,A						; Save this in B for now
+	LD	A,D						; NYL in A
+	SUB	A,B						; This is our first NYL
+	LD	(#YMMM_CMD.NYL),A		; First rectangle of split operation
+	LD	A,B						; Restore the overflow # of lines
+	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
+	XOR	A
+	LD	(#YMMM_CMD.ARG),A		; Direction is down
+	LD	A,#8					; Skip the first 16 pixels as those do not matter (our border)
+	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point
+	CALL	DO_YMMM				; Do the first operation
+	XOR	A
+	LD	(#YMMM_CMD.DYL),A		; Second round To
+	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
+	LD	B,A						; Save it in B
+	LD	A,(#YMMM_CMD.SYL)		; #of starting source lines of 1st operation in A
+	ADD	A,B						; Add both
+	LD	(#YMMM_CMD.SYL),A		; #of starting source lines of 2nd operation
+	LD	A,(#YMMM_CMD.NYL2)		; Second rectangle of split operation in A
+	OR	A						; Check if zero
+	RET	Z						; If it is, dones
+	LD	(#YMMM_CMD.NYL),A		; Save it for next YMMM, so it will be done with DY as 0, SY added w/ # of lines already copied and NYL with the remaining lines to copy
+	JP	DO_YMMM					; Do the second operation and then done, so return from there
+	
+	
 V9938_WaitCmd:
 	LD	A,#0x02
 	DI
@@ -2163,45 +2517,34 @@ V9938_WaitCmd:
 
 
 DO_HMMC:
-	CALL	V9938_WaitCmd		; Wait if any command is pending
+	EXX
 	DI
 	LD	A,#0x24					; Register 36 as value for...
 	OUT	(#0x99),A
 	LD	A,#0x91					; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
+	EI
 	LD	HL,#HMMC_CMD			; The HMMC buffer
 	LD	C,#0x9B					; And port for indirect access
-	LD	A,(HL)					; LD DXL in A
-	INC	HL
-	INC	HL						; HL pointing to DYL
-	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A						; Multiply by 2
-	OUT	(C),A					; And send DXL to #36
-	LD	A,#0x00					; DXH could be 0
-	JR	NC,DO_HMMC.DXH			; If no carry, it is 0
-	INC	A						; Otherwise it is 1
-DO_HMMC.DXH:	OUT	(C),A		; And send DXH to #37
-	LD	A,(HL)					; Load DYL in A
-	INC	HL
-	INC	HL						; HL pointing @ NXL
-	LD	B,A						; Copy DYL to B
-	LD	A,(#VDP_23)				; Get current vertical offset
-	ADD	A,B						; Add our DYL to it
-	OUT	(C),A					; Send it to #38
-	XOR	A						; DYH always 0
-	OUT	(C),A					; Send it
-	OUTI						; And now send the rest of buffer
+	CALL	V9938_WaitCmd		; Wait if any command is pending	
+	OUTI						; And now send the buffer
 	OUTI
 	OUTI
 	OUTI
 	OUTI
 	OUTI
 	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	DI
 	LD	A,#0xAC
 	OUT	(#0x99),A
 	LD	A,#0x91				
-	OUT	(#0x99),A
+	OUT	(#0x99),A				; Write to register 17 disabling auto incrementing and pointing to #44 (color register), next pixels are sent through R#44
 	EI
+	EXX
 	RET
 
 
@@ -2277,68 +2620,30 @@ DO_HMMV.ONESTEP:
 	
 ; This function is safe for a single line only, if spanning over more than one line, it might potentially miss data
 DO_HMMM:
-	CALL	V9938_WaitCmd		; Wait if any command is pending
 	DI
 	LD	A,#0x20					; Register 32 as value for...
 	OUT	(#0x99),A
 	LD	A,#0x91					; Register #17 (indirect register access auto increment)
 	OUT	(#0x99),A
+	EI
 	LD	HL,#HMMM_CMD			; The HMMC buffer
 	LD	C,#0x9B					; And port for indirect access
-	LD	A,(HL)					; LD SXL in A
-	INC	HL
-	INC	HL						; HL pointing to SYL
-	ADD	#0x08					; Add 8 to SXL (A) - Border of 16 pixels
-	ADD	A,A						; Multiply by 2
-	OUT	(C),A					; And send SXL to #32
-	LD	A,#0x00					; SXH could be 0
-	JR	NC,DO_HMMM.SXH			; If no carry, it is 0
-	INC	A						; Otherwise it is 1
-DO_HMMM.SXH:	OUT	(C),A		; And send SXH to #33
-	LD	A,(HL)					; Load SYL in A
-	INC	HL
-	INC	HL						; HL pointing @ DXL
-	LD	B,A						; Copy SYL to B
-	LD	A,(#VDP_23)				; Get current vertical offset
-	ADD	A,B						; Add our SYL to it
-	OUT	(C),A					; Send it to #34
-	XOR	A						; SYH always 0
-	OUT	(C),A					; Send it to #35
-	LD	A,(HL)					; LD DXL in A
-	INC	HL
-	INC	HL						; HL pointing to DYL
-	ADD	#0x08					; Add 8 to DXL (A) - Border of 16 pixels
-	ADD	A,A						; Multiply by 2
-	OUT	(C),A					; And send DXL to #36
-	LD	A,#0x00					; DXH could be 0
-	JR	NC,DO_HMMM.DXH			; If no carry, it is 0
-	INC	A						; Otherwise it is 1
-DO_HMMM.DXH:	OUT	(C),A		; And send DXH to #37
-	LD	A,(HL)					; Load DYL in A
-	INC	HL
-	INC	HL						; HL pointing @ DYL
-	LD	B,A						; Copy DYL to B
-	LD	A,(#VDP_23)				; Get current vertical offset
-	ADD	A,B						; Add our DYL to it
-	OUT	(C),A					; Send it to #38
-	XOR	A						; DYH always 0
-	OUT	(C),A					; Send it to #38
-	; And now send the rest of buffer,
-	OUTI						; NXL -> #40
-	OUTI						; NXH -> #41
-	OUTI						; NYL -> #42
-	OUTI						; NYH -> #43
-	; And now we skip #44 and go to#45 and #46
-	LD	A,(HL)					; Load ARG in A
-	INC	HL						; HL pointing to CMD
-	OUT	(#0x99),A				; Send it
-	LD	A,#0xAD					; #45				
-	OUT	(#0x99),A				; Send it
-	LD	A,(HL)					; Load CMD in A
-	OUT	(#0x99),A				; Send it
-	LD	A,#0xAE					; #46
-	OUT	(#0x99),A				; Send it
-	EI
+	CALL	V9938_WaitCmd		; Wait if any command is pending	
+	OUTI						; And now send the buffer
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
 	RET
 
 	
@@ -2391,6 +2696,32 @@ DO_YMMM:
 	RET
 
 	
+DO_YMMM:	
+	DI
+	LD	A,#0x22					; Register 34 as value for...
+	OUT	(#0x99),A
+	LD	A,#0x91					; Register #17 (indirect register access auto increment)
+	OUT	(#0x99),A
+	EI	
+	LD	HL,#YMMM_CMD			; The YMMM buffer
+	LD	C,#0x9B					; And port for indirect access
+	CALL	V9938_WaitCmd		; Wait if any command is pending
+	OUTI						; And now send the buffer
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	OUTI
+	RET
+
+	
 ;
 ;	DATA Portion
 ;
@@ -2409,9 +2740,9 @@ CursorCol:	.db	#0x00
 
 CursorRow:	.db	#0x00
 
-CursorVis:	.db	#0x00
-
 CursorOn:	.db	#0x00
+
+CursorUpdt:	.db	#0x00
 
 BackColor:	.db	#0x00
 
@@ -2444,9 +2775,10 @@ Parameters.PRM:	.db	#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00,#0x00
 
 ColorTable:	.db	#0x00,#0x0F,#0xF0,#0xFF
 
+SPRITEPOS.X:	.db #0x00
 
 HMMC_CMD:
-HMMC_CMD.DXL:	.db	#0x00
+HMMC_CMD.DXL:	.db	#0x10
 HMMC_CMD.DXH:	.db	#0x00
 HMMC_CMD.DYL:	.db	#0x00
 HMMC_CMD.DYH:	.db	#0x00
@@ -2485,10 +2817,12 @@ HMMM_CMD.NXL:	.db	#0x00
 HMMM_CMD.NXH:	.db	#0x00
 HMMM_CMD.NYL:	.db	#0x00
 HMMM_CMD.NYH:	.db	#0x00
+HMMM_CMD.CLR:	.db	#0x00		; HMMM doesn't use it, but it is faster to send 0 here and not stop sending incremental registers, two outs total, vs 3 outs to skip color and write inc on ARG
 HMMM_CMD.ARG:	.db	#0x00
 HMMM_CMD.CMD:	.db	#0xD0
 
 YMMM_CMD:
+<<<<<<< HEAD
 YMMM_CMD.SYL:	.db	#0x00	; R#34	
 YMMM_CMD.SYH:	.db	#0x00	; R#35
 YMMM_CMD.DXL:	.db	#0x00	; R#36
@@ -2502,6 +2836,22 @@ YMMM_CMD.NYH:	.db	#0x00	; R#43
 YMMM_CMD.R44:	.db	#0x00	; R#44
 YMMM_CMD.ARG:	.db	#0x00	; R#45
 YMMM_CMD.CMD:	.db	#0xE0	; R#46
+=======
+YMMM_CMD.SYL:	.db	#0x00		; R#34	
+YMMM_CMD.SYH:	.db	#0x00		; R#35
+YMMM_CMD.DXL:	.db	#0x00		; R#36
+YMMM_CMD.DXH:	.db	#0x00		; R#37
+YMMM_CMD.DYL:	.db	#0x00		; R#38
+YMMM_CMD.DYH:	.db	#0x00		; R#39
+YMMM_CMD.NXL:	.db	#0x00		; R#40, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.NXH:	.db	#0x00		; R#41, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.NYL:	.db	#0x00		; R#42
+YMMM_CMD.NYH:	.db	#0x00		; R#43
+YMMM_CMD.CLR:	.db	#0x00		; R#44, YMMM doesn't use but it is faster to send 0 here
+YMMM_CMD.ARG:	.db	#0x00		; R#45
+YMMM_CMD.CMD:	.db	#0xE0		; R#46
+YMMM_CMD.NYL2:	.db	#0x00		; R#42 for split operation second step
+>>>>>>> 695970e766eea6348bb974d798bdca74d1461dc9
 
 ANSI_PAL:
 	.db	#0x00,#0x00,#0x50,#0x00,#0x00,#0x05,#0x50,#0x02,#0x05,#0x00,#0x55,#0x00,#0x05,#0x05,#0x55,#0x05
