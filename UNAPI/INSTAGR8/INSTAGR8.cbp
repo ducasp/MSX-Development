@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="INSTAGR8" />
+		<Option pch_mode="2" />
+		<Option compiler="sdcc" />
+		<Build>
+			<Target title="Release">
+				<Option output="bin/Release/INSTAGR8" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="sdcc" />
+				<Compiler>
+					<Add option="--out-fmt-ihx" />
+					<Add option="--no-std-crt0" />
+					<Add option="-mz80" />
+					<Add option="--opt-code-speed" />
+					<Add option="--verbose" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196  --allow-unsafe-read" />
+					<Add directory="c:/fusion-c/fusion-c/header" />
+				</Compiler>
+				<Linker>
+					<Add option="c:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="c:/fusion-c/fusion-c/lib/fusion.lib" />
+					<Add library="c:/fusion-c/fusion-c/lib/asm.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/base64.lib" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="cmd /c ren bin\Release\INSTAGR8.exe INSTAGR8.ihx" />
+					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\INSTAGR8.ihx" />
+					<Add after="cmd /c copy bin\Release\INSTAGR8.COM c:\fusion-c\dsk /y" />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Unit filename="src/INSTAGR8.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/INSTAGR8.h" />
+		<Unit filename="src/hget.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/hget.h" />
+		<Unit filename="src/hgetlib.h" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
