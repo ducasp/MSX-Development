@@ -1,4 +1,4 @@
-; MSX2ANSI ANSI V9938 Library v.1.6
+; MSX2ANSI ANSI V9938 Library v.1.7
 ;
 ; Original Code by Tobias Keizer (ANSI-DRV.BIN)
 ; Tobias has made this great piece of code and most of what is in it has been
@@ -18,6 +18,14 @@
 ; credits to the original authors
 ;
 ; Changelog:
+;
+; v1.7:
+; OPJ - Minor improvments on unnecessary returns and unnecessary loading of
+; parameters that do not change at all
+; OPJ - Fix on LineFeed, the previous version would always return cursor column
+; to 0 on LF which was not correct
+; PK - Fix on Backspace behavior, when called as sub on the first column it was
+; not behaving properly, causing the code to wander a print garbage
 ;
 ; v1.6:
 ; OPJ - Changed the way HMMC is handled in the code, this resulted in 7% faster
@@ -226,9 +234,13 @@ BufferChar.NotCCode:
 	INC	A						; Increment it
 	LD	(#CursorCol),A			; Save
 	CP	#80						; Time to line feed?
-	JP	NC,LFeedSub				; If 80 or greater feed the line, and line feed will return to printtext loop
+	JR	NC,BufferChar.LF		; If 80 or greater feed the line, and line feed will return to printtext loop
 	; Otherwise
 	JP	V9938_SetCursorX		; Set cursor on screen, it will return from there as it is done after this
+BufferChar.LF:
+	XOR	A
+	LD	(#CursorCol),A			; Save new cursor position
+	JP	LFeedSub				; Feed the line and return from there
 BufferChar.CCode:	
 	; Check if it is a control character and do the action, otherwise print it
 	CP	#13
@@ -348,10 +360,14 @@ PrintText.RLP.NOCC:
 	INC	A						; Increment it
 	LD	(#CursorCol),A			; Save
 	CP	#80						; Time to line feed?
-	JP	NC,LineFeed				; If 80 or greater feed the line, and line feed will return to printtext loop
+	JR	NC,PrintText.RLP.LFeed	; If 80 or greater feed the line, and line feed will return to printtext loop
 	; Otherwise
 	CALL	V9938_SetCursorX	; Set cursor on screen	
 	JP	PrintText.RLP			; If up to position 80, done	
+PrintText.RLP.LFeed:
+	XOR	A
+	LD	(#CursorCol),A
+	JP	LineFeed
 PrintText.RLP.CC:	
 	; Check if it is a control character and do the action, otherwise print it
 	OR	A
@@ -854,6 +870,8 @@ ANSI_IL.CONTINUE:
 								;	(25 - Destination Row)
 	CALL	V9938_CopyBlockYUp	
 	POP	BC						; Load How many Rows
+	LD	C,B						; Put Rows in C
+	LD	B,#0					; Indicates to use background color
 	LD	A,(#CursorRow)			; From current cursor row
 	CALL	V9938_ClearBlock
 ANSI_IL.END:
@@ -893,6 +911,8 @@ ANSI_DL.CONTINUE:
 	POP	BC						; Load How many Rows
 	LD	A,#25
 	SUB	B						; Clear from the End Of Screen
+	LD	C,B						; Put Rows in C
+	LD	B,#0					; Indicates to use background color
 	CALL	V9938_ClearBlock
 ANSI_DL.END:
 	LD	HL,(#EndAddress)
@@ -1206,12 +1226,10 @@ BackSpace:
 BackSpaceSub:
 	LD	A,(#CursorCol)
 	OR	A
-	JR	Z,BackSpaceSub.END
+	RET	Z
 	DEC	A
 	LD	(#CursorCol),A
-	CALL	V9938_SetCursorX
-BackSpaceSub.END:
-	RET
+	JP	V9938_SetCursorX
 
 
 HorizontalTab:
@@ -1257,8 +1275,6 @@ LFeedSub:
 	LD	A,#24
 LFeedSub.NNL:	
 	LD	(#CursorRow),A
-	XOR	A
-	LD	(#CursorCol),A			; Cursor is back to position 0
 	CALL	V9938_SetCursorX
 	CALL	V9938_SetCursorY
 	RET
@@ -1270,8 +1286,7 @@ CarriageReturn:
 CarriageReturnSub:
 	XOR	A
 	LD	(#CursorCol),A
-	CALL	V9938_SetCursorX
-	RET
+	JP	V9938_SetCursorX
 
 
 _BIOS_C:						; BIOS_C: [IX]
@@ -1708,23 +1723,23 @@ V9938_SetCursorY:
 
 
 V9938_ClearLine:
-	LD	B,#1
+	LD	C,#1
 V9938_ClearBlock:
 ;
 ; A <- SourceRow
-; B <- Rows
+; B <- 0 fill w/ back color otherwise fill w/ border color
+; C <- Rows
 ;
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
 	LD	(#HMMV_CMD.DYL),A		; Number of lines * 8 = position of the last line
-	LD	A,B
+	LD	A,C
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
-	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with B*8 pixels on the Y axys
+	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with C*8 pixels on the Y axys
 	XOR	A
-	LD	(#HMMV_CMD.NYH),A
 	LD	(#HMMV_CMD.DXL),A
 	LD	A,#0xE0
 	LD	(#HMMV_CMD.NXL),A
@@ -1755,7 +1770,6 @@ V9938_ClearTop:
 	LD	A,#0x08
 	LD	(#HMMV_CMD.NYL),A		; Will paint a rectangle with 8 pixels on the Y axys
 	XOR	A
-	LD	(#HMMV_CMD.NYH),A
 	LD	(#HMMV_CMD.DXL),A
 	LD	A,#0xE0
 	LD	(#HMMV_CMD.NXL),A
@@ -1993,9 +2007,6 @@ V9938_ErDis0.NXH:
 	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
 	LD	A,#0x08				
 	LD	(#HMMV_CMD.NYL),A		; To clear a single line it is 8 pixels height number of dots height
-	XOR	A	 
-	LD	(#HMMV_CMD.DYH),A		; DYH 0
-	LD	(#HMMV_CMD.NYH),A		; NYH 0
 	LD	A,(#BackColor)
 	ADD	A,A
 	ADD	A,A
@@ -2017,10 +2028,8 @@ V9938_ErDis0.NXH:
 	ADD	A,A
 	ADD	A,A
 	LD	(#HMMV_CMD.NYL),A		; To clear remaining lines it is 8 pixels height multiplied by number of lines
-	XOR	A					 
-	LD	(#HMMV_CMD.NYH),A		; NYH and DXL 0
-	LD	(#HMMV_CMD.DXL),A
-	LD	(#HMMV_CMD.DYH),A		; DYH	0
+	XOR	A					 	
+	LD	(#HMMV_CMD.DXL),A		; DXL 0
 	LD	A,#0xE0					; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
 	LD	(#HMMV_CMD.NXL),A		; Store as NX lower byte
 	LD	A,#1
@@ -2058,9 +2067,6 @@ V9938_ErDis1.NXH:
 	LD	(#HMMV_CMD.DYL),A		; This is the Y axys start
 	LD	A,#0x08				
 	LD	(#HMMV_CMD.NYL),A		; To clear a single line it is 8 pixels height number of dots height
-	XOR	A
-	LD	(#HMMV_CMD.DYH),A		; DYH and NYH 0
-	LD	(#HMMV_CMD.NYH),A
 	LD	A,(#BackColor)
 	ADD	A,A
 	ADD	A,A
@@ -2079,10 +2085,8 @@ V9938_ErDis1.NXH:
 	LD	A,A
 	LD	A,A
 	LD	(#HMMV_CMD.NYL),A		; To clear remaining lines it is 8 pixels height multiplied by number of lines - 1 (which is cursor row)
-	XOR	A				
-	LD	(#HMMV_CMD.DYH),A		; DYH, DYL, DXL ,DXH  and and NYH 0
-	LD	(#HMMV_CMD.DYL),A
-	LD	(#HMMV_CMD.NYH),A
+	XOR	A					
+	LD	(#HMMV_CMD.DYL),A		; DYL, DXL ,DXH 0
 	LD	(#HMMV_CMD.DXL),A
 	LD	(#HMMV_CMD.DXH),A
 	LD	A,#0xE0					; We draw 240 double-pixels (6 pixels wide characters * 80 columns), 480 pixels, 0x01E0
@@ -2117,9 +2121,6 @@ V9938_ErChar0.NXH:
 	LD	(#HMMV_CMD.DYL),A		; Row * 8 is the Y position
 	LD	A,#0x08
 	LD	(#HMMV_CMD.NYL),A		; And delete 8 pixels in Y direction, one line
-	XOR	A
-	LD	(#HMMV_CMD.DYH),A
-	LD	(#HMMV_CMD.NYH),A		; Those two are 0
 	LD	A,(#BackColor)
 	ADD	A,A
 	ADD	A,A
@@ -2158,9 +2159,6 @@ V9938_ErLin0.NXH:
 	LD	(#HMMV_CMD.DYL),A		; This is the destination Y
 	LD	A,#0x08
 	LD	(#HMMV_CMD.NYL),A		; a line is 8 pixes, so this the Y axys lenght of the command
-	XOR	A
-	LD	(#HMMV_CMD.DYH),A
-	LD	(#HMMV_CMD.NYH),A		; both are 0
 	LD	A,(#BackColor)
 	ADD	A,A
 	ADD	A,A
@@ -2538,14 +2536,11 @@ DO_HMMV.DXH:	OUT	(C),A		; And send DXH to #37
 	OUTI
 	EI
 	;Ok, so now for the second step
-	LD	A,(#HMMV_CMD.NYL)		; NYL has the number of lines deleted so far
-	LD	B,A						; Save in B
-	LD	A,(#HMMV_CMD.DYL)		; Get the initial line
-	ADD	A,B						; Add the lines deleted
-	LD	(#HMMV_CMD.DYL),A		; New DYL, from line picking up from where NYL left
+	XOR	A						; So DY went up to 255, it will now start at 0	
+	LD	(#HMMV_CMD.DYL),A		; New DYL
 	LD	A,(#HMMV_CMD.NYL2)		; The remaining lenght at Y
 	LD	(#HMMV_CMD.NYL),A		; Now at NYL
-	JP	DO_HMMV					; And go execute the second step :)
+	JP	DO_HMMV					; And go execute the second step, that won't overflow and will exit cleanly :)
 DO_HMMV.ONESTEP:	
 	XOR	A						; DYH always 0
 	OUT	(C),A					; Send it
