@@ -1206,10 +1206,11 @@ BackSpace:
 BackSpaceSub:
 	LD	A,(#CursorCol)
 	OR	A
-	JP	Z,PrintText.RLP
+	JR	Z,BackSpaceSub.END
 	DEC	A
 	LD	(#CursorCol),A
 	CALL	V9938_SetCursorX
+BackSpaceSub.END:
 	RET
 
 
