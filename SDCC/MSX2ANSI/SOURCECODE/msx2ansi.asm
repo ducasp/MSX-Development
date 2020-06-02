@@ -2082,8 +2082,9 @@ V9938_ErDis1.NXH:
 	OR	A						; First row/line?
 	JR	Z,V9938_ErDis1.SL		; If first line, done
 	; Not first, so multiply it per 8
-	LD	A,A
-	LD	A,A
+	ADD	A,A
+	ADD	A,A
+	ADD	A,A
 	LD	(#HMMV_CMD.NYL),A		; To clear remaining lines it is 8 pixels height multiplied by number of lines - 1 (which is cursor row)
 	XOR	A					
 	LD	(#HMMV_CMD.DYL),A		; DYL, DXL ,DXH 0
@@ -2506,12 +2507,18 @@ DO_HMMV:
 	LD	A,#0x00					; DXH could be 0
 	JR	NC,DO_HMMV.DXH			; If no carry, it is 0
 	INC	A						; Otherwise it is 1
-DO_HMMV.DXH:	OUT	(C),A		; And send DXH to #37
+DO_HMMV.DXH:	
+	OUT	(C),A		; And send DXH to #37
 	LD	A,(HL)					; Load DYL in A
 	INC	HL
 	INC	HL						; HL pointing @ NXL
 	LD	B,A						; Copy DYL to B
+	LD	A,(#HMMV_CMD.NYL2)		; It's the second step?
+	OR	#0x00
 	LD	A,(#VDP_23)				; Get current vertical offset
+	JR	Z,DO_HMMV.FIRST
+	XOR	A
+DO_HMMV.FIRST:
 	ADD	A,B						; Add our DYL to it
 	OUT	(C),A					; Send it to #38
 	LD	B,A						; Copy adjusted DYL to B
@@ -2522,7 +2529,7 @@ DO_HMMV.DXH:	OUT	(C),A		; And send DXH to #37
 	JR	Z,DO_HMMV.ONESTEP		; If zero, no second step
 	LD	B,A						; This is the remainder
 	LD	A,(#HMMV_CMD.NYL)		; NYL
-	SUB A,B						; First step lenght 
+	SUB	A,B						; First step length
 	LD	(#HMMV_CMD.NYL),A		; New NYL	
 	;Now finish first step here, and follow-up with a second step
 	XOR	A						; DYH always 0
@@ -2536,11 +2543,11 @@ DO_HMMV.DXH:	OUT	(C),A		; And send DXH to #37
 	OUTI
 	EI
 	;Ok, so now for the second step
-	XOR	A						; So DY went up to 255, it will now start at 0	
+	XOR	A				; So DY went up to 255, it will now start at 0	
 	LD	(#HMMV_CMD.DYL),A		; New DYL
 	LD	A,(#HMMV_CMD.NYL2)		; The remaining lenght at Y
 	LD	(#HMMV_CMD.NYL),A		; Now at NYL
-	JP	DO_HMMV					; And go execute the second step, that won't overflow and will exit cleanly :)
+	JP	DO_HMMV				; And go execute the second step, that won't overflow and will exit cleanly :)
 DO_HMMV.ONESTEP:	
 	XOR	A						; DYH always 0
 	OUT	(C),A					; Send it
@@ -2552,6 +2559,7 @@ DO_HMMV.ONESTEP:
 	OUTI
 	OUTI
 	EI
+	LD	(#HMMV_CMD.NYL2),A		; Clear NYL2
 	RET
 	
 	
