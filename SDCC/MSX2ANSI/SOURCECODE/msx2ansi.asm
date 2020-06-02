@@ -26,6 +26,11 @@
 ; to 0 on LF which was not correct
 ; PK - Fix on Backspace behavior, when called as sub on the first column it was
 ; not behaving properly, causing the code to wander a print garbage
+; PK - Fix on ErDis1, wrong opcodes used and it was not multiplying A contents
+; PK - Fix on DO_HMMV, when doing a second pass, the second run would add the
+; line offset again in DYL, being that the value was already adjusted
+; OPJ - Ugly hack to fix Insert and Delete lines, work for now, beautyful code
+; might come in another release :)
 ;
 ; v1.6:
 ; OPJ - Changed the way HMMC is handled in the code, this resulted in 7% faster
@@ -837,7 +842,6 @@ ANSI_EL:						; ANSI Erase in Line
 	CP	#2
 	JP	Z,V9938_ErLin2
 	JP	V9938_ErLin0
-
 
 ANSI_IL:
 	LD	A,B
@@ -2246,6 +2250,38 @@ V9938_CopyBlockYUp:
 ; B <- DestinationRow
 ; C <- SourceRow
 ;
+; Not really proud of this code, but gonna do for this moment
+; There is a possibility of two splits on YMMM of large blocks, one for destination and other
+; for source. When both occur at the same time, YMMM code is not handling it properly. And it
+; might take a while until I figure out a sane way to do this, so, for the moment, we do it
+; every line, as this guarantees that only one of them will cross boundaries, not beautiful
+; but it works
+	PUSH DE						; Save it, we are gonna mess w/ it and not sure if other code depends on it
+	DEC	A						; As it is up, we need to adjust source and dest to figure out the last of each one
+	LD	D,A						; Save as we are going to re-use it
+	ADD	A,B						; A now has the last destination row
+	LD	B,A						; and save it back to B
+	LD	A,D						; Back with the value in A
+	ADD	A,C						; A now has the last source row
+	LD	C,A						; and save it back to C
+	LD	A,D						; Back wit how many rows - 1
+	INC	A						; How many rows again
+	POP	DE						; Restore DE
+V9938_CopyBlockYUp.1:
+	PUSH	AF					; Save registers, those are going to be messed in CopyBlockYUpLine
+	PUSH	BC
+	LD	A,#1					; We are going to do line per line
+	CALL	V9938_CopyBlockYUpLine
+	POP	BC						; Restore Dest and Source
+	POP	AF						; Restore how many lines
+	DEC	A						; Decrease how many lines
+	RET	Z						; If no more lines, done
+	DEC	B						; Otherwise, next destination line
+	DEC	C						; Next source line to copy
+	JP	V9938_CopyBlockYUp.1	; Wash, Rinse and repeat.... :-P
+
+
+V9938_CopyBlockYUpLine:
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
@@ -2268,7 +2304,7 @@ V9938_CopyBlockYUp:
 	ADD	A,L						; Add current vertical offset to it
 	ADD	A,D						; And add how many lines, as we are going from bottom to top, start at the last line
 	LD	(#YMMM_CMD.DYL),A		; To
-	; There are two possible splits here:
+	; There are three possible splits here:
 	; 1st - SY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
 	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
 	;		2nd operation will be: SY as 0, DY as DY - 1st NY and NY being the remainder after carry
@@ -2276,18 +2312,26 @@ V9938_CopyBlockYUp:
 	; 2nd - DY - NY carry.... Then we have to split in two operations with different SY, DY and NY 
 	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
 	;		2nd operation will be: DY as 0, SY as SY - 1st NY and NY being the remainder after carry
-	; Need to test the 1s hypothesis
+	;
+	; 3rd - 1st and 2nd at the same time.... Then we have to split in three operations with different SY, DY and NY 
+	;		First need to figure out which operation will overlap first, DY or NY
+	;		
+	;		1st operation will be: SY and DY as is with NY being the NY - remainder after carry
+	;		2nd operation will be: DY as 0, SY as SY - 1st NY and NY being the remainder after carry
+	;
+	; Need to test the 1st hypothesis
 	LD	A,H						; Source Y coordinate in A
 	SUB	A,D						; SY - NY
 	JR	C,V9938_CopyBlockYUp.DO1; If Carry, this is split case 1,do it
 	LD	A,(#YMMM_CMD.DYL)		; DY
 	SUB	A,D						; NY - DY
-	JR	C,V9938_CopyBlockYUp.DO2	; If Carry, this is split case 2,do it	
+	; If Carry, this is split case 2,do it
+	JR	C,V9938_CopyBlockYUp.DO2
 	; Otherwise, it is a single operation so...
 	LD	A,#8
 	LD	(#YMMM_CMD.ARG),A		; Direction is Up
 	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
-	JP	DO_YMMM					; Do the single operation and YMMM will return for us	
+	JP	DO_YMMM					; Do the single operation and YMMM will return for us
 V9938_CopyBlockYUp.DO1:
 	; Here we are, source - number of lines will overflow
 	; Whatever is in A now is how much SY we need to do the second time
@@ -2298,13 +2342,13 @@ V9938_CopyBlockYUp.DO1:
 	LD	A,B						; Restore the overflow # of lines
 	LD	(#YMMM_CMD.NYL2),A		; Second rectangle of split operation
 	LD	A,#8					; Direction is Up
-	LD	(#YMMM_CMD.ARG),A		
+	LD	(#YMMM_CMD.ARG),A
 	LD	(#YMMM_CMD.DXL),A		; And this is our X starting source point as well
 	CALL	DO_YMMM				; Do the first operation
 	XOR	A
 	LD	(#YMMM_CMD.SYL),A		; Second round Source
 	LD	A,(#YMMM_CMD.NYL)		; #of lines of 1st operation in A
-	LD	B,A						; Save it in B		
+	LD	B,A						; Save it in B
 	LD	A,(#YMMM_CMD.DYL)		; line of 1st operation destination
 	SUB	A,B						; Subtract first SYL to it 
 	LD	(#YMMM_CMD.DYL),A		; line of 2nd operation destination
@@ -2346,6 +2390,27 @@ V9938_CopyBlockYDown:
 ; B <- SourceRow
 ; C <- DestinationRow
 ;
+;
+; Not really proud of this code, but gonna do for this moment
+; There is a possibility of two splits on YMMM of large blocks, one for destination and other
+; for source. When both occur at the same time, YMMM code is not handling it properly. And it
+; might take a while until I figure out a sane way to do this, so, for the moment, we do it
+; every line, as this guarantees that only one of them will cross boundaries, not beautiful
+; but it works
+	PUSH	AF					; Save registers, those are going to be messed in CopyBlockYUpLine
+	PUSH	BC
+	LD	A,#1					; We are going to do line per line
+	CALL	V9938_CopyBlockYDownLine
+	POP	BC						; Restore Dest and Source
+	POP	AF						; Restore how many lines
+	DEC	A						; Decrease how many lines
+	RET	Z						; If no more lines, done
+	INC	B						; Otherwise, next destination line
+	INC	C						; Next source line to copy
+	JP	V9938_CopyBlockYDown	; Wash, Rinse and repeat.... :-P
+
+
+V9938_CopyBlockYDownLine:
 	ADD	A,A
 	ADD	A,A
 	ADD	A,A
@@ -2514,7 +2579,7 @@ DO_HMMV.DXH:
 	INC	HL						; HL pointing @ NXL
 	LD	B,A						; Copy DYL to B
 	LD	A,(#HMMV_CMD.NYL2)		; It's the second step?
-	OR	#0x00
+	OR	A
 	LD	A,(#VDP_23)				; Get current vertical offset
 	JR	Z,DO_HMMV.FIRST
 	XOR	A
@@ -2542,13 +2607,13 @@ DO_HMMV.FIRST:
 	OUTI
 	OUTI
 	EI
-	;Ok, so now for the second step
-	XOR	A				; So DY went up to 255, it will now start at 0	
+	; Ok, so now for the second step
+	XOR	A						; So DY went up to 255, it will now start at 0	
 	LD	(#HMMV_CMD.DYL),A		; New DYL
 	LD	A,(#HMMV_CMD.NYL2)		; The remaining lenght at Y
 	LD	(#HMMV_CMD.NYL),A		; Now at NYL
-	JP	DO_HMMV				; And go execute the second step, that won't overflow and will exit cleanly :)
-DO_HMMV.ONESTEP:	
+	JP	DO_HMMV					; And go execute the second step, that won't overflow and will exit cleanly :)
+DO_HMMV.ONESTEP:
 	XOR	A						; DYH always 0
 	OUT	(C),A					; Send it
 	OUTI						; And now send the rest of buffer
@@ -2561,8 +2626,8 @@ DO_HMMV.ONESTEP:
 	EI
 	LD	(#HMMV_CMD.NYL2),A		; Clear NYL2
 	RET
-	
-	
+
+
 ; This function is safe for a single line only, if spanning over more than one line, it might potentially miss data
 DO_HMMM:
 	DI
@@ -2590,9 +2655,9 @@ DO_HMMM:
 	OUTI
 	OUTI
 	RET
-	
-	
-DO_YMMM:	
+
+
+DO_YMMM:
 	DI
 	LD	A,#0x22					; Register 34 as value for...
 	OUT	(#0x99),A
@@ -2617,12 +2682,12 @@ DO_YMMM:
 	OUTI
 	RET
 
-	
+
 ;
 ;	DATA Portion
 ;
 ;	This is where our data is defined
-;	
+;
 
 OrgAddress:	.dw	#0x0000
 
@@ -2720,7 +2785,7 @@ HMMM_CMD.ARG:	.db	#0x00
 HMMM_CMD.CMD:	.db	#0xD0
 
 YMMM_CMD:
-YMMM_CMD.SYL:	.db	#0x00		; R#34	
+YMMM_CMD.SYL:	.db	#0x00		; R#34
 YMMM_CMD.SYH:	.db	#0x00		; R#35
 YMMM_CMD.DXL:	.db	#0x00		; R#36
 YMMM_CMD.DXH:	.db	#0x00		; R#37
