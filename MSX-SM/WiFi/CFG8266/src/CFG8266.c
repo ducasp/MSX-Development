@@ -1,12 +1,12 @@
 /*
 --
 -- CFG8266.c
---   Set-up the WiFi module of your MSX-SM.
---   Revision 1.00
+--   Set-up the WiFi module of your MSX-SM / SM-X.
+--   Revision 1.10
 --
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
+-- Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -37,88 +37,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "msx_fusion.h"
-#include "io.h"
-#include "asm.h"
+#include "../../fusion-c/header/msx_fusion.h"
+#include "../../fusion-c/header/io.h"
+#include "../../fusion-c/header/asm.h"
+#include "CFG8266.h"
 
-#define bool unsigned char
-#define true 1
-#define false 0
-
-//#define DEBUG_RS232
-
-typedef struct AP {
-   char APName[33]; //Per specs up to 32 characters
-   unsigned char isEncrypted; //0 if open, 1 if encrypted // pwd needed
-} AP;
-
-//I/O made simple...
-__sfr __at 0x06 myPort6; //reading this is same as IN and writing same as out, without extra instructions
-                         //when using Inport and Outport from Fusion-C
-__sfr __at 0x07 myPort7; //reading this is same as IN and writing same as out, without extra instructions
-                         //when using Inport and Outport from Fusion-C
-//This variable will hold JIFFY value, that is increased every VDP interrupt,
-//that means usually it will be increased 60 (NTSC/PAL-M) or 50 (PAL) times
-//every second
-__at 0xFC9E unsigned int TickCount;
-
-#define ClearUartData() myPort6 = 20
-
-/*
--- GetUARTData - Receive a byte from ESP8266
---
--- Input - none
--- Return - one byte from the FIFO
---
--- This function should only be used after checking that there is data in
--- the FIFO with UartRXData. Otherwise, you will get junk if the FIFO is
--- empty.
-*/
-#ifndef DEBUG_RS232
-#define GetUARTData() myPort6
-#else
-unsigned char GetUARTData()
-{
-    unsigned char uchRet;
-    uchRet = myPort6;
-    printf ("{%x}",uchRet);
-    return uchRet;
-}
-#endif
-/*
--- UartRXData - Check if UART FIFO has data available
---
--- Input - none
--- Return - 0 if UART FIFO is empty
---          1 if UART FIFO has data
---
-*/
-#define UartRXData() myPort7&1 ? 1 : 0
-
-const char responseReady[7] = {'R','e','a','d','y',0x0d,0x0a};
-const char endUpdate[2] = {'E',0};
-const char certificateDone[2] = {'I',0};
-const char responseOK[2] = {'O','K'};
-const char scanResponse[2] = {'S',0};
-const char nagleonResponse[2] = {'D',0};
-const char nagleoffResponse[2] = {'N',0};
-const char scanresResponse[2] = {'s',0};
-const char apconfigurationResponse[2] = {'A',0};
-const char responseRSFWUpdate[2] = {'Z',0};
-const char responseRSCERTUpdate[2] = {'Y',0};
-const char responseWRBlock[2] = {'z',0};
-const char responseOTAFW[2] = {'U',0};
-const char responseOTASPIFF[2] = {'u',0};
-const char strUsage[] = "Usage: CFG8266 /s to scan networks and choose one to connect\n\n       CFG8266 /n to turn off Nagle Algorithm (default) or /m to turn it on\n\n       CFG8266 CERTFILE /c to update ESP8266 firmware locally\n\n       CFG8266 FWFILE to update ESP8266 firmware locally\n\n       CFG8266 /u SERVER PORT FILEPATH to update ESP8266 firmware remotely\n\n       CFG8266 /c SERVER PORT FILEPATH to update TLS certificates remotely\nEx.:   CFG8266 /u 192.168.31.1 80 /fw/fw.bin";
-unsigned char ucScan;
-unsigned char ucServer[256];
-unsigned char ucFile[256];
-unsigned char ucPort[6];
-unsigned int uiPort;
-long lPort;
-unsigned char ucLocalUpdate;
-unsigned char ucIsFw;
-unsigned char ucNagleOff,ucNagleOn;
 
 // This function read from the disk and return how many bytes have been read
 unsigned int MyRead (int Handle, unsigned char* Buffer, unsigned int Size)
@@ -160,6 +83,16 @@ unsigned int IsValidInput (char**argv, int argc)
                     ucNagleOff = 1;
                 else if ((Input[0]=='/')&&((Input[1]=='m')||(Input[1]=='M')))
                     ucNagleOn = 1;
+                else if ((Input[0]=='/')&&((Input[1]=='o')||(Input[1]=='O')))
+                    ucRadioOff = 1;
+                else if ((Input[0]=='/')&&((Input[1]=='t')||(Input[1]=='T')))
+                {
+                    ucSetTimeout = 1;
+                    Input = (unsigned char*)argv[1];
+                    uiTimeout = atoi (Input);
+                    if (uiTimeout > 600)
+                        uiTimeout = 600;
+                }
                 else
                 {
                     strcpy (ucFile,Input);
@@ -286,29 +219,36 @@ char *ultostr(unsigned long value, char *ptr, int base)
   return(ptr);
 }
 
-bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int uiTimeout, bool bVerbose)
+bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int Timeout, bool bVerbose, bool bShowReceivedData)
 {
     bool bReturn = false;
     unsigned char rx_data;
-    unsigned char Leaping;
-	unsigned int Timeout;
+	unsigned int Timeout2;
 	unsigned int ResponseSt = 0;
 	unsigned char advance[4] = {'-','\\','|','/'};
 	unsigned int i = 0;
 
+	if (bShowReceivedData)
+    {
+        printf ("Waiting for: ");
+        for (i=0;i<uiDataSize;++i)
+            printf("%c",uchData[i]);
+        printf (" / ");
+        for (i=0;i<uiDataSize;++i)
+            printf("{%x}",uchData[i]);
+        printf ("\r\n");
+        i = 0;
+    }
     //Command sent, done, just wait response
     TickCount = 0;
-    Timeout = TickCount + uiTimeout; //Wait up to 5 minutes
-    if (Timeout<TickCount) //Leaping?
-        Leaping = 1;
-    else
-        Leaping = 0;
+    Timeout2 = TickCount + Timeout; //Wait up to 5 minutes
+
     ResponseSt=0;
-    if (uiTimeout>900)
+    if (Timeout>900)
         PrintChar('W');
     do
     {
-        if (uiTimeout>900)
+        if (Timeout>900)
         {
             //Our nice animation to show we are not stuck
             PrintChar(8); //backspace
@@ -318,8 +258,11 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
         if(UartRXData())
         {
             rx_data = GetUARTData();
+
             if (rx_data == uchData[ResponseSt])
             {
+                if (bShowReceivedData)
+                    printf ("{%x}",rx_data);
                 ++ResponseSt;
                 if (ResponseSt == uiDataSize)
                 {
@@ -329,6 +272,8 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
             }
             else
             {
+                if ((ResponseSt)&&(bShowReceivedData))
+                    printf ("{%x} != [%x]",rx_data,uchData[ResponseSt]);
                 if ((uiDataSize==2)&&(ResponseSt==1))
                 {
                     if (bVerbose)
@@ -339,18 +284,8 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
             }
         }
 
-        if (Leaping)
-        {
-            if (TickCount&0x8000==0)
-            {
-                Leaping = 0;
-                if (TickCount>Timeout)
-                    break;
-            }
-        }
-        else
-            if (TickCount>Timeout)
-                break;
+        if (TickCount>Timeout2)
+            break;
     }
     while (1);
 
@@ -365,7 +300,7 @@ void FinishUpdate (bool bSendReset)
 	unsigned char ucRetries = 2;
 	bool bReset = bSendReset;
 
-	Print("Finishing flash, this will take some time, WAIT!\n");
+	printf("\rFinishing flash, this will take some time, WAIT!\r\n");
 
 	do
     {
@@ -380,7 +315,7 @@ void FinishUpdate (bool bSendReset)
                 for (uchHalt=60;uchHalt>0;--uchHalt)
                     Halt();
                 TxByte('E'); //End Update
-                bRet = WaitForRXData(endUpdate,2,900,true);
+                bRet = WaitForRXData(endUpdate,2,1800,true,false);
                 iRetries--;
             }
             while ((!bRet)&&(iRetries));
@@ -391,44 +326,44 @@ void FinishUpdate (bool bSendReset)
         }
 
         if (!bRet)
-            Print("Timeout waiting to end update...\n");
+            printf("\rTimeout waiting to end update...\r\n");
         else
         {
             if (ucRetries)
             {
                 if (ucIsFw)
-                    Print("\nFirmware Update done, ESP is restarting, WAIT...\n");
+                    printf("\rFirmware Update done, ESP is restarting, WAIT...\r\n");
                 else
-                    Print("\nCertificates Update done, ESP is restarting, WAIT...\n");
+                    printf("\rCertificates Update done, ESP is restarting, WAIT...\r\n");
             }
 
-            if (WaitForRXData(responseReady,7,2700,false)) //Wait up to 45 seconds
+            if (WaitForRXData(responseReady2,7,2700,false,false)) //Wait up to 45 seconds
             {
                 if (!ucIsFw)
                 {
-                    Print("ESP Reset Ok, now let's request creation of index file...\n");
+                    printf("\rESP Reset Ok, now let's request creation of index file...\r\n");
                     iRetries = 10;
                     do
                     {
                         for (uchHalt=60;uchHalt>0;--uchHalt)
                             Halt();
                         TxByte('I'); //End Update
-                        bRet = WaitForRXData(certificateDone,2,3600,false); //Wait up to 1 minute, certificate index creation takes time
+                        bRet = WaitForRXData(certificateDone,2,3600,false,false); //Wait up to 1 minute, certificate index creation takes time
                         iRetries--;
                     }
                     while ((!bRet)&&(iRetries));
                     if (bRet)
-                        Print("Done!\n");
+                        printf("\rDone!                                \r\n");
                     else
-                        Print("Done, but time-out on creating certificates index file!\n");
+                        printf("\rDone, but time-out on creating certificates index file!\r\n");
                 }
                 else
-                    Print("Done!\n");
+                    printf("\rDone!                              \r\n");
                 break;
             }
             else
                 if (!ucRetries)
-                    Print("Timeout error\n");
+                    printf("\rTimeout error\r\n");
         }
     }
     while (ucRetries);
@@ -460,11 +395,16 @@ int main(char** argv, int argc)
     bool bResponse = false;
     unsigned char ucRetries;
     unsigned char ucHalt;
+    unsigned char ucTimeOutMSB;
+    unsigned char ucTimeOutLSB;
 
     ucLocalUpdate = 0;
     ucNagleOff = 0;
     ucNagleOn = 0;
-	Print("> MSX-SM ESP8266 WIFI Module Configuration v1.00<\n(c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com\n\n");
+    ucRadioOff = 0;
+    ucSetTimeout = 0;
+
+	printf("> SM-X ESP8266 WIFI Module Configuration v1.10 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
 
     if (IsValidInput(argv, argc))
     {
@@ -476,7 +416,7 @@ int main(char** argv, int argc)
             TxByte('?');
             Halt();
 
-            bResponse = WaitForRXData(responseOK,2,4,false);
+            bResponse = WaitForRXData(responseOK,2,60,false,false);
 
             if (bResponse)
                 break; //found speed which ESP replied
@@ -487,21 +427,42 @@ int main(char** argv, int argc)
         if (speed<10)
         {
             printf ("Using Baud Rate #%u\r\n",speed);
-            if ((ucScan)||(ucNagleOff)||(ucNagleOn)) //Scan and choose network to connect?
+            if ((ucScan)||(ucNagleOff)||(ucNagleOn)||(ucRadioOff)||(ucSetTimeout))
             {
+                //Scan and choose network to connect
                 if (ucScan)
                     TxByte('S'); //Request SCAN
                 else if (ucNagleOff)
                     TxByte('N'); //Request nagle off for future connections
                 else if (ucNagleOn)
                     TxByte('D'); //Request nagle on for future connections
+                else if (ucRadioOff)
+                    TxByte('O'); //Request to turn off wifi radio immediately
+                else if (ucSetTimeout)
+                {
+                    ucTimeOutMSB = ((unsigned char)((uiTimeout&0xff00)>>8));
+                    ucTimeOutLSB = ((unsigned char)(uiTimeout&0xff));
+                    if (uiTimeout)
+                        printf("\r\nSetting WiFi idle timeout to %u...\r\n",uiTimeout);
+                    else
+                        printf("\r\nSetting WiFi to always on!\r\n");
+                    TxByte('T'); //Request to set time-out
+                    TxByte(0);
+                    TxByte(2);
+                    TxByte(ucTimeOutMSB);
+                    TxByte(ucTimeOutLSB);
+                }
 
                 if (ucScan)
-                    bResponse = WaitForRXData(scanResponse,2,4,true);
+                    bResponse = WaitForRXData(scanResponse,2,60,true,false);
                 else if (ucNagleOff)
-                    bResponse = WaitForRXData(nagleoffResponse,2,4,true);
+                    bResponse = WaitForRXData(nagleoffResponse,2,60,true,false);
                 else if (ucNagleOn)
-                    bResponse = WaitForRXData(nagleonResponse,2,4,true);
+                    bResponse = WaitForRXData(nagleonResponse,2,60,true,false);
+                else if (ucRadioOff)
+                    bResponse = WaitForRXData(radioOffResponse,2,60,true,false);
+                else if (ucSetTimeout)
+                    bResponse = WaitForRXData(responseRadioOnTimeout,2,60,true,false);
 
 
                 if ((bResponse)&&(ucScan))
@@ -513,7 +474,7 @@ int main(char** argv, int argc)
                         for (ucHalt = 60;ucHalt>0;--ucHalt)
                             Halt();
                         TxByte('s'); //Request SCAN result
-                        bResponse = WaitForRXData(scanresResponse,2,10,false); //Wait up to 10 ticks
+                        bResponse = WaitForRXData(scanresResponse,2,60,false,false); //Wait up to 60 ticks
                     }
                     while ((ucRetries)&&(!bResponse));
 
@@ -525,7 +486,7 @@ int main(char** argv, int argc)
                         if (ucAPs>10)
                             ucAPs=10;
                         tx_data = 0;
-                        Print ("\n");
+                        printf ("\r\n");
                         do
                         {
                             ucIndex = 0;
@@ -543,7 +504,7 @@ int main(char** argv, int argc)
                         }
                         while (tx_data!=ucAPs);
                         ClearUartData();
-                        Print("Choose AP:\n\n");
+                        printf("Choose AP:\r\n\n");
                         for (ucIndex=0;ucIndex<ucAPs;ucIndex++)
                         {
                             printf("%u - %s",ucIndex,stAP[ucIndex].APName);
@@ -552,27 +513,25 @@ int main(char** argv, int argc)
                             else
                                 printf(" (OPEN)\r\n");
                         }
-                        Print("\nWhich one to connect? (ESC exit)");
-                        tx_data = 0;
+                        printf("\r\nWhich one to connect? (ESC exit)");
+
                         do
                         {
-                            if (KeyboardHit())
-                            {
-                                tx_data = InputChar ();
-                            }
+                            tx_data = Inkey ();
                             if (tx_data==0x1b)
                                 break;
                         }
                         while ((tx_data<'0')||(tx_data>'9'));
                         if (tx_data!=0x1b)
                         {
+                            printf(" %c\r\n",tx_data);
                             ucIndex = tx_data-'0';
                             if (stAP[ucIndex].isEncrypted)
                             {
                                 //GET AP password
-                                Print("\nPassword? ");
+                                printf("Password? ");
 								InputString(ucPWD,64);
-								Print("\n");
+								printf("\r\n");
                             }
                             uiCMDLen = strlen(stAP[ucIndex].APName) + 1;
                             if (stAP[ucIndex].isEncrypted)
@@ -603,30 +562,46 @@ int main(char** argv, int argc)
                             }
 
                             //Command sent, done, just wait response
-                            bResponse = WaitForRXData(apconfigurationResponse,2,300,true); //Wait up to 5s
+                            bResponse = WaitForRXData(apconfigurationResponse,2,300,true,false); //Wait up to 5s
                             if (bResponse)
-                                Print ("Success, AP configured to be used.\n");
+                                printf("Success, AP configured to be used.\r\n");
                             else
-                                Print ("Error, AP not configured!\n");
+                                printf("Error, AP not configured!\r\n");
                         }
                         else
-                            Print("User canceled by ESC key...\n");
+                            printf("User canceled by ESC key...\r\n");
                     }
                     else
-                        Print ("Scan results: no answer...\n");
+                        printf("Scan results: no answer...\r\n");
                 }
                 else
                 {
                     if (ucScan)
-                        Print ("Scan request: no answer...\n");
+                        printf ("\rScan request: no answer...\n");
                     else if (((ucNagleOff)||(ucNagleOn))&&(bResponse))
                     {
-                        Print ("Nagle set as requested...\n");
+                        printf("\rNagle set as requested...\n");
                         return 0;
                     }
-                    else
+                    else if ((ucNagleOff)||(ucNagleOn))
                     {
-                        Print ("Nagle not set as requested, error!\n");
+                        printf("\rNagle not set as requested, error!\n");
+                        return 0;
+                    }
+                    else if (ucRadioOff)
+                    {
+                        if (bResponse)
+                            printf("\rRequested to turn off WiFi Radio...\n");
+                        else
+                            printf("\rRequest to turnoff WiFi Radio error!\n");
+                        return 0;
+                    }
+                    else if (ucSetTimeout)
+                    {
+                        if (bResponse)
+                            printf("\rWiFi radio on Time-out set successfully...\n");
+                        else
+                            printf("\rError setting WiFi radio on Time-out!\n");
                         return 0;
                     }
                 }
@@ -685,9 +660,9 @@ int main(char** argv, int argc)
                                 TxByte(ucServer[3]);
 
                                 if (ucIsFw)
-                                    bResponse = WaitForRXData(responseRSFWUpdate,2,60,true);
+                                    bResponse = WaitForRXData(responseRSFWUpdate,2,60,true,false);
                                 else
-                                    bResponse = WaitForRXData(responseRSCERTUpdate,2,60,true);
+                                    bResponse = WaitForRXData(responseRSCERTUpdate,2,60,true,false);
 
                                 if (!bResponse)
                                     printf("Error requesting to start firmware update.\r\n");
@@ -705,7 +680,7 @@ int main(char** argv, int argc)
                                             FileRead = MyRead(iFile, ucServer,256); //try to read 256 bytes of data
                                             if (FileRead ==0)
                                             {
-                                                printf("Error reading file...\r\n");
+                                                printf("\rError reading file...\r\n");
                                                 break;
                                             }
                                         }
@@ -718,11 +693,11 @@ int main(char** argv, int argc)
                                         for (ii=0;ii<256;ii++)
                                             TxByte(ucServer[ii]);
 
-                                        bResponse = WaitForRXData(responseWRBlock,2,600,true);
+                                        bResponse = WaitForRXData(responseWRBlock,2,600,true,false);
 
                                         if (!bResponse)
                                         {
-                                            printf("Error requesting to write firmware block.\r\n");
+                                            printf("\rError requesting to write firmware block.\r\n");
                                             break;
                                         }
                                         SentFileSize = SentFileSize - FileRead;
@@ -735,7 +710,7 @@ int main(char** argv, int argc)
                                 }
                             }
                             else
-                                Print("Error reading firmware file!\n");
+                                Print("\rError reading firmware file!\n");
                             Close(iFile);
                         }
                         else
@@ -794,142 +769,28 @@ int main(char** argv, int argc)
                 while(uiCMDLen);
 
                 if (ucIsFw)
-                    bResponse = WaitForRXData(responseOTAFW,2,18000,true);
+                    bResponse = WaitForRXData(responseOTAFW,2,18000,true,false);
                 else
-                    bResponse = WaitForRXData(responseOTASPIFF,2,18000,true);
+                    bResponse = WaitForRXData(responseOTASPIFF,2,18000,true,false);
 
                 if (bResponse)
                 {
                     if ((!ucIsFw))
-                        Print ("Success updating certificates!\n");
+                        printf("\rSuccess updating certificates!\r\n");
                     else
-                        Print ("Success, firmware updated, wait a minute so it is fully flashed.\n");
+                        printf("\rSuccess, firmware updated, wait a minute so it is fully flashed.\r\n");
                     FinishUpdate(true);
                     return 0;
                 }
                 else
-                    Print ("Failed to update from remote server...\n");
-
-                /*
-                PrintChar('W');
-                //Command sent, done, just wait response
-                TickCount = 0;
-                Timeout = TickCount + 18000; //Wait up to 5 minutes
-                if (Timeout<TickCount) //Leaping?
-                    Leaping = 1;
-                else
-                    Leaping = 0;
-                ResponseSt=0;
-                do
-                {
-                    //Our nice animation to show we are not stuck
-                    PrintChar(8); //backspace
-                    PrintChar(advance[i%4]); // next char
-                    ++i;
-                    if(UartRXData())
-                    {
-                        rx_data = GetUARTData();
-                        switch (ResponseSt)
-                        {
-                            case 0:
-                            {
-                                if (((ucIsFw)&&(rx_data=='U'))||((!ucIsFw)&&(rx_data=='u')))
-                                    ++ResponseSt;
-                                else
-                                {
-                                    if (rx_data=='R')
-                                        ResponseSt = 10;
-                                    else
-                                        ResponseSt=0;
-                                }
-                            }
-                            break;
-                            case 1:
-                            {
-                                if (rx_data==0)
-                                {
-                                    if (!ucIsFw)
-                                    {
-                                        Print ("Success updating certificates!\n");
-                                        FinishUpdate(true);
-                                        return 0;
-                                    }
-                                    else
-                                        Print ("Success, firmware updated, wait a minute so it is fully flashed.\n");
-                                }
-                                else
-                                {
-                                    if (rx_data!='N')
-                                    {
-                                        Print ("Error!\n");
-                                        return 0;
-                                    }
-                                    else
-                                        ResponseSt=0; //probably reseting and printing UNAPI
-                                }
-
-                            }
-                            break;
-                            case 10:
-                            {
-                                if (rx_data=='e')
-                                    ResponseSt = 11;
-                                else
-                                    ResponseSt=0;
-                            }
-                            break;
-                            case 11:
-                            {
-                                if (rx_data=='a')
-                                    ResponseSt = 12;
-                                else
-                                    ResponseSt=0;
-                            }
-                            break;
-                            case 12:
-                            {
-                                if (rx_data=='d')
-                                    ResponseSt = 13;
-                                else
-                                    ResponseSt=0;
-                            }
-                            break;
-                            case 13:
-                            {
-                                if (rx_data=='y')
-                                {
-                                    Print ("Success, firmware updated and rebooted.\n");
-                                    return 0;
-                                }
-                                else
-                                    ResponseSt=0;
-                            }
-                            break;
-                        }
-                    }
-                    if (Leaping)
-                    {
-                        if (TickCount&0x8000==0)
-                        {
-                            Leaping = 0;
-                            if (TickCount>Timeout)
-                                break;
-                        }
-                    }
-                    else
-                        if (TickCount>Timeout)
-                            break;
-                }
-                while (1);
-                Print("Timeout error\n");
-                */
+                    printf("\rFailed to update from remote server...\r\n");
             }
         }
         else
-            Print("ESP device not found...\n");
+            printf("ESP device not found...\r\n");
     }
     else
-        Print(strUsage);
+        printf(strUsage);
 
 	return 0;
 }

@@ -7,9 +7,17 @@
 	"io.h"
 	"asm.h"
 
-1545471510 c:\fusion-c\fusion-c\header\msx_fusion.h
+1586443156 c:\fusion-c\fusion-c\header\msx_fusion.h
 
-1543147542 c:\fusion-c\fusion-c\header\io.h
+1586876346 c:\fusion-c\fusion-c\header\io.h
 
 1266942264 c:\fusion-c\fusion-c\header\asm.h
+
+1591573835 source:c:\ducasp_git\msx-development\msx-sm\wifi\cfg8266\src\cfg8266.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"../../fusion-c/header/msx_fusion.h"
+	"../../fusion-c/header/io.h"
+	"../../fusion-c/header/asm.h"
 

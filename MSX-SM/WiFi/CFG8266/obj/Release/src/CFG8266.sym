@@ -8,91 +8,105 @@ Symbol Table
     .__.CPU.                                                    =  0000 L
     .__.H$L.                                                    =  0000 L
     _Close                                                         **** GX
+  0 _Done_Version                                                  006E R
     _DosCall                                                       **** GX
-  0 _FinishUpdate                                                  094F GR
-    _InputChar                                                     **** GX
+  0 _FinishUpdate                                                  0A23 GR
+    _Inkey                                                         **** GX
     _InputString                                                   **** GX
-  0 _IsValidInput                                                  0370 GR
-    _KeyboardHit                                                   **** GX
-  0 _MyRead                                                        0117 GR
+  0 _IsValidInput                                                  034A GR
+  0 _MyRead                                                        0000 GR
     _Open                                                          **** GX
     _Print                                                         **** GX
     _PrintChar                                                     **** GX
     _TickCount                                                  =  FC9E G
-  0 _TxByte                                                        05E8 GR
-  0 _WaitForRXData                                                 07AA GR
+  0 _TxByte                                                        060D GR
+  0 _WaitForRXData                                                 07C8 GR
     ___sdcc_enter_ix                                               **** GX
-  0 ___str_1                                                       0933 R
-  0 ___str_10                                                      1786 R
-  0 ___str_11                                                      17EC R
-  0 ___str_12                                                      1802 R
-  0 ___str_13                                                      1804 R
-  0 ___str_14                                                      1811 R
-  0 ___str_16                                                      1819 R
-  0 ___str_18                                                      1821 R
-  0 ___str_19                                                      182A R
-  0 ___str_2                                                       0AA2 R
-  0 ___str_20                                                      184C R
-  0 ___str_21                                                      1858 R
-  0 ___str_22                                                      187C R
-  0 ___str_23                                                      1897 R
-  0 ___str_24                                                      18B4 R
-  0 ___str_25                                                      18D0 R
-  0 ___str_26                                                      18EC R
-  0 ___str_27                                                      1907 R
-  0 ___str_28                                                      192B R
-  0 ___str_3                                                       0AD4 R
-  0 ___str_30                                                      1940 R
-  0 ___str_32                                                      196C R
-  0 ___str_34                                                      1983 R
-  0 ___str_35                                                      19AE R
-  0 ___str_36                                                      19CC R
-  0 ___str_37                                                      19EA R
-  0 ___str_38                                                      1A09 R
-  0 ___str_39                                                      1A72 R
-  0 ___str_4                                                       0AF6 R
-  0 ___str_40                                                      1AE5 R
-  0 ___str_41                                                      1B05 R
-  0 ___str_42                                                      1B47 R
-  0 ___str_43                                                      1B6F R
-  0 ___str_5                                                       0B29 R
-  0 ___str_6                                                       0B60 R
-  0 ___str_7                                                       0B9B R
+  0 ___str_11                                                      0B77 R
+  0 ___str_13                                                      0BAA R
+  0 ___str_15                                                      0BCD R
+  0 ___str_17                                                      0C00 R
+  0 ___str_19                                                      0C37 R
+  0 ___str_2                                                       09DE R
+  0 ___str_21                                                      0C73 R
+  0 ___str_23                                                      0C9B R
+  0 ___str_25                                                      0CD5 R
+  0 ___str_27                                                      0CFB R
+  0 ___str_29                                                      19EC R
+  0 ___str_3                                                       09EC R
+  0 ___str_30                                                      1A52 R
+  0 ___str_31                                                      1A68 R
+  0 ___str_33                                                      1A8F R
+  0 ___str_35                                                      1AAD R
+  0 ___str_37                                                      1AAF R
+  0 ___str_38                                                      1ABC R
+  0 ___str_4                                                       09EF R
+  0 ___str_40                                                      1AC4 R
+  0 ___str_42                                                      1ACC R
+  0 ___str_43                                                      1AD5 R
+  0 ___str_44                                                      1AF8 R
+  0 ___str_45                                                      1AFE R
+  0 ___str_48                                                      1B09 R
+  0 ___str_5                                                       09F3 R
+  0 ___str_50                                                      1B2D R
+  0 ___str_52                                                      1B48 R
+  0 ___str_54                                                      1B65 R
+  0 ___str_56                                                      1B81 R
+  0 ___str_58                                                      1B9D R
+  0 ___str_60                                                      1BB8 R
+  0 ___str_62                                                      1BDC R
+  0 ___str_64                                                      1C01 R
+  0 ___str_66                                                      1C27 R
+  0 ___str_68                                                      1C53 R
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 2.
 Hexadecimal [16-Bits]
 
 Symbol Table
 
-  0 ___str_8                                                       0BA2 R
-  0 ___str_9                                                       0BDB R
-    __buf8_fcbs                                                    **** GX
+  0 ___str_69                                                      1C7A R
+  0 ___str_7                                                       09F8 R
+  0 ___str_71                                                      1C8F R
+  0 ___str_73                                                      1CBB R
+  0 ___str_75                                                      1CD3 R
+  0 ___str_76                                                      1CFF R
+  0 ___str_77                                                      1D1E R
+  0 ___str_78                                                      1D3C R
+  0 ___str_79                                                      1D5B R
+  0 ___str_8                                                       09FA R
+  0 ___str_80                                                      1DC4 R
+  0 ___str_82                                                      1E37 R
+  0 ___str_84                                                      1E58 R
+  0 ___str_86                                                      1E9B R
+  0 ___str_88                                                      1EC4 R
+  0 ___str_9                                                       0A07 R
     __divulong                                                     **** GX
     __mullong                                                      **** GX
-  0 __seek                                                         0026 GR
-  0 __size                                                         00F1 GR
-  0 __tell                                                         0000 GR
-  0 _apconfigurationResponse                                       019C GR
+  0 _apconfigurationResponse                                       00A3 GR
+    _atoi                                                          **** GX
     _atol                                                          **** GX
-  0 _certificateDone                                               0190 GR
-  0 _endUpdate                                                     018E GR
+  0 _certificateDone                                               0097 GR
+  0 _endUpdate                                                     0095 GR
   1 _lPort                                                         0209 GR
-  0 _main                                                          0BEA GR
+  0 _main                                                          0D0B GR
     _myPort6                                                    =  0006 
     _myPort7                                                    =  0007 
-  0 _nagleoffResponse                                              0198 GR
-  0 _nagleonResponse                                               0196 GR
+  0 _nagleoffResponse                                              009F GR
+  0 _nagleonResponse                                               009D GR
     _printf                                                        **** GX
     _puts                                                          **** GX
-  0 _responseOK                                                    0192 GR
-  0 _responseOTAFW                                                 01A4 GR
-  0 _responseOTASPIFF                                              01A6 GR
-  0 _responseRSCERTUpdate                                          01A0 GR
-  0 _responseRSFWUpdate                                            019E GR
-  0 _responseReady                                                 0187 GR
-  0 _responseWRBlock                                               01A2 GR
-  0 _scanResponse                                                  0194 GR
-  0 _scanresResponse                                               019A GR
-  0 _strUsage                                                      01A8 GR
+  0 _radioOffResponse                                              00B1 GR
+  0 _responseOK                                                    0099 GR
+  0 _responseOTAFW                                                 00AB GR
+  0 _responseOTASPIFF                                              00AD GR
+  0 _responseRSCERTUpdate                                          00A7 GR
+  0 _responseRSFWUpdate                                            00A5 GR
+  0 _responseRadioOnTimeout                                        00AF GR
+  0 _responseReady                                                 008E GR
+  0 _responseReady2                                                00B3 GR
+  0 _responseWRBlock                                               00A9 GR
+  0 _scanResponse                                                  009B GR
+  0 _scanresResponse                                               00A1 GR
+  0 _strUsage                                                      00BA GR
     _strlen                                                        **** GX
   1 _ucFile                                                        0101 GR
   1 _ucIsFw                                                        020E GR
@@ -100,18 +114,27 @@ Symbol Table
   1 _ucNagleOff                                                    020F GR
   1 _ucNagleOn                                                     0210 GR
   1 _ucPort                                                        0201 GR
+  1 _ucRadioOff                                                    0211 GR
   1 _ucScan                                                        0000 GR
   1 _ucServer                                                      0001 GR
-  1 _uiPort                                                        0207 GR
-  0 _ultostr                                                       05F6 GR
-
+  1 _ucSetTimeout                                                  0212 GR
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 3.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+  1 _uiPort                                                        0207 GR
+  1 _uiTimeout                                                     0213 GR
+  0 _ultostr                                                       061B GR
+
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 4.
 Hexadecimal [16-Bits]
 
 Area Table
 
-   0 _CODE                                      size 1B88   flags    0
-   1 _DATA                                      size  211   flags    0
+   0 _CODE                                      size 1EDD   flags    0
+   1 _DATA                                      size  215   flags    0
    2 _INITIALIZED                               size    0   flags    0
    3 _DABS                                      size    0   flags    8
    4 _HOME                                      size    0   flags    0

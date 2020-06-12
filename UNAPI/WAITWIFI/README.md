@@ -1,3 +1,7 @@
+# WAITWIFI v0.12
+
+KdL was very kind by improving the text output of the tool
+
 # WAITWIFI v0.11
 
 Changed the routines that print to screen from the ones in fusion-c to the one

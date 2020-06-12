@@ -4,10 +4,10 @@
 -b _DATA = 0x0000
 -k C:\Program Files\SDCC\lib
 -k C:\Program Files\SDCC\bin\..\lib\z80
--l ..\fusion-c\lib\fusion.lib
--l ..\fusion-c\lib\asm.lib
+-l C:\fusion-c\fusion-c\lib\fusion.lib
+-l C:\fusion-c\fusion-c\lib\asm.lib
 -l z80
-..\fusion-c\include\crt0_msxdos_advanced.rel
+C:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel
 obj\Release\src\CFG8266.rel
 
 -e

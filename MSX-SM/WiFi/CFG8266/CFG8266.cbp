@@ -17,22 +17,24 @@
 					<Add option="-mz80" />
 					<Add option="--opt-code-size" />
 					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196" />
-					<Add directory="../fusion-c/header" />
+					<Add directory="c:/fusion-c/fusion-c/header" />
 				</Compiler>
 				<Linker>
-					<Add option="..\fusion-c\include\crt0_msxdos_advanced.rel" />
-					<Add library="../fusion-c/lib/fusion.lib" />
-					<Add library="../fusion-c/lib/asm.lib" />
+					<Add option="C:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="C:/fusion-c/fusion-c/lib/fusion.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/asm.lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after="cmd /c ren bin\Release\CFG8266.exe CFG8266.ihx" />
-					<Add after="cmd /c ..\hex2bin -e com bin\Release\CFG8266.ihx" />
+					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\CFG8266.ihx" />
+					<Add after="cmd /c copy bin\Release\CFG8266.com c:\fusion-c\dsk /y" />
 				</ExtraCommands>
 			</Target>
 		</Build>
 		<Unit filename="src/CFG8266.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/CFG8266.h" />
 		<Extensions>
 			<code_completion />
 			<envvars />
