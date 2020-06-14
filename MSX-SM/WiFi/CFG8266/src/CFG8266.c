@@ -2,7 +2,7 @@
 --
 -- CFG8266.c
 --   Set-up the WiFi module of your MSX-SM / SM-X.
---   Revision 1.10
+--   Revision 1.20
 --
 --
 -- Requires SDCC and Fusion-C library to compile
@@ -223,7 +223,7 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
 {
     bool bReturn = false;
     unsigned char rx_data;
-	unsigned int Timeout2;
+	unsigned int Timeout1,Timeout2;
 	unsigned int ResponseSt = 0;
 	unsigned char advance[4] = {'-','\\','|','/'};
 	unsigned int i = 0;
@@ -241,19 +241,22 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
     }
     //Command sent, done, just wait response
     TickCount = 0;
+    Timeout1 = TickCount + 5;
     Timeout2 = TickCount + Timeout; //Wait up to 5 minutes
 
     ResponseSt=0;
-    if (Timeout>900)
-        PrintChar('W');
+
     do
     {
         if (Timeout>900)
         {
-            //Our nice animation to show we are not stuck
-            PrintChar(8); //backspace
-            PrintChar(advance[i%4]); // next char
-            ++i;
+            if (TickCount>Timeout1)
+            {
+                Timeout1 = TickCount + 5;
+                PrintChar(advance[i%4]); // next char
+                PrintChar(29); // move left a char
+                ++i;
+            }
         }
         if(UartRXData())
         {
@@ -404,7 +407,7 @@ int main(char** argv, int argc)
     ucRadioOff = 0;
     ucSetTimeout = 0;
 
-	printf("> SM-X ESP8266 WIFI Module Configuration v1.10 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
+	printf("> SM-X ESP8266 WIFI Module Configuration v1.20 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
 
     if (IsValidInput(argv, argc))
     {
@@ -569,10 +572,10 @@ int main(char** argv, int argc)
                                 printf("Error, AP not configured!\r\n");
                         }
                         else
-                            printf("User canceled by ESC key...\r\n");
+                            printf("\r\nUser canceled by ESC key...\r\n");
                     }
                     else
-                        printf("Scan results: no answer...\r\n");
+                        printf("\r\nScan results: no answer...\r\n");
                 }
                 else
                 {

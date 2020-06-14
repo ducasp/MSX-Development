@@ -1,4 +1,4 @@
-# CFG8266 v1.10
+# CFG8266 v1.20
 
 Simple Tool to Scan Networks / Configure Parameters / Update Firmware of ESP
 in your MSX-SM / SM-X

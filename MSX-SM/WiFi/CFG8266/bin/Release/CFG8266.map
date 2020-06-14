@@ -25,15 +25,15 @@ Area                                    Addr        Size        Decimal Bytes (A
      00000180  s__CODE                         
      00000227  l__DATA                         
      000002C3  l__HOME                         
-     0000324D  l__CODE                         
-     000033CD  s__DATA                         
-     000035F4  s__GSINIT                       
-     00003603  s__GSFINAL                      
-     00003604  s__HEAP                         
-     00003604  s__HOME                         
-     00003604  s__INITIALIZED                  
-     000038C7  s__INITIALIZER                  
-     000038C7  s__OVERLAY                      
+     0000326A  l__CODE                         
+     000033EA  s__DATA                         
+     00003611  s__GSINIT                       
+     00003620  s__GSFINAL                      
+     00003621  s__HEAP                         
+     00003621  s__HOME                         
+     00003621  s__INITIALIZED                  
+     000038E4  s__INITIALIZER                  
+     000038E4  s__OVERLAY                      
      0000FC9E  _TickCount                         CFG8266
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
@@ -41,7 +41,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00000180    0000324D =       12877. bytes (REL,CON)
+_CODE                               00000180    0000326A =       12906. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -68,89 +68,89 @@ _CODE                               00000180    0000324D =       12877. bytes (R
      0000078D  _TxByte                            CFG8266
      0000079B  _ultostr                           CFG8266
      00000948  _WaitForRXData                     CFG8266
-     00000BA3  _FinishUpdate                      CFG8266
-     00000E8B  _main                              CFG8266
-     0000205D  _DosCall                           DosCall
-     0000205D  _DosCall_start                     DosCall
-     00002094  _DosCall_end                       DosCall
-     00002094  _atoi                              atoi
-     00002130  _atol                              atol
-     00002224  _FCBs                              
-     0000222E  _GetOSVersion                      
-     0000225A  __os_ver                           
-     0000225B  __mx_ver                           
-     0000225C  __buf8_fcbs                        
-     0000238C  __io_errno                         
-     00002415  __setupfcb                         
-     00002464  _get_fd                            
-     00002476  _Open                              
-     00002491  _OpenAttrib                        
-     000024AD  _iopen                             
-     00002575  _Close                             
-     00002585  _iclose                            
-     000025BA  _Ensure                            
-     000025E9  _Create                            
-     000025FE  _CreateAttrib                      
-     0000261B  _Read                              
-     00002637  _iread                             
-     0000267B  _Write                             
-     00002697  _iwrite                            
+     00000BBC  _FinishUpdate                      CFG8266
+     00000EA4  _main                              CFG8266
+     0000207A  _DosCall                           DosCall
+     0000207A  _DosCall_start                     DosCall
+     000020B1  _DosCall_end                       DosCall
+     000020B1  _atoi                              atoi
+     0000214D  _atol                              atol
+     00002241  _FCBs                              
+     0000224B  _GetOSVersion                      
+     00002277  __os_ver                           
+     00002278  __mx_ver                           
+     00002279  __buf8_fcbs                        
+     000023A9  __io_errno                         
+     00002432  __setupfcb                         
+     00002481  _get_fd                            
+     00002493  _Open                              
+     000024AE  _OpenAttrib                        
+     000024CA  _iopen                             
+     00002592  _Close                             
+     000025A2  _iclose                            
+     000025D7  _Ensure                            
+     00002606  _Create                            
+     0000261B  _CreateAttrib                      
+     00002638  _Read                              
+     00002654  _iread                             
+     00002698  _Write                             
+     000026B4  _iwrite                            
 ASxxxx Linker V03.00 + NoICE + sdld,  page 3.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00000180    0000324D =       12877. bytes (REL,CON)
+_CODE                               00000180    0000326A =       12906. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     000026CB  _Lseek                             
-     00002765  _Ltell                             
-     00002782  _iltell                            
-     000027C5  _GetCWD                            
-     000027E2  _igetcwd                           
-     0000281F  _Remove                            
-     00002836  _iremove                           
-     00002860  _Rename                            
-     0000287D  _irename                           
-     000028BC  _ChangeDir                         
-     000028D3  _ichdir                            
-     000028E7  _MakeDir                           
-     000028FE  _imkdir                            
-     0000291A  _RemoveDir                         
-     00002931  _irmdir                            
-     00002949  _FindFirst                         
-     00002989  lb_ff1c                            
-     000029BD  lb_ff2c                            
-     000029D8  _FindNext                          
-     00002A06  _SetDisk                           
-     00002A1A  _GetDisk                           
-     00002A27  _DiskLoad                          
-     00002ACE  _Inkey                             
-     00002AF4  _InputString                       
-     00002B6D  _PrintChar                         
-     00002B8B  _puts                              puts
-     00002BB0  _Print                             print
-     00002BFC  _printf                            printf
-     00002C14  _sprintf                           printf
-     0000304C  _strlen                            
-     0000305B  ___sdcc_enter_ix                   
-     00003065  _AsmCall                           AsmCall
-     00003108  _putchar                           
-     00003108  _putchar_rr_s                      
-     0000310D  _putchar_rr_dbs                    
-     00003112  __mulint                           
-     00003118  __mul16                            
-     0000312C  __uitoa                            _itoa
-     000031FD  __itoa                             _itoa
-     0000324C  __ultoa                            _ltoa
-     0000330D  __ltoa                             _ltoa
-     00003375  __moduchar                         
-     00003381  __moduint                          
-     0000338C  __divuint                          
-     00003394  __divuchar                         
-     0000339B  __divu8                            
-     0000339E  __divu16                           
+     000026E8  _Lseek                             
+     00002782  _Ltell                             
+     0000279F  _iltell                            
+     000027E2  _GetCWD                            
+     000027FF  _igetcwd                           
+     0000283C  _Remove                            
+     00002853  _iremove                           
+     0000287D  _Rename                            
+     0000289A  _irename                           
+     000028D9  _ChangeDir                         
+     000028F0  _ichdir                            
+     00002904  _MakeDir                           
+     0000291B  _imkdir                            
+     00002937  _RemoveDir                         
+     0000294E  _irmdir                            
+     00002966  _FindFirst                         
+     000029A6  lb_ff1c                            
+     000029DA  lb_ff2c                            
+     000029F5  _FindNext                          
+     00002A23  _SetDisk                           
+     00002A37  _GetDisk                           
+     00002A44  _DiskLoad                          
+     00002AEB  _Inkey                             
+     00002B11  _InputString                       
+     00002B8A  _PrintChar                         
+     00002BA8  _puts                              puts
+     00002BCD  _Print                             print
+     00002C19  _printf                            printf
+     00002C31  _sprintf                           printf
+     00003069  _strlen                            
+     00003078  ___sdcc_enter_ix                   
+     00003082  _AsmCall                           AsmCall
+     00003125  _putchar                           
+     00003125  _putchar_rr_s                      
+     0000312A  _putchar_rr_dbs                    
+     0000312F  __mulint                           
+     00003135  __mul16                            
+     00003149  __uitoa                            _itoa
+     0000321A  __itoa                             _itoa
+     00003269  __ultoa                            _ltoa
+     0000332A  __ltoa                             _ltoa
+     00003392  __moduchar                         
+     0000339E  __moduint                          
+     000033A9  __divuint                          
+     000033B1  __divuchar                         
+     000033B8  __divu8                            
+     000033BB  __divu16                           
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
 Hexadecimal  [32-Bits]
@@ -166,31 +166,31 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_DATA                               000033CD    00000227 =         551. bytes (REL,CON)
+_DATA                               000033EA    00000227 =         551. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     000033CD  _heap_top                          
-     000033CF  _ucScan                            CFG8266
-     000033D0  _ucServer                          CFG8266
-     000034D0  _ucFile                            CFG8266
-     000035D0  _ucPort                            CFG8266
-     000035D6  _uiPort                            CFG8266
-     000035D8  _lPort                             CFG8266
-     000035DC  _ucLocalUpdate                     CFG8266
-     000035DD  _ucIsFw                            CFG8266
-     000035DE  _ucNagleOff                        CFG8266
-     000035DF  _ucNagleOn                         CFG8266
-     000035E0  _ucRadioOff                        CFG8266
-     000035E1  _ucSetTimeout                      CFG8266
-     000035E2  _uiTimeout                         CFG8266
+     000033EA  _heap_top                          
+     000033EC  _ucScan                            CFG8266
+     000033ED  _ucServer                          CFG8266
+     000034ED  _ucFile                            CFG8266
+     000035ED  _ucPort                            CFG8266
+     000035F3  _uiPort                            CFG8266
+     000035F5  _lPort                             CFG8266
+     000035F9  _ucLocalUpdate                     CFG8266
+     000035FA  _ucIsFw                            CFG8266
+     000035FB  _ucNagleOff                        CFG8266
+     000035FC  _ucNagleOn                         CFG8266
+     000035FD  _ucRadioOff                        CFG8266
+     000035FE  _ucSetTimeout                      CFG8266
+     000035FF  _uiTimeout                         CFG8266
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 6.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_GSINIT                             000035F4    0000000F =          15. bytes (REL,CON)
+_GSINIT                             00003611    0000000F =          15. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -199,7 +199,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_GSFINAL                            00003603    00000001 =           1. bytes (REL,CON)
+_GSFINAL                            00003620    00000001 =           1. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -208,24 +208,24 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_HEAP                               00003604    00000000 =           0. bytes (REL,CON)
+_HEAP                               00003621    00000000 =           0. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00003604  _HEAP_start                        
+     00003621  _HEAP_start                        
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 9.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_HOME                               00003604    000002C3 =         707. bytes (REL,CON)
+_HOME                               00003621    000002C3 =         707. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00003604  __divulong                         _divulong
-     00003696  __mullong                          _mullong
-     00003814  __modulong                         _modulong
+     00003621  __divulong                         _divulong
+     000036B3  __mullong                          _mullong
+     00003831  __modulong                         _modulong
 ASxxxx Linker V03.00 + NoICE + sdld,  page 10.
 
 Files Linked                              [ module(s) ]

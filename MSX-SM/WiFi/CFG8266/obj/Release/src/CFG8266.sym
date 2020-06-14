@@ -10,7 +10,7 @@ Symbol Table
     _Close                                                         **** GX
   0 _Done_Version                                                  006E R
     _DosCall                                                       **** GX
-  0 _FinishUpdate                                                  0A23 GR
+  0 _FinishUpdate                                                  0A3C GR
     _Inkey                                                         **** GX
     _InputString                                                   **** GX
   0 _IsValidInput                                                  034A GR
@@ -22,63 +22,63 @@ Symbol Table
   0 _TxByte                                                        060D GR
   0 _WaitForRXData                                                 07C8 GR
     ___sdcc_enter_ix                                               **** GX
-  0 ___str_11                                                      0B77 R
-  0 ___str_13                                                      0BAA R
-  0 ___str_15                                                      0BCD R
-  0 ___str_17                                                      0C00 R
-  0 ___str_19                                                      0C37 R
-  0 ___str_2                                                       09DE R
-  0 ___str_21                                                      0C73 R
-  0 ___str_23                                                      0C9B R
-  0 ___str_25                                                      0CD5 R
-  0 ___str_27                                                      0CFB R
-  0 ___str_29                                                      19EC R
-  0 ___str_3                                                       09EC R
-  0 ___str_30                                                      1A52 R
-  0 ___str_31                                                      1A68 R
-  0 ___str_33                                                      1A8F R
-  0 ___str_35                                                      1AAD R
-  0 ___str_37                                                      1AAF R
-  0 ___str_38                                                      1ABC R
-  0 ___str_4                                                       09EF R
-  0 ___str_40                                                      1AC4 R
-  0 ___str_42                                                      1ACC R
-  0 ___str_43                                                      1AD5 R
-  0 ___str_44                                                      1AF8 R
-  0 ___str_45                                                      1AFE R
-  0 ___str_48                                                      1B09 R
-  0 ___str_5                                                       09F3 R
-  0 ___str_50                                                      1B2D R
-  0 ___str_52                                                      1B48 R
-  0 ___str_54                                                      1B65 R
-  0 ___str_56                                                      1B81 R
-  0 ___str_58                                                      1B9D R
-  0 ___str_60                                                      1BB8 R
-  0 ___str_62                                                      1BDC R
-  0 ___str_64                                                      1C01 R
-  0 ___str_66                                                      1C27 R
-  0 ___str_68                                                      1C53 R
+  0 ___str_11                                                      0B90 R
+  0 ___str_13                                                      0BC3 R
+  0 ___str_15                                                      0BE6 R
+  0 ___str_17                                                      0C19 R
+  0 ___str_19                                                      0C50 R
+  0 ___str_2                                                       09F7 R
+  0 ___str_21                                                      0C8C R
+  0 ___str_23                                                      0CB4 R
+  0 ___str_25                                                      0CEE R
+  0 ___str_27                                                      0D14 R
+  0 ___str_29                                                      1A05 R
+  0 ___str_3                                                       0A05 R
+  0 ___str_30                                                      1A6B R
+  0 ___str_31                                                      1A81 R
+  0 ___str_33                                                      1AA8 R
+  0 ___str_35                                                      1AC6 R
+  0 ___str_37                                                      1AC8 R
+  0 ___str_38                                                      1AD5 R
+  0 ___str_4                                                       0A08 R
+  0 ___str_40                                                      1ADD R
+  0 ___str_42                                                      1AE5 R
+  0 ___str_43                                                      1AEE R
+  0 ___str_44                                                      1B11 R
+  0 ___str_45                                                      1B17 R
+  0 ___str_48                                                      1B22 R
+  0 ___str_5                                                       0A0C R
+  0 ___str_50                                                      1B46 R
+  0 ___str_52                                                      1B61 R
+  0 ___str_54                                                      1B80 R
+  0 ___str_56                                                      1B9E R
+  0 ___str_58                                                      1BBA R
+  0 ___str_60                                                      1BD5 R
+  0 ___str_62                                                      1BF9 R
+  0 ___str_64                                                      1C1E R
+  0 ___str_66                                                      1C44 R
+  0 ___str_68                                                      1C70 R
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 2.
 Hexadecimal [16-Bits]
 
 Symbol Table
 
-  0 ___str_69                                                      1C7A R
-  0 ___str_7                                                       09F8 R
-  0 ___str_71                                                      1C8F R
-  0 ___str_73                                                      1CBB R
-  0 ___str_75                                                      1CD3 R
-  0 ___str_76                                                      1CFF R
-  0 ___str_77                                                      1D1E R
-  0 ___str_78                                                      1D3C R
-  0 ___str_79                                                      1D5B R
-  0 ___str_8                                                       09FA R
-  0 ___str_80                                                      1DC4 R
-  0 ___str_82                                                      1E37 R
-  0 ___str_84                                                      1E58 R
-  0 ___str_86                                                      1E9B R
-  0 ___str_88                                                      1EC4 R
-  0 ___str_9                                                       0A07 R
+  0 ___str_69                                                      1C97 R
+  0 ___str_7                                                       0A11 R
+  0 ___str_71                                                      1CAC R
+  0 ___str_73                                                      1CD8 R
+  0 ___str_75                                                      1CF0 R
+  0 ___str_76                                                      1D1C R
+  0 ___str_77                                                      1D3B R
+  0 ___str_78                                                      1D59 R
+  0 ___str_79                                                      1D78 R
+  0 ___str_8                                                       0A13 R
+  0 ___str_80                                                      1DE1 R
+  0 ___str_82                                                      1E54 R
+  0 ___str_84                                                      1E75 R
+  0 ___str_86                                                      1EB8 R
+  0 ___str_88                                                      1EE1 R
+  0 ___str_9                                                       0A20 R
     __divulong                                                     **** GX
     __mullong                                                      **** GX
   0 _apconfigurationResponse                                       00A3 GR
@@ -87,7 +87,7 @@ Symbol Table
   0 _certificateDone                                               0097 GR
   0 _endUpdate                                                     0095 GR
   1 _lPort                                                         0209 GR
-  0 _main                                                          0D0B GR
+  0 _main                                                          0D24 GR
     _myPort6                                                    =  0006 
     _myPort7                                                    =  0007 
   0 _nagleoffResponse                                              009F GR
@@ -133,7 +133,7 @@ Hexadecimal [16-Bits]
 
 Area Table
 
-   0 _CODE                                      size 1EDD   flags    0
+   0 _CODE                                      size 1EFA   flags    0
    1 _DATA                                      size  215   flags    0
    2 _INITIALIZED                               size    0   flags    0
    3 _DABS                                      size    0   flags    8

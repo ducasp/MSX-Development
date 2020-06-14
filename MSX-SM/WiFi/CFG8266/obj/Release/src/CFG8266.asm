@@ -1012,7 +1012,7 @@ _ultostr::
 ; ---------------------------------
 _WaitForRXData::
 	call	___sdcc_enter_ix
-	ld	hl, #-15
+	ld	hl, #-17
 	add	hl, sp
 	ld	sp, hl
 ;src\CFG8266.c:224: bool bReturn = false;
@@ -1020,28 +1020,28 @@ _WaitForRXData::
 ;src\CFG8266.c:228: unsigned char advance[4] = {'-','\\','|','/'};
 	ld	hl, #0
 	add	hl, sp
-	ld	-11 (ix), l
-	ld	-10 (ix), h
+	ld	-13 (ix), l
+	ld	-12 (ix), h
 	ld	(hl), #0x2d
-	ld	l, -11 (ix)
-	ld	h, -10 (ix)
+	ld	l, -13 (ix)
+	ld	h, -12 (ix)
 	inc	hl
 	ld	(hl), #0x5c
-	ld	l, -11 (ix)
-	ld	h, -10 (ix)
+	ld	l, -13 (ix)
+	ld	h, -12 (ix)
 	inc	hl
 	inc	hl
 	ld	(hl), #0x7c
-	ld	l, -11 (ix)
-	ld	h, -10 (ix)
+	ld	l, -13 (ix)
+	ld	h, -12 (ix)
 	inc	hl
 	inc	hl
 	inc	hl
 	ld	(hl), #0x2f
 ;src\CFG8266.c:229: unsigned int i = 0;
 	xor	a, a
-	ld	-4 (ix), a
-	ld	-3 (ix), a
+	ld	-2 (ix), a
+	ld	-1 (ix), a
 ;src\CFG8266.c:231: if (bShowReceivedData)
 	ld	a, 11 (ix)
 	or	a, a
@@ -1125,46 +1125,32 @@ _WaitForRXData::
 	pop	bc
 ;src\CFG8266.c:240: i = 0;
 	xor	a, a
-	ld	-4 (ix), a
-	ld	-3 (ix), a
+	ld	-2 (ix), a
+	ld	-1 (ix), a
 00104$:
 ;src\CFG8266.c:243: TickCount = 0;
 	ld	hl, #0x0000
 	ld	(_TickCount), hl
-;src\CFG8266.c:244: Timeout2 = TickCount + Timeout; //Wait up to 5 minutes
+;src\CFG8266.c:244: Timeout1 = TickCount + 5;
 	ld	iy, #_TickCount
 	ld	a, 0 (iy)
+	add	a, #0x05
+	ld	-11 (ix), a
+	ld	a, 1 (iy)
+	adc	a, #0x00
+	ld	-10 (ix), a
+;src\CFG8266.c:245: Timeout2 = TickCount + Timeout; //Wait up to 5 minutes
+	ld	a, 0 (iy)
 	add	a, 8 (ix)
-	ld	b, a
+	ld	e, a
 	ld	a, 1 (iy)
 	adc	a, 9 (ix)
-	ld	e, a
-	ld	-9 (ix), b
-	ld	-8 (ix), e
-;src\CFG8266.c:246: ResponseSt=0;
+	ld	d, a
+;src\CFG8266.c:247: ResponseSt=0;
 	xor	a, a
-	ld	-2 (ix), a
-	ld	-1 (ix), a
-;src\CFG8266.c:247: if (Timeout>900)
-	ld	a, #0x84
-	cp	a, 8 (ix)
-	ld	a, #0x03
-	sbc	a, 9 (ix)
-	ld	a, #0x00
-	rla
-	ld	-7 (ix), a
-	or	a, a
-	jr	Z,00155$
-;src\CFG8266.c:248: PrintChar('W');
-	push	bc
-	ld	a, #0x57
-	push	af
-	inc	sp
-	call	_PrintChar
-	inc	sp
-	pop	bc
+	ld	-4 (ix), a
+	ld	-3 (ix), a
 ;src\CFG8266.c:249: do
-00155$:
 	ld	a, 6 (ix)
 	sub	a, #0x02
 	or	a, 7 (ix)
@@ -1172,32 +1158,41 @@ _WaitForRXData::
 	jr	Z,00227$
 	xor	a, a
 00227$:
-	ld	-6 (ix), a
-	ld	e, -4 (ix)
-	ld	d, -3 (ix)
+	ld	-9 (ix), a
+	ld	a, #0x84
+	cp	a, 8 (ix)
+	ld	a, #0x03
+	sbc	a, 9 (ix)
+	ld	a, #0x00
+	rla
+	ld	-8 (ix), a
 00128$:
 ;src\CFG8266.c:251: if (Timeout>900)
-	ld	a, -7 (ix)
+	ld	a, -8 (ix)
 	or	a, a
 	jr	Z,00108$
-;src\CFG8266.c:254: PrintChar(8); //backspace
-	push	bc
-	push	de
-	ld	a, #0x08
-	push	af
-	inc	sp
-	call	_PrintChar
-	inc	sp
-	pop	de
-	pop	bc
-;src\CFG8266.c:255: PrintChar(advance[i%4]); // next char
-	ld	a, e
+;src\CFG8266.c:253: if (TickCount>Timeout1)
+	ld	a, -11 (ix)
+	ld	iy, #_TickCount
+	sub	a, 0 (iy)
+	ld	a, -10 (ix)
+	sbc	a, 1 (iy)
+	jr	NC,00108$
+;src\CFG8266.c:255: Timeout1 = TickCount + 5;
+	ld	a, 0 (iy)
+	add	a, #0x05
+	ld	-11 (ix), a
+	ld	a, 1 (iy)
+	adc	a, #0x00
+	ld	-10 (ix), a
+;src\CFG8266.c:256: PrintChar(advance[i%4]); // next char
+	ld	a, -2 (ix)
 	and	a, #0x03
 	ld	b, #0x00
-	add	a, -11 (ix)
+	add	a, -13 (ix)
 	ld	l, a
 	ld	a, b
-	adc	a, -10 (ix)
+	adc	a, -12 (ix)
 	ld	h, a
 	ld	a, (hl)
 	push	bc
@@ -1206,44 +1201,52 @@ _WaitForRXData::
 	inc	sp
 	call	_PrintChar
 	inc	sp
+	ld	a, #0x1d
+	push	af
+	inc	sp
+	call	_PrintChar
+	inc	sp
 	pop	de
 	pop	bc
-;src\CFG8266.c:256: ++i;
-	inc	de
+;src\CFG8266.c:258: ++i;
+	inc	-2 (ix)
+	jr	NZ,00228$
+	inc	-1 (ix)
+00228$:
 00108$:
-;src\CFG8266.c:258: if(UartRXData())
+;src\CFG8266.c:261: if(UartRXData())
 	in	a, (_myPort7)
 	rrca
 	jp	NC,00125$
-;src\CFG8266.c:260: rx_data = GetUARTData();
+;src\CFG8266.c:263: rx_data = GetUARTData();
 	in	a, (_myPort6)
 	ld	b, a
-;src\CFG8266.c:262: if (rx_data == uchData[ResponseSt])
+;src\CFG8266.c:265: if (rx_data == uchData[ResponseSt])
 	ld	a, 4 (ix)
-	add	a, -2 (ix)
+	add	a, -4 (ix)
 	ld	l, a
 	ld	a, 5 (ix)
-	adc	a, -1 (ix)
+	adc	a, -3 (ix)
 	ld	h, a
 	ld	a, (hl)
-	ld	-5 (ix), a
-;src\CFG8266.c:265: printf ("{%x}",rx_data);
-	ld	-4 (ix), b
+	ld	-7 (ix), a
+;src\CFG8266.c:268: printf ("{%x}",rx_data);
+	ld	-6 (ix), b
 	xor	a, a
-	ld	-3 (ix), a
-;src\CFG8266.c:262: if (rx_data == uchData[ResponseSt])
-	ld	a, -5 (ix)
+	ld	-5 (ix), a
+;src\CFG8266.c:265: if (rx_data == uchData[ResponseSt])
+	ld	a, -7 (ix)
 	sub	a, b
 	jr	NZ,00122$
-;src\CFG8266.c:264: if (bShowReceivedData)
+;src\CFG8266.c:267: if (bShowReceivedData)
 	ld	a, 11 (ix)
 	or	a, a
 	jr	Z,00110$
-;src\CFG8266.c:265: printf ("{%x}",rx_data);
+;src\CFG8266.c:268: printf ("{%x}",rx_data);
 	push	bc
 	push	de
-	ld	l, -4 (ix)
-	ld	h, -3 (ix)
+	ld	l, -6 (ix)
+	ld	h, -5 (ix)
 	push	hl
 	ld	hl, #___str_5
 	push	hl
@@ -1253,38 +1256,38 @@ _WaitForRXData::
 	pop	de
 	pop	bc
 00110$:
-;src\CFG8266.c:266: ++ResponseSt;
-	inc	-2 (ix)
-	jr	NZ,00231$
-	inc	-1 (ix)
-00231$:
-;src\CFG8266.c:267: if (ResponseSt == uiDataSize)
-	ld	a, -2 (ix)
+;src\CFG8266.c:269: ++ResponseSt;
+	inc	-4 (ix)
+	jr	NZ,00232$
+	inc	-3 (ix)
+00232$:
+;src\CFG8266.c:270: if (ResponseSt == uiDataSize)
+	ld	a, -4 (ix)
 	sub	a, 6 (ix)
 	jr	NZ,00125$
-	ld	a, -1 (ix)
+	ld	a, -3 (ix)
 	sub	a, 7 (ix)
 	jr	NZ,00125$
-;src\CFG8266.c:269: bReturn = true;
+;src\CFG8266.c:272: bReturn = true;
 	ld	c, #0x01
-;src\CFG8266.c:270: break;
-	jp	00130$
+;src\CFG8266.c:273: break;
+	jr	00130$
 00122$:
-;src\CFG8266.c:275: if ((ResponseSt)&&(bShowReceivedData))
-	ld	a, -1 (ix)
-	or	a, -2 (ix)
+;src\CFG8266.c:278: if ((ResponseSt)&&(bShowReceivedData))
+	ld	a, -3 (ix)
+	or	a, -4 (ix)
 	jr	Z,00114$
 	ld	a, 11 (ix)
 	or	a, a
 	jr	Z,00114$
-;src\CFG8266.c:276: printf ("{%x} != [%x]",rx_data,uchData[ResponseSt]);
-	ld	l, -5 (ix)
+;src\CFG8266.c:279: printf ("{%x} != [%x]",rx_data,uchData[ResponseSt]);
+	ld	l, -7 (ix)
 	ld	h, #0x00
 	push	bc
 	push	de
 	push	hl
-	ld	l, -4 (ix)
-	ld	h, -3 (ix)
+	ld	l, -6 (ix)
+	ld	h, -5 (ix)
 	push	hl
 	ld	hl, #___str_8
 	push	hl
@@ -1295,26 +1298,26 @@ _WaitForRXData::
 	pop	de
 	pop	bc
 00114$:
-;src\CFG8266.c:277: if ((uiDataSize==2)&&(ResponseSt==1))
-	ld	a, -6 (ix)
+;src\CFG8266.c:280: if ((uiDataSize==2)&&(ResponseSt==1))
+	ld	a, -9 (ix)
 	or	a, a
 	jr	Z,00119$
-	ld	a, -2 (ix)
+	ld	a, -4 (ix)
 	dec	a
-	or	a, -1 (ix)
+	or	a, -3 (ix)
 	jr	NZ,00119$
-;src\CFG8266.c:279: if (bVerbose)
+;src\CFG8266.c:282: if (bVerbose)
 	ld	a, 10 (ix)
 	or	a, a
 	jr	Z,00117$
-;src\CFG8266.c:280: printf ("Error %u on command %c...\r\n",rx_data,uchData[0]);
+;src\CFG8266.c:283: printf ("Error %u on command %c...\r\n",rx_data,uchData[0]);
 	ld	l, 4 (ix)
 	ld	h, 5 (ix)
 	ld	c, (hl)
 	ld	b, #0x00
 	push	bc
-	ld	l, -4 (ix)
-	ld	h, -3 (ix)
+	ld	l, -6 (ix)
+	ld	h, -5 (ix)
 	push	hl
 	ld	hl, #___str_9
 	push	hl
@@ -1323,28 +1326,28 @@ _WaitForRXData::
 	pop	af
 	pop	af
 00117$:
-;src\CFG8266.c:281: return false;
+;src\CFG8266.c:284: return false;
 	ld	l, #0x00
 	jr	00137$
 00119$:
-;src\CFG8266.c:283: ResponseSt = 0;
+;src\CFG8266.c:286: ResponseSt = 0;
 	xor	a, a
-	ld	-2 (ix), a
-	ld	-1 (ix), a
+	ld	-4 (ix), a
+	ld	-3 (ix), a
 00125$:
-;src\CFG8266.c:287: if (TickCount>Timeout2)
-	ld	a, -9 (ix)
+;src\CFG8266.c:290: if (TickCount>Timeout2)
+	ld	a, e
 	ld	iy, #_TickCount
 	sub	a, 0 (iy)
-	ld	a, -8 (ix)
+	ld	a, d
 	sbc	a, 1 (iy)
 	jp	NC, 00128$
-;src\CFG8266.c:290: while (1);
+;src\CFG8266.c:293: while (1);
 00130$:
-;src\CFG8266.c:292: return bReturn;
+;src\CFG8266.c:295: return bReturn;
 	ld	l, c
 00137$:
-;src\CFG8266.c:293: }
+;src\CFG8266.c:296: }
 	ld	sp, ix
 	pop	ix
 	ret
@@ -1371,7 +1374,7 @@ ___str_9:
 	.db 0x0d
 	.db 0x0a
 	.db 0x00
-;src\CFG8266.c:295: void FinishUpdate (bool bSendReset)
+;src\CFG8266.c:298: void FinishUpdate (bool bSendReset)
 ;	---------------------------------
 ; Function FinishUpdate
 ; ---------------------------------
@@ -1379,29 +1382,29 @@ _FinishUpdate::
 	call	___sdcc_enter_ix
 	push	af
 	push	af
-;src\CFG8266.c:297: unsigned int iRetries = 3;
+;src\CFG8266.c:300: unsigned int iRetries = 3;
 	ld	hl, #0x0003
 	ex	(sp), hl
-;src\CFG8266.c:301: bool bReset = bSendReset;
+;src\CFG8266.c:304: bool bReset = bSendReset;
 	ld	a, 4 (ix)
 	ld	-2 (ix), a
-;src\CFG8266.c:303: printf("\rFinishing flash, this will take some time, WAIT!\r\n");
+;src\CFG8266.c:306: printf("\rFinishing flash, this will take some time, WAIT!\r\n");
 	ld	hl, #___str_11
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:305: do
+;src\CFG8266.c:308: do
 	ld	-1 (ix), #0x02
 00135$:
-;src\CFG8266.c:307: bRet = true;
+;src\CFG8266.c:310: bRet = true;
 	ld	l, #0x01
-;src\CFG8266.c:308: --ucRetries;
+;src\CFG8266.c:311: --ucRetries;
 	dec	-1 (ix)
-;src\CFG8266.c:309: if (bReset)
+;src\CFG8266.c:312: if (bReset)
 	ld	a, -2 (ix)
 	or	a, a
 	jr	Z,00154$
-;src\CFG8266.c:310: TxByte('R'); //Request Reset
+;src\CFG8266.c:313: TxByte('R'); //Request Reset
 	push	hl
 	ld	a, #0x52
 	push	af
@@ -1410,20 +1413,20 @@ _FinishUpdate::
 	inc	sp
 	pop	hl
 	jr	00110$
-;src\CFG8266.c:313: do
+;src\CFG8266.c:316: do
 00154$:
 	pop	de
 	push	de
-;src\CFG8266.c:315: for (uchHalt=60;uchHalt>0;--uchHalt)
+;src\CFG8266.c:318: for (uchHalt=60;uchHalt>0;--uchHalt)
 00152$:
 	ld	a, #0x3c
 00140$:
 ;c:/fusion-c/fusion-c/header/../../fusion-c/header/msx_fusion.h:301: __endasm; 
 	halt
-;src\CFG8266.c:315: for (uchHalt=60;uchHalt>0;--uchHalt)
+;src\CFG8266.c:318: for (uchHalt=60;uchHalt>0;--uchHalt)
 	dec	a
 	jr	NZ,00140$
-;src\CFG8266.c:317: TxByte('E'); //End Update
+;src\CFG8266.c:320: TxByte('E'); //End Update
 	push	de
 	ld	a, #0x45
 	push	af
@@ -1446,9 +1449,9 @@ _FinishUpdate::
 	pop	af
 	pop	af
 	pop	de
-;src\CFG8266.c:319: iRetries--;
+;src\CFG8266.c:322: iRetries--;
 	dec	de
-;src\CFG8266.c:321: while ((!bRet)&&(iRetries));
+;src\CFG8266.c:324: while ((!bRet)&&(iRetries));
 	ld	a, l
 	or	a, a
 	jr	NZ,00170$
@@ -1459,46 +1462,46 @@ _FinishUpdate::
 	inc	sp
 	inc	sp
 	push	de
-;src\CFG8266.c:322: if (bRet)
+;src\CFG8266.c:325: if (bRet)
 	ld	a, l
 	or	a, a
 	jr	Z,00110$
-;src\CFG8266.c:324: bReset=true;
+;src\CFG8266.c:327: bReset=true;
 	ld	-2 (ix), #0x01
 00110$:
-;src\CFG8266.c:328: if (!bRet)
+;src\CFG8266.c:331: if (!bRet)
 	ld	a, l
 	or	a, a
 	jr	NZ,00133$
-;src\CFG8266.c:329: printf("\rTimeout waiting to end update...\r\n");
+;src\CFG8266.c:332: printf("\rTimeout waiting to end update...\r\n");
 	ld	hl, #___str_13
 	push	hl
 	call	_puts
 	pop	af
 	jp	00136$
 00133$:
-;src\CFG8266.c:332: if (ucRetries)
+;src\CFG8266.c:335: if (ucRetries)
 	ld	a, -1 (ix)
 	or	a, a
 	jr	Z,00115$
-;src\CFG8266.c:334: if (ucIsFw)
+;src\CFG8266.c:337: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00112$
-;src\CFG8266.c:335: printf("\rFirmware Update done, ESP is restarting, WAIT...\r\n");
+;src\CFG8266.c:338: printf("\rFirmware Update done, ESP is restarting, WAIT...\r\n");
 	ld	hl, #___str_15
 	push	hl
 	call	_puts
 	pop	af
 	jr	00115$
 00112$:
-;src\CFG8266.c:337: printf("\rCertificates Update done, ESP is restarting, WAIT...\r\n");
+;src\CFG8266.c:340: printf("\rCertificates Update done, ESP is restarting, WAIT...\r\n");
 	ld	hl, #___str_17
 	push	hl
 	call	_puts
 	pop	af
 00115$:
-;src\CFG8266.c:340: if (WaitForRXData(responseReady2,7,2700,false,false)) //Wait up to 45 seconds
+;src\CFG8266.c:343: if (WaitForRXData(responseReady2,7,2700,false,false)) //Wait up to 45 seconds
 	xor	a, a
 	push	af
 	inc	sp
@@ -1519,35 +1522,35 @@ _FinishUpdate::
 	ld	a, l
 	or	a, a
 	jp	Z, 00130$
-;src\CFG8266.c:342: if (!ucIsFw)
+;src\CFG8266.c:345: if (!ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	NZ,00125$
-;src\CFG8266.c:344: printf("\rESP Reset Ok, now let's request creation of index file...\r\n");
+;src\CFG8266.c:347: printf("\rESP Reset Ok, now let's request creation of index file...\r\n");
 	ld	hl, #___str_19
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:346: do
+;src\CFG8266.c:349: do
 	ld	-2 (ix), #0x0a
 	xor	a, a
 	ld	-1 (ix), a
-;src\CFG8266.c:348: for (uchHalt=60;uchHalt>0;--uchHalt)
+;src\CFG8266.c:351: for (uchHalt=60;uchHalt>0;--uchHalt)
 00162$:
 	ld	a, #0x3c
 00142$:
 ;c:/fusion-c/fusion-c/header/../../fusion-c/header/msx_fusion.h:301: __endasm; 
 	halt
-;src\CFG8266.c:348: for (uchHalt=60;uchHalt>0;--uchHalt)
+;src\CFG8266.c:351: for (uchHalt=60;uchHalt>0;--uchHalt)
 	dec	a
 	jr	NZ,00142$
-;src\CFG8266.c:350: TxByte('I'); //End Update
+;src\CFG8266.c:353: TxByte('I'); //End Update
 	ld	a, #0x49
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:351: bRet = WaitForRXData(certificateDone,2,3600,false,false); //Wait up to 1 minute, certificate index creation takes time
+;src\CFG8266.c:354: bRet = WaitForRXData(certificateDone,2,3600,false,false); //Wait up to 1 minute, certificate index creation takes time
 	xor	a, a
 	push	af
 	inc	sp
@@ -1566,13 +1569,13 @@ _FinishUpdate::
 	pop	af
 	pop	af
 	ld	-3 (ix), l
-;src\CFG8266.c:352: iRetries--;
+;src\CFG8266.c:355: iRetries--;
 	ld	l, -2 (ix)
 	ld	h, -1 (ix)
 	dec	hl
 	ld	-2 (ix), l
 	ld	-1 (ix), h
-;src\CFG8266.c:354: while ((!bRet)&&(iRetries));
+;src\CFG8266.c:357: while ((!bRet)&&(iRetries));
 	ld	a, -3 (ix)
 	or	a, a
 	jr	NZ,00120$
@@ -1580,49 +1583,49 @@ _FinishUpdate::
 	or	a, -2 (ix)
 	jr	NZ,00162$
 00120$:
-;src\CFG8266.c:355: if (bRet)
+;src\CFG8266.c:358: if (bRet)
 	ld	a, -3 (ix)
 	or	a, a
 	jr	Z,00122$
-;src\CFG8266.c:356: printf("\rDone!                                \r\n");
+;src\CFG8266.c:359: printf("\rDone!                                \r\n");
 	ld	hl, #___str_21
 	push	hl
 	call	_puts
 	pop	af
 	jr	00137$
 00122$:
-;src\CFG8266.c:358: printf("\rDone, but time-out on creating certificates index file!\r\n");
+;src\CFG8266.c:361: printf("\rDone, but time-out on creating certificates index file!\r\n");
 	ld	hl, #___str_23
 	push	hl
 	call	_puts
 	pop	af
 	jr	00137$
 00125$:
-;src\CFG8266.c:361: printf("\rDone!                              \r\n");
+;src\CFG8266.c:364: printf("\rDone!                              \r\n");
 	ld	hl, #___str_25
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:362: break;
+;src\CFG8266.c:365: break;
 	jr	00137$
 00130$:
-;src\CFG8266.c:365: if (!ucRetries)
+;src\CFG8266.c:368: if (!ucRetries)
 	ld	a, -1 (ix)
 	or	a, a
 	jr	NZ,00136$
-;src\CFG8266.c:366: printf("\rTimeout error\r\n");
+;src\CFG8266.c:369: printf("\rTimeout error\r\n");
 	ld	hl, #___str_27
 	push	hl
 	call	_puts
 	pop	af
 00136$:
-;src\CFG8266.c:369: while (ucRetries);
+;src\CFG8266.c:372: while (ucRetries);
 	ld	a, -1 (ix)
 	or	a, a
 	jp	NZ, 00135$
 00137$:
-;src\CFG8266.c:371: return;
-;src\CFG8266.c:372: }
+;src\CFG8266.c:374: return;
+;src\CFG8266.c:375: }
 	ld	sp, ix
 	pop	ix
 	ret
@@ -1671,7 +1674,7 @@ ___str_27:
 	.ascii "Timeout error"
 	.db 0x0d
 	.db 0x00
-;src\CFG8266.c:374: int main(char** argv, int argc)
+;src\CFG8266.c:377: int main(char** argv, int argc)
 ;	---------------------------------
 ; Function main
 ; ---------------------------------
@@ -1680,7 +1683,7 @@ _main::
 	ld	hl, #-485
 	add	hl, sp
 	ld	sp, hl
-;src\CFG8266.c:386: unsigned char advance[4] = {'-','\\','|','/'};
+;src\CFG8266.c:389: unsigned char advance[4] = {'-','\\','|','/'};
 	ld	hl, #421
 	add	hl, sp
 	ld	-18 (ix), l
@@ -1701,29 +1704,29 @@ _main::
 	inc	hl
 	inc	hl
 	ld	(hl), #0x2f
-;src\CFG8266.c:394: unsigned char ucFirstBlock = 1;
+;src\CFG8266.c:397: unsigned char ucFirstBlock = 1;
 	ld	-16 (ix), #0x01
-;src\CFG8266.c:401: ucLocalUpdate = 0;
+;src\CFG8266.c:404: ucLocalUpdate = 0;
 	ld	hl,#_ucLocalUpdate + 0
 	ld	(hl), #0x00
-;src\CFG8266.c:402: ucNagleOff = 0;
+;src\CFG8266.c:405: ucNagleOff = 0;
 	ld	hl,#_ucNagleOff + 0
 	ld	(hl), #0x00
-;src\CFG8266.c:403: ucNagleOn = 0;
+;src\CFG8266.c:406: ucNagleOn = 0;
 	ld	hl,#_ucNagleOn + 0
 	ld	(hl), #0x00
-;src\CFG8266.c:404: ucRadioOff = 0;
+;src\CFG8266.c:407: ucRadioOff = 0;
 	ld	hl,#_ucRadioOff + 0
 	ld	(hl), #0x00
-;src\CFG8266.c:405: ucSetTimeout = 0;
+;src\CFG8266.c:408: ucSetTimeout = 0;
 	ld	hl,#_ucSetTimeout + 0
 	ld	(hl), #0x00
-;src\CFG8266.c:407: printf("> SM-X ESP8266 WIFI Module Configuration v1.10 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
+;src\CFG8266.c:410: printf("> SM-X ESP8266 WIFI Module Configuration v1.20 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
 	ld	hl, #___str_29
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:409: if (IsValidInput(argv, argc))
+;src\CFG8266.c:412: if (IsValidInput(argv, argc))
 	ld	l, 6 (ix)
 	ld	h, 7 (ix)
 	push	hl
@@ -1738,17 +1741,17 @@ _main::
 	ld	a, h
 	or	a, -2 (ix)
 	jp	Z, 00293$
-;src\CFG8266.c:411: do
+;src\CFG8266.c:414: do
 	xor	a, a
 	ld	-1 (ix), a
 00103$:
-;src\CFG8266.c:414: myPort6 = speed;
+;src\CFG8266.c:417: myPort6 = speed;
 	ld	a, -1 (ix)
 	out	(_myPort6), a
-;src\CFG8266.c:415: ClearUartData();
+;src\CFG8266.c:418: ClearUartData();
 	ld	a, #0x14
 	out	(_myPort6), a
-;src\CFG8266.c:416: TxByte('?');
+;src\CFG8266.c:419: TxByte('?');
 	ld	a, #0x3f
 	push	af
 	inc	sp
@@ -1756,7 +1759,7 @@ _main::
 	inc	sp
 ;c:/fusion-c/fusion-c/header/../../fusion-c/header/msx_fusion.h:301: __endasm; 
 	halt
-;src\CFG8266.c:419: bResponse = WaitForRXData(responseOK,2,60,false,false);
+;src\CFG8266.c:422: bResponse = WaitForRXData(responseOK,2,60,false,false);
 	xor	a, a
 	push	af
 	inc	sp
@@ -1774,23 +1777,23 @@ _main::
 	pop	af
 	pop	af
 	pop	af
-;src\CFG8266.c:421: if (bResponse)
+;src\CFG8266.c:424: if (bResponse)
 	ld	-3 (ix), l
 	ld	a, l
 	or	a, a
 	jr	NZ,00105$
-;src\CFG8266.c:423: ++speed;
+;src\CFG8266.c:426: ++speed;
 	inc	-1 (ix)
-;src\CFG8266.c:425: while (speed<10);
+;src\CFG8266.c:428: while (speed<10);
 	ld	a, -1 (ix)
 	sub	a, #0x0a
 	jr	C,00103$
 00105$:
-;src\CFG8266.c:427: if (speed<10)
+;src\CFG8266.c:430: if (speed<10)
 	ld	a, -1 (ix)
 	sub	a, #0x0a
 	jp	NC, 00290$
-;src\CFG8266.c:429: printf ("Using Baud Rate #%u\r\n",speed);
+;src\CFG8266.c:432: printf ("Using Baud Rate #%u\r\n",speed);
 	ld	a, -1 (ix)
 	ld	-2 (ix), a
 	xor	a, a
@@ -1803,7 +1806,7 @@ _main::
 	call	_printf
 	pop	af
 	pop	af
-;src\CFG8266.c:430: if ((ucScan)||(ucNagleOff)||(ucNagleOn)||(ucRadioOff)||(ucSetTimeout))
+;src\CFG8266.c:433: if ((ucScan)||(ucNagleOff)||(ucNagleOn)||(ucRadioOff)||(ucSetTimeout))
 	ld	a,(#_ucScan + 0)
 	or	a, a
 	jr	NZ,00282$
@@ -1820,11 +1823,11 @@ _main::
 	or	a, a
 	jp	Z, 00283$
 00282$:
-;src\CFG8266.c:433: if (ucScan)
+;src\CFG8266.c:436: if (ucScan)
 	ld	a,(#_ucScan + 0)
 	or	a, a
 	jr	Z,00121$
-;src\CFG8266.c:434: TxByte('S'); //Request SCAN
+;src\CFG8266.c:437: TxByte('S'); //Request SCAN
 	ld	a, #0x53
 	push	af
 	inc	sp
@@ -1832,11 +1835,11 @@ _main::
 	inc	sp
 	jp	00122$
 00121$:
-;src\CFG8266.c:435: else if (ucNagleOff)
+;src\CFG8266.c:438: else if (ucNagleOff)
 	ld	a,(#_ucNagleOff + 0)
 	or	a, a
 	jr	Z,00118$
-;src\CFG8266.c:436: TxByte('N'); //Request nagle off for future connections
+;src\CFG8266.c:439: TxByte('N'); //Request nagle off for future connections
 	ld	a, #0x4e
 	push	af
 	inc	sp
@@ -1844,11 +1847,11 @@ _main::
 	inc	sp
 	jp	00122$
 00118$:
-;src\CFG8266.c:437: else if (ucNagleOn)
+;src\CFG8266.c:440: else if (ucNagleOn)
 	ld	a,(#_ucNagleOn + 0)
 	or	a, a
 	jr	Z,00115$
-;src\CFG8266.c:438: TxByte('D'); //Request nagle on for future connections
+;src\CFG8266.c:441: TxByte('D'); //Request nagle on for future connections
 	ld	a, #0x44
 	push	af
 	inc	sp
@@ -1856,11 +1859,11 @@ _main::
 	inc	sp
 	jr	00122$
 00115$:
-;src\CFG8266.c:439: else if (ucRadioOff)
+;src\CFG8266.c:442: else if (ucRadioOff)
 	ld	a,(#_ucRadioOff + 0)
 	or	a, a
 	jr	Z,00112$
-;src\CFG8266.c:440: TxByte('O'); //Request to turn off wifi radio immediately
+;src\CFG8266.c:443: TxByte('O'); //Request to turn off wifi radio immediately
 	ld	a, #0x4f
 	push	af
 	inc	sp
@@ -1868,22 +1871,22 @@ _main::
 	inc	sp
 	jr	00122$
 00112$:
-;src\CFG8266.c:441: else if (ucSetTimeout)
+;src\CFG8266.c:444: else if (ucSetTimeout)
 	ld	a,(#_ucSetTimeout + 0)
 	or	a, a
 	jr	Z,00122$
-;src\CFG8266.c:443: ucTimeOutMSB = ((unsigned char)((uiTimeout&0xff00)>>8));
+;src\CFG8266.c:446: ucTimeOutMSB = ((unsigned char)((uiTimeout&0xff00)>>8));
 	ld	iy, #_uiTimeout
 	ld	c, 1 (iy)
 	ld	-2 (ix), c
-;src\CFG8266.c:444: ucTimeOutLSB = ((unsigned char)(uiTimeout&0xff));
+;src\CFG8266.c:447: ucTimeOutLSB = ((unsigned char)(uiTimeout&0xff));
 	ld	a, 0 (iy)
 	ld	-1 (ix), a
-;src\CFG8266.c:445: if (uiTimeout)
+;src\CFG8266.c:448: if (uiTimeout)
 	ld	a, 1 (iy)
 	or	a, 0 (iy)
 	jr	Z,00107$
-;src\CFG8266.c:446: printf("\r\nSetting WiFi idle timeout to %u...\r\n",uiTimeout);
+;src\CFG8266.c:449: printf("\r\nSetting WiFi idle timeout to %u...\r\n",uiTimeout);
 	ld	hl, (_uiTimeout)
 	push	hl
 	ld	hl, #___str_31
@@ -1893,48 +1896,48 @@ _main::
 	pop	af
 	jr	00108$
 00107$:
-;src\CFG8266.c:448: printf("\r\nSetting WiFi to always on!\r\n");
+;src\CFG8266.c:451: printf("\r\nSetting WiFi to always on!\r\n");
 	ld	hl, #___str_33
 	push	hl
 	call	_puts
 	pop	af
 00108$:
-;src\CFG8266.c:449: TxByte('T'); //Request to set time-out
+;src\CFG8266.c:452: TxByte('T'); //Request to set time-out
 	ld	a, #0x54
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:450: TxByte(0);
+;src\CFG8266.c:453: TxByte(0);
 	xor	a, a
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:451: TxByte(2);
+;src\CFG8266.c:454: TxByte(2);
 	ld	a, #0x02
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:452: TxByte(ucTimeOutMSB);
+;src\CFG8266.c:455: TxByte(ucTimeOutMSB);
 	ld	a, -2 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:453: TxByte(ucTimeOutLSB);
+;src\CFG8266.c:456: TxByte(ucTimeOutLSB);
 	ld	a, -1 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
 00122$:
-;src\CFG8266.c:456: if (ucScan)
+;src\CFG8266.c:459: if (ucScan)
 	ld	a,(#_ucScan + 0)
 	or	a, a
 	jr	Z,00135$
-;src\CFG8266.c:457: bResponse = WaitForRXData(scanResponse,2,60,true,false);
+;src\CFG8266.c:460: bResponse = WaitForRXData(scanResponse,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -1953,11 +1956,11 @@ _main::
 	ld	-3 (ix), l
 	jp	00136$
 00135$:
-;src\CFG8266.c:458: else if (ucNagleOff)
+;src\CFG8266.c:461: else if (ucNagleOff)
 	ld	a,(#_ucNagleOff + 0)
 	or	a, a
 	jr	Z,00132$
-;src\CFG8266.c:459: bResponse = WaitForRXData(nagleoffResponse,2,60,true,false);
+;src\CFG8266.c:462: bResponse = WaitForRXData(nagleoffResponse,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -1976,11 +1979,11 @@ _main::
 	ld	-3 (ix), l
 	jr	00136$
 00132$:
-;src\CFG8266.c:460: else if (ucNagleOn)
+;src\CFG8266.c:463: else if (ucNagleOn)
 	ld	a,(#_ucNagleOn + 0)
 	or	a, a
 	jr	Z,00129$
-;src\CFG8266.c:461: bResponse = WaitForRXData(nagleonResponse,2,60,true,false);
+;src\CFG8266.c:464: bResponse = WaitForRXData(nagleonResponse,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -1999,11 +2002,11 @@ _main::
 	ld	-3 (ix), l
 	jr	00136$
 00129$:
-;src\CFG8266.c:462: else if (ucRadioOff)
+;src\CFG8266.c:465: else if (ucRadioOff)
 	ld	a,(#_ucRadioOff + 0)
 	or	a, a
 	jr	Z,00126$
-;src\CFG8266.c:463: bResponse = WaitForRXData(radioOffResponse,2,60,true,false);
+;src\CFG8266.c:466: bResponse = WaitForRXData(radioOffResponse,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -2022,11 +2025,11 @@ _main::
 	ld	-3 (ix), l
 	jr	00136$
 00126$:
-;src\CFG8266.c:464: else if (ucSetTimeout)
+;src\CFG8266.c:467: else if (ucSetTimeout)
 	ld	a,(#_ucSetTimeout + 0)
 	or	a, a
 	jr	Z,00136$
-;src\CFG8266.c:465: bResponse = WaitForRXData(responseRadioOnTimeout,2,60,true,false);
+;src\CFG8266.c:468: bResponse = WaitForRXData(responseRadioOnTimeout,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -2044,7 +2047,7 @@ _main::
 	pop	af
 	ld	-3 (ix), l
 00136$:
-;src\CFG8266.c:468: if ((bResponse)&&(ucScan))
+;src\CFG8266.c:471: if ((bResponse)&&(ucScan))
 	ld	a, -3 (ix)
 	or	a, a
 	jp	Z, 00215$
@@ -2052,23 +2055,23 @@ _main::
 	ld	a, 0 (iy)
 	or	a, a
 	jp	Z, 00215$
-;src\CFG8266.c:471: do
+;src\CFG8266.c:474: do
 	ld	c, #0x0a
 00139$:
-;src\CFG8266.c:473: --ucRetries;
+;src\CFG8266.c:476: --ucRetries;
 	dec	c
-;src\CFG8266.c:474: for (ucHalt = 60;ucHalt>0;--ucHalt)
+;src\CFG8266.c:477: for (ucHalt = 60;ucHalt>0;--ucHalt)
 	ld	b, #0x3c
 00297$:
 ;c:/fusion-c/fusion-c/header/../../fusion-c/header/msx_fusion.h:301: __endasm; 
 	halt
-;src\CFG8266.c:474: for (ucHalt = 60;ucHalt>0;--ucHalt)
+;src\CFG8266.c:477: for (ucHalt = 60;ucHalt>0;--ucHalt)
 	ld	a, b
 	dec	a
 	ld	b, a
 	or	a, a
 	jr	NZ,00297$
-;src\CFG8266.c:476: TxByte('s'); //Request SCAN result
+;src\CFG8266.c:479: TxByte('s'); //Request SCAN result
 	push	bc
 	ld	a, #0x73
 	push	af
@@ -2093,7 +2096,7 @@ _main::
 	pop	af
 	pop	af
 	pop	bc
-;src\CFG8266.c:479: while ((ucRetries)&&(!bResponse));
+;src\CFG8266.c:482: while ((ucRetries)&&(!bResponse));
 	ld	a, c
 	or	a, a
 	jr	Z,00141$
@@ -2101,11 +2104,11 @@ _main::
 	or	a, a
 	jr	Z,00139$
 00141$:
-;src\CFG8266.c:481: if (bResponse)
+;src\CFG8266.c:484: if (bResponse)
 	ld	a, l
 	or	a, a
 	jp	Z, 00189$
-;src\CFG8266.c:484: while(!UartRXData());
+;src\CFG8266.c:487: while(!UartRXData());
 00142$:
 	in	a, (_myPort7)
 	sub	a,#0x01
@@ -2113,29 +2116,29 @@ _main::
 	rla
 	bit	0, a
 	jr	NZ,00142$
-;src\CFG8266.c:485: ucAPs = GetUARTData();
+;src\CFG8266.c:488: ucAPs = GetUARTData();
 	in	a, (_myPort6)
 	ld	-8 (ix), a
-;src\CFG8266.c:486: if (ucAPs>10)
+;src\CFG8266.c:489: if (ucAPs>10)
 	ld	a, #0x0a
 	sub	a, -8 (ix)
 	jr	NC,00146$
-;src\CFG8266.c:487: ucAPs=10;
+;src\CFG8266.c:490: ucAPs=10;
 	ld	-8 (ix), #0x0a
 00146$:
-;src\CFG8266.c:489: printf ("\r\n");
+;src\CFG8266.c:492: printf ("\r\n");
 	ld	hl, #___str_35
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:490: do
+;src\CFG8266.c:493: do
 	ld	hl, #81
 	add	hl, sp
 	ld	-7 (ix), l
 	ld	-6 (ix), h
 	xor	a, a
 	ld	-1 (ix), a
-;src\CFG8266.c:495: while(!UartRXData());
+;src\CFG8266.c:498: while(!UartRXData());
 00337$:
 	ld	c, -1 (ix)
 	ld	b, #0x00
@@ -2162,10 +2165,10 @@ _main::
 	rla
 	bit	0, a
 	jr	NZ,00147$
-;src\CFG8266.c:496: rx_data=GetUARTData();
+;src\CFG8266.c:499: rx_data=GetUARTData();
 	in	a, (_myPort6)
 	ld	-2 (ix), a
-;src\CFG8266.c:497: stAP[tx_data].APName[ucIndex++]=rx_data;
+;src\CFG8266.c:500: stAP[tx_data].APName[ucIndex++]=rx_data;
 	ld	a, e
 	inc	e
 	ld	l, a
@@ -2173,11 +2176,11 @@ _main::
 	add	hl, bc
 	ld	a, -2 (ix)
 	ld	(hl), a
-;src\CFG8266.c:499: while(rx_data!=0);
+;src\CFG8266.c:502: while(rx_data!=0);
 	ld	a, -2 (ix)
 	or	a, a
 	jr	NZ,00147$
-;src\CFG8266.c:500: while(!UartRXData());
+;src\CFG8266.c:503: while(!UartRXData());
 00153$:
 	in	a, (_myPort7)
 	sub	a,#0x01
@@ -2185,10 +2188,10 @@ _main::
 	rla
 	bit	0, a
 	jr	NZ,00153$
-;src\CFG8266.c:501: rx_data=GetUARTData();
+;src\CFG8266.c:504: rx_data=GetUARTData();
 	in	a, (_myPort6)
 	ld	c, a
-;src\CFG8266.c:502: stAP[tx_data].isEncrypted = (rx_data == 'E') ? 1 : 0;
+;src\CFG8266.c:505: stAP[tx_data].isEncrypted = (rx_data == 'E') ? 1 : 0;
 	ld	e, -1 (ix)
 	ld	d, #0x00
 	ld	l, e
@@ -2226,28 +2229,28 @@ _main::
 	ld	l, -5 (ix)
 	ld	h, -4 (ix)
 	ld	(hl), a
-;src\CFG8266.c:503: ++tx_data;
+;src\CFG8266.c:506: ++tx_data;
 	inc	-1 (ix)
-;src\CFG8266.c:505: while (tx_data!=ucAPs);
+;src\CFG8266.c:508: while (tx_data!=ucAPs);
 	ld	a, -1 (ix)
 	sub	a, -8 (ix)
 	jp	NZ,00337$
-;src\CFG8266.c:506: ClearUartData();
+;src\CFG8266.c:509: ClearUartData();
 	ld	a, #0x14
 	out	(_myPort6), a
-;src\CFG8266.c:507: printf("Choose AP:\r\n\n");
+;src\CFG8266.c:510: printf("Choose AP:\r\n\n");
 	ld	hl, #___str_37
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:508: for (ucIndex=0;ucIndex<ucAPs;ucIndex++)
+;src\CFG8266.c:511: for (ucIndex=0;ucIndex<ucAPs;ucIndex++)
 	xor	a, a
 	ld	-1 (ix), a
 00300$:
 	ld	a, -1 (ix)
 	sub	a, -8 (ix)
 	jr	NC,00162$
-;src\CFG8266.c:510: printf("%u - %s",ucIndex,stAP[ucIndex].APName);
+;src\CFG8266.c:513: printf("%u - %s",ucIndex,stAP[ucIndex].APName);
 	ld	c, -1 (ix)
 	ld	b, #0x00
 	ld	l, c
@@ -2276,39 +2279,39 @@ _main::
 	pop	af
 	pop	af
 	pop	hl
-;src\CFG8266.c:511: if (stAP[ucIndex].isEncrypted)
+;src\CFG8266.c:514: if (stAP[ucIndex].isEncrypted)
 	ld	de, #0x0021
 	add	hl, de
 	ld	a, (hl)
 	or	a, a
 	jr	Z,00160$
-;src\CFG8266.c:512: printf(" (PWD)\r\n");
+;src\CFG8266.c:515: printf(" (PWD)\r\n");
 	ld	hl, #___str_40
 	push	hl
 	call	_puts
 	pop	af
 	jr	00301$
 00160$:
-;src\CFG8266.c:514: printf(" (OPEN)\r\n");
+;src\CFG8266.c:517: printf(" (OPEN)\r\n");
 	ld	hl, #___str_42
 	push	hl
 	call	_puts
 	pop	af
 00301$:
-;src\CFG8266.c:508: for (ucIndex=0;ucIndex<ucAPs;ucIndex++)
+;src\CFG8266.c:511: for (ucIndex=0;ucIndex<ucAPs;ucIndex++)
 	inc	-1 (ix)
 	jr	00300$
 00162$:
-;src\CFG8266.c:516: printf("\r\nWhich one to connect? (ESC exit)");
+;src\CFG8266.c:519: printf("\r\nWhich one to connect? (ESC exit)");
 	ld	hl, #___str_43
 	push	hl
 	call	_printf
 	pop	af
-;src\CFG8266.c:518: do
+;src\CFG8266.c:521: do
 00166$:
-;src\CFG8266.c:520: tx_data = Inkey ();
+;src\CFG8266.c:523: tx_data = Inkey ();
 	call	_Inkey
-;src\CFG8266.c:521: if (tx_data==0x1b)
+;src\CFG8266.c:524: if (tx_data==0x1b)
 	ld	a, l
 	sub	a, #0x1b
 	ld	a, #0x01
@@ -2318,7 +2321,7 @@ _main::
 	ld	c, a
 	or	a, a
 	jr	NZ,00168$
-;src\CFG8266.c:524: while ((tx_data<'0')||(tx_data>'9'));
+;src\CFG8266.c:527: while ((tx_data<'0')||(tx_data>'9'));
 	ld	a, l
 	sub	a, #0x30
 	jr	C,00166$
@@ -2326,10 +2329,10 @@ _main::
 	sub	a, l
 	jr	C,00166$
 00168$:
-;src\CFG8266.c:525: if (tx_data!=0x1b)
+;src\CFG8266.c:528: if (tx_data!=0x1b)
 	bit	0, c
 	jp	NZ, 00186$
-;src\CFG8266.c:527: printf(" %c\r\n",tx_data);
+;src\CFG8266.c:530: printf(" %c\r\n",tx_data);
 	ld	e, l
 	ld	d, #0x00
 	ld	bc, #___str_44+0
@@ -2340,10 +2343,10 @@ _main::
 	pop	af
 	pop	af
 	pop	hl
-;src\CFG8266.c:528: ucIndex = tx_data-'0';
+;src\CFG8266.c:531: ucIndex = tx_data-'0';
 	ld	a, l
 	add	a, #0xd0
-;src\CFG8266.c:529: if (stAP[ucIndex].isEncrypted)
+;src\CFG8266.c:532: if (stAP[ucIndex].isEncrypted)
 	ld	c, a
 	ld	b, #0x00
 	ld	l, c
@@ -2368,7 +2371,7 @@ _main::
 	ld	a, (de)
 	or	a, a
 	jr	Z,00170$
-;src\CFG8266.c:532: printf("Password? ");
+;src\CFG8266.c:535: printf("Password? ");
 	push	bc
 	push	de
 	ld	hl, #___str_45
@@ -2377,7 +2380,7 @@ _main::
 	pop	af
 	pop	de
 	pop	bc
-;src\CFG8266.c:533: InputString(ucPWD,64);
+;src\CFG8266.c:536: InputString(ucPWD,64);
 	ld	hl, #16
 	add	hl, sp
 	ld	-2 (ix), l
@@ -2398,18 +2401,18 @@ _main::
 	pop	de
 	pop	bc
 00170$:
-;src\CFG8266.c:536: uiCMDLen = strlen(stAP[ucIndex].APName) + 1;
+;src\CFG8266.c:539: uiCMDLen = strlen(stAP[ucIndex].APName) + 1;
 	push	bc
 	call	_strlen
 	pop	af
 	inc	hl
 	ld	c,l
 	ld	b,h
-;src\CFG8266.c:537: if (stAP[ucIndex].isEncrypted)
+;src\CFG8266.c:540: if (stAP[ucIndex].isEncrypted)
 	ld	a, (de)
 	or	a, a
 	jr	Z,00172$
-;src\CFG8266.c:538: uiCMDLen += strlen(ucPWD);
+;src\CFG8266.c:541: uiCMDLen += strlen(ucPWD);
 	ld	hl, #16
 	add	hl, sp
 	push	bc
@@ -2421,7 +2424,7 @@ _main::
 	ld	c, l
 	ld	b, h
 00172$:
-;src\CFG8266.c:539: TxByte('A'); //Request connect AP
+;src\CFG8266.c:542: TxByte('A'); //Request connect AP
 	push	bc
 	ld	a, #0x41
 	push	af
@@ -2429,7 +2432,7 @@ _main::
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:540: TxByte((unsigned char)((uiCMDLen&0xff00)>>8));
+;src\CFG8266.c:543: TxByte((unsigned char)((uiCMDLen&0xff00)>>8));
 	ld	d, b
 	ld	e, #0x00
 	push	bc
@@ -2438,7 +2441,7 @@ _main::
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:541: TxByte((unsigned char)(uiCMDLen&0xff));
+;src\CFG8266.c:544: TxByte((unsigned char)(uiCMDLen&0xff));
 	ld	a, c
 	push	bc
 	push	af
@@ -2446,7 +2449,7 @@ _main::
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:543: do
+;src\CFG8266.c:546: do
 	ld	a, -7 (ix)
 	add	a, -5 (ix)
 	ld	-3 (ix), a
@@ -2456,7 +2459,7 @@ _main::
 	xor	a, a
 	ld	-1 (ix), a
 00174$:
-;src\CFG8266.c:545: tx_data = stAP[ucIndex].APName[rx_data];
+;src\CFG8266.c:548: tx_data = stAP[ucIndex].APName[rx_data];
 	ld	a, -3 (ix)
 	add	a, -1 (ix)
 	ld	e, a
@@ -2465,7 +2468,7 @@ _main::
 	ld	l, e
 	ld	h, a
 	ld	d, (hl)
-;src\CFG8266.c:546: TxByte(tx_data);
+;src\CFG8266.c:549: TxByte(tx_data);
 	push	bc
 	push	de
 	push	de
@@ -2474,11 +2477,11 @@ _main::
 	inc	sp
 	pop	de
 	pop	bc
-;src\CFG8266.c:547: --uiCMDLen;
+;src\CFG8266.c:550: --uiCMDLen;
 	dec	bc
-;src\CFG8266.c:548: ++rx_data;
+;src\CFG8266.c:551: ++rx_data;
 	inc	-1 (ix)
-;src\CFG8266.c:550: while((uiCMDLen)&&(tx_data!=0));
+;src\CFG8266.c:553: while((uiCMDLen)&&(tx_data!=0));
 	ld	a, b
 	or	a, c
 	jr	Z,00176$
@@ -2486,11 +2489,11 @@ _main::
 	or	a, a
 	jr	NZ,00174$
 00176$:
-;src\CFG8266.c:551: if(uiCMDLen)
+;src\CFG8266.c:554: if(uiCMDLen)
 	ld	a, b
 	or	a, c
 	jr	Z,00181$
-;src\CFG8266.c:554: do
+;src\CFG8266.c:557: do
 	ld	hl, #16
 	add	hl, sp
 	ld	-3 (ix), l
@@ -2498,7 +2501,7 @@ _main::
 	xor	a, a
 	ld	-1 (ix), a
 00177$:
-;src\CFG8266.c:556: tx_data = ucPWD[rx_data];
+;src\CFG8266.c:559: tx_data = ucPWD[rx_data];
 	ld	a, -3 (ix)
 	add	a, -1 (ix)
 	ld	e, a
@@ -2506,23 +2509,23 @@ _main::
 	adc	a, #0x00
 	ld	d, a
 	ld	a, (de)
-;src\CFG8266.c:557: TxByte(tx_data);
+;src\CFG8266.c:560: TxByte(tx_data);
 	push	bc
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:558: --uiCMDLen;
+;src\CFG8266.c:561: --uiCMDLen;
 	dec	bc
-;src\CFG8266.c:559: ++rx_data;
+;src\CFG8266.c:562: ++rx_data;
 	inc	-1 (ix)
-;src\CFG8266.c:561: while(uiCMDLen);
+;src\CFG8266.c:564: while(uiCMDLen);
 	ld	a, b
 	or	a, c
 	jr	NZ,00177$
 00181$:
-;src\CFG8266.c:565: bResponse = WaitForRXData(apconfigurationResponse,2,300,true,false); //Wait up to 5s
+;src\CFG8266.c:568: bResponse = WaitForRXData(apconfigurationResponse,2,300,true,false); //Wait up to 5s
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -2539,49 +2542,49 @@ _main::
 	pop	af
 	pop	af
 	ld	a, l
-;src\CFG8266.c:566: if (bResponse)
+;src\CFG8266.c:569: if (bResponse)
 	or	a, a
 	jr	Z,00183$
-;src\CFG8266.c:567: printf("Success, AP configured to be used.\r\n");
+;src\CFG8266.c:570: printf("Success, AP configured to be used.\r\n");
 	ld	hl, #___str_48
 	push	hl
 	call	_puts
 	pop	af
 	jp	00294$
 00183$:
-;src\CFG8266.c:569: printf("Error, AP not configured!\r\n");
+;src\CFG8266.c:572: printf("Error, AP not configured!\r\n");
 	ld	hl, #___str_50
 	push	hl
 	call	_puts
 	pop	af
 	jp	00294$
 00186$:
-;src\CFG8266.c:572: printf("User canceled by ESC key...\r\n");
+;src\CFG8266.c:575: printf("\r\nUser canceled by ESC key...\r\n");
 	ld	hl, #___str_52
 	push	hl
 	call	_puts
 	pop	af
 	jp	00294$
 00189$:
-;src\CFG8266.c:575: printf("Scan results: no answer...\r\n");
+;src\CFG8266.c:578: printf("\r\nScan results: no answer...\r\n");
 	ld	hl, #___str_54
 	push	hl
 	call	_puts
 	pop	af
 	jp	00294$
 00215$:
-;src\CFG8266.c:579: if (ucScan)
+;src\CFG8266.c:582: if (ucScan)
 	ld	a,(#_ucScan + 0)
 	or	a, a
 	jr	Z,00212$
-;src\CFG8266.c:580: printf ("\rScan request: no answer...\n");
+;src\CFG8266.c:583: printf ("\rScan request: no answer...\n");
 	ld	hl, #___str_56
 	push	hl
 	call	_puts
 	pop	af
 	jp	00294$
 00212$:
-;src\CFG8266.c:581: else if (((ucNagleOff)||(ucNagleOn))&&(bResponse))
+;src\CFG8266.c:584: else if (((ucNagleOff)||(ucNagleOn))&&(bResponse))
 	ld	a,(#_ucNagleOff + 0)
 	or	a, a
 	jr	NZ,00210$
@@ -2592,16 +2595,16 @@ _main::
 	ld	a, -3 (ix)
 	or	a, a
 	jr	Z,00207$
-;src\CFG8266.c:583: printf("\rNagle set as requested...\n");
+;src\CFG8266.c:586: printf("\rNagle set as requested...\n");
 	ld	hl, #___str_58
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:584: return 0;
+;src\CFG8266.c:587: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00207$:
-;src\CFG8266.c:586: else if ((ucNagleOff)||(ucNagleOn))
+;src\CFG8266.c:589: else if ((ucNagleOff)||(ucNagleOn))
 	ld	a,(#_ucNagleOff + 0)
 	or	a, a
 	jr	NZ,00202$
@@ -2609,70 +2612,70 @@ _main::
 	or	a, a
 	jr	Z,00203$
 00202$:
-;src\CFG8266.c:588: printf("\rNagle not set as requested, error!\n");
+;src\CFG8266.c:591: printf("\rNagle not set as requested, error!\n");
 	ld	hl, #___str_60
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:589: return 0;
+;src\CFG8266.c:592: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00203$:
-;src\CFG8266.c:591: else if (ucRadioOff)
+;src\CFG8266.c:594: else if (ucRadioOff)
 	ld	a,(#_ucRadioOff + 0)
 	or	a, a
 	jr	Z,00200$
-;src\CFG8266.c:593: if (bResponse)
+;src\CFG8266.c:596: if (bResponse)
 	ld	a, -3 (ix)
 	or	a, a
 	jr	Z,00192$
-;src\CFG8266.c:594: printf("\rRequested to turn off WiFi Radio...\n");
+;src\CFG8266.c:597: printf("\rRequested to turn off WiFi Radio...\n");
 	ld	hl, #___str_62
 	push	hl
 	call	_puts
 	pop	af
 	jr	00193$
 00192$:
-;src\CFG8266.c:596: printf("\rRequest to turnoff WiFi Radio error!\n");
+;src\CFG8266.c:599: printf("\rRequest to turnoff WiFi Radio error!\n");
 	ld	hl, #___str_64
 	push	hl
 	call	_puts
 	pop	af
 00193$:
-;src\CFG8266.c:597: return 0;
+;src\CFG8266.c:600: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00200$:
-;src\CFG8266.c:599: else if (ucSetTimeout)
+;src\CFG8266.c:602: else if (ucSetTimeout)
 	ld	a,(#_ucSetTimeout + 0)
 	or	a, a
 	jp	Z, 00294$
-;src\CFG8266.c:601: if (bResponse)
+;src\CFG8266.c:604: if (bResponse)
 	ld	a, -3 (ix)
 	or	a, a
 	jr	Z,00195$
-;src\CFG8266.c:602: printf("\rWiFi radio on Time-out set successfully...\n");
+;src\CFG8266.c:605: printf("\rWiFi radio on Time-out set successfully...\n");
 	ld	hl, #___str_66
 	push	hl
 	call	_puts
 	pop	af
 	jr	00196$
 00195$:
-;src\CFG8266.c:604: printf("\rError setting WiFi radio on Time-out!\n");
+;src\CFG8266.c:607: printf("\rError setting WiFi radio on Time-out!\n");
 	ld	hl, #___str_68
 	push	hl
 	call	_puts
 	pop	af
 00196$:
-;src\CFG8266.c:605: return 0;
+;src\CFG8266.c:608: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00283$:
-;src\CFG8266.c:609: else if (ucLocalUpdate)
+;src\CFG8266.c:612: else if (ucLocalUpdate)
 	ld	a,(#_ucLocalUpdate + 0)
 	or	a, a
 	jp	Z, 00280$
-;src\CFG8266.c:612: iFile = Open (ucFile,O_RDONLY);
+;src\CFG8266.c:615: iFile = Open (ucFile,O_RDONLY);
 	ld	hl, #0x0000
 	push	hl
 	ld	hl, #_ucFile
@@ -2682,12 +2685,12 @@ _main::
 	pop	af
 	ld	-2 (ix), l
 	ld	-1 (ix), h
-;src\CFG8266.c:614: if (iFile!=-1)
+;src\CFG8266.c:617: if (iFile!=-1)
 	ld	a, -2 (ix)
 	and	a, -1 (ix)
 	inc	a
 	jp	Z,00253$
-;src\CFG8266.c:621: regs.Words.HL = 0; //set pointer as 0
+;src\CFG8266.c:624: regs.Words.HL = 0; //set pointer as 0
 	ld	hl, #425
 	add	hl, sp
 	ex	de, hl
@@ -2697,7 +2700,7 @@ _main::
 	ld	(hl), a
 	inc	hl
 	ld	(hl), a
-;src\CFG8266.c:622: regs.Words.DE = 0; //so it will return the position
+;src\CFG8266.c:625: regs.Words.DE = 0; //so it will return the position
 	inc	de
 	inc	de
 	inc	de
@@ -2706,7 +2709,7 @@ _main::
 	ld	(de), a
 	inc	de
 	ld	(de), a
-;src\CFG8266.c:623: regs.Bytes.A = 2; //relative to the end of file, i.e.:file size
+;src\CFG8266.c:626: regs.Bytes.A = 2; //relative to the end of file, i.e.:file size
 	ld	hl, #425
 	add	hl, sp
 	ex	de, hl
@@ -2714,7 +2717,7 @@ _main::
 	ld	h, d
 	inc	hl
 	ld	(hl), #0x02
-;src\CFG8266.c:624: regs.Bytes.B = (unsigned char)(iFile&0xff);
+;src\CFG8266.c:627: regs.Bytes.B = (unsigned char)(iFile&0xff);
 	inc	de
 	inc	de
 	inc	de
@@ -2723,7 +2726,7 @@ _main::
 	ld	l, e
 	ld	h, a
 	ld	(hl), c
-;src\CFG8266.c:625: DosCall(0x4A, &regs, REGS_ALL, REGS_ALL); // MOVE FILE HANDLER
+;src\CFG8266.c:628: DosCall(0x4A, &regs, REGS_ALL, REGS_ALL); // MOVE FILE HANDLER
 	ld	hl, #425
 	add	hl, sp
 	ld	-4 (ix), l
@@ -2740,7 +2743,7 @@ _main::
 	pop	af
 	pop	af
 	inc	sp
-;src\CFG8266.c:626: if (regs.Bytes.A == 0) //moved, now get the file handler position, i.e.: size
+;src\CFG8266.c:629: if (regs.Bytes.A == 0) //moved, now get the file handler position, i.e.: size
 	ld	l, -4 (ix)
 	ld	h, -3 (ix)
 	inc	hl
@@ -2748,7 +2751,7 @@ _main::
 	ld	-5 (ix), a
 	or	a, a
 	jp	NZ, 00219$
-;src\CFG8266.c:627: SentFileSize = (unsigned long)(regs.Words.HL)&0xffff | ((unsigned long)(regs.Words.DE)<<16)&0xffff0000;
+;src\CFG8266.c:630: SentFileSize = (unsigned long)(regs.Words.HL)&0xffff | ((unsigned long)(regs.Words.DE)<<16)&0xffff0000;
 	ld	a, -4 (ix)
 	ld	-6 (ix), a
 	ld	a, -3 (ix)
@@ -2827,14 +2830,14 @@ _main::
 	ldir
 	jr	00220$
 00219$:
-;src\CFG8266.c:629: SentFileSize = 0;
+;src\CFG8266.c:632: SentFileSize = 0;
 	xor	a, a
 	ld	-6 (ix), a
 	ld	-5 (ix), a
 	ld	-4 (ix), a
 	ld	-3 (ix), a
 00220$:
-;src\CFG8266.c:631: ultostr(SentFileSize,chFileSize,10);
+;src\CFG8266.c:634: ultostr(SentFileSize,chFileSize,10);
 	ld	hl, #437
 	add	hl, sp
 	ld	c, l
@@ -2860,7 +2863,7 @@ _main::
 	call	_Close
 	pop	af
 	pop	hl
-;src\CFG8266.c:633: printf ("File: %s Size: %s \r\n",ucFile,chFileSize);
+;src\CFG8266.c:636: printf ("File: %s Size: %s \r\n",ucFile,chFileSize);
 	ld	de, #_ucFile
 	ld	bc, #___str_69+0
 	push	hl
@@ -2870,13 +2873,13 @@ _main::
 	pop	af
 	pop	af
 	pop	af
-;src\CFG8266.c:634: if (SentFileSize)
+;src\CFG8266.c:637: if (SentFileSize)
 	ld	a, -3 (ix)
 	or	a, -4 (ix)
 	or	a, -5 (ix)
 	or	a, -6 (ix)
 	jp	Z, 00250$
-;src\CFG8266.c:636: iFile = Open (ucFile,O_RDONLY);
+;src\CFG8266.c:639: iFile = Open (ucFile,O_RDONLY);
 	ld	hl, #0x0000
 	push	hl
 	ld	hl, #_ucFile
@@ -2886,12 +2889,12 @@ _main::
 	pop	af
 	ld	-15 (ix), l
 	ld	-14 (ix), h
-;src\CFG8266.c:637: if (iFile!=-1)
+;src\CFG8266.c:640: if (iFile!=-1)
 	ld	a, -15 (ix)
 	and	a, -14 (ix)
 	inc	a
 	jp	Z,00247$
-;src\CFG8266.c:639: FileRead = MyRead(iFile, ucServer,256); //try to read 256 bytes of data
+;src\CFG8266.c:642: FileRead = MyRead(iFile, ucServer,256); //try to read 256 bytes of data
 	ld	hl, #0x0100
 	push	hl
 	ld	hl, #_ucServer
@@ -2905,18 +2908,18 @@ _main::
 	pop	af
 	ld	-13 (ix), l
 	ld	-12 (ix), h
-;src\CFG8266.c:640: if (FileRead == 256)
+;src\CFG8266.c:643: if (FileRead == 256)
 	ld	a, -13 (ix)
 	or	a, a
 	jp	NZ,00244$
 	ld	a, -12 (ix)
 	dec	a
 	jp	NZ,00244$
-;src\CFG8266.c:643: if (ucIsFw)
+;src\CFG8266.c:646: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00222$
-;src\CFG8266.c:644: TxByte('Z'); //Request start of RS232 update
+;src\CFG8266.c:647: TxByte('Z'); //Request start of RS232 update
 	ld	a, #0x5a
 	push	af
 	inc	sp
@@ -2924,51 +2927,51 @@ _main::
 	inc	sp
 	jr	00223$
 00222$:
-;src\CFG8266.c:646: TxByte('Y'); //Request start of RS232 cert update
+;src\CFG8266.c:649: TxByte('Y'); //Request start of RS232 cert update
 	ld	a, #0x59
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
 00223$:
-;src\CFG8266.c:647: TxByte(0);
+;src\CFG8266.c:650: TxByte(0);
 	xor	a, a
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:648: TxByte(12);
+;src\CFG8266.c:651: TxByte(12);
 	ld	a, #0x0c
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:649: TxByte((unsigned char)(SentFileSize&0xff));
+;src\CFG8266.c:652: TxByte((unsigned char)(SentFileSize&0xff));
 	ld	a, -6 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:650: TxByte((unsigned char)((SentFileSize&0xff00)>>8));
+;src\CFG8266.c:653: TxByte((unsigned char)((SentFileSize&0xff00)>>8));
 	ld	b, -5 (ix)
 	ld	c, #0x00
 	push	bc
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:651: TxByte((unsigned char)((SentFileSize&0xff0000)>>16));
+;src\CFG8266.c:654: TxByte((unsigned char)((SentFileSize&0xff0000)>>16));
 	ld	a, -4 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:652: TxByte((unsigned char)((SentFileSize&0xff000000)>>24));
+;src\CFG8266.c:655: TxByte((unsigned char)((SentFileSize&0xff000000)>>24));
 	ld	a, -3 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:653: TxByte((unsigned char)((SentFileSize&0xff00000000)>>32));
+;src\CFG8266.c:656: TxByte((unsigned char)((SentFileSize&0xff00000000)>>32));
 	ld	a, -6 (ix)
 	ld	iy, #0
 	add	iy, sp
@@ -3015,7 +3018,7 @@ _main::
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:654: TxByte((unsigned char)((SentFileSize&0xff0000000000)>>40));
+;src\CFG8266.c:657: TxByte((unsigned char)((SentFileSize&0xff0000000000)>>40));
 	ld	iy, #8
 	add	iy, sp
 	ld	0 (iy), #0x00
@@ -3047,7 +3050,7 @@ _main::
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:655: TxByte((unsigned char)((SentFileSize&0xff000000000000)>>48));
+;src\CFG8266.c:658: TxByte((unsigned char)((SentFileSize&0xff000000000000)>>48));
 	ld	iy, #8
 	add	iy, sp
 	ld	0 (iy), #0x00
@@ -3079,7 +3082,7 @@ _main::
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:656: TxByte((unsigned char)((SentFileSize&0xff00000000000000)>>56));
+;src\CFG8266.c:659: TxByte((unsigned char)((SentFileSize&0xff00000000000000)>>56));
 	ld	a, -6 (ix)
 	ld	iy, #8
 	add	iy, sp
@@ -3120,35 +3123,35 @@ _main::
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:657: TxByte(ucServer[0]);
+;src\CFG8266.c:660: TxByte(ucServer[0]);
 	ld	a, (#_ucServer + 0)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:658: TxByte(ucServer[1]);
+;src\CFG8266.c:661: TxByte(ucServer[1]);
 	ld	a, (#_ucServer + 1)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:659: TxByte(ucServer[2]);
+;src\CFG8266.c:662: TxByte(ucServer[2]);
 	ld	a, (#_ucServer + 2)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:660: TxByte(ucServer[3]);
+;src\CFG8266.c:663: TxByte(ucServer[3]);
 	ld	a, (#_ucServer + 3)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:662: if (ucIsFw)
+;src\CFG8266.c:665: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00225$
-;src\CFG8266.c:663: bResponse = WaitForRXData(responseRSFWUpdate,2,60,true,false);
+;src\CFG8266.c:666: bResponse = WaitForRXData(responseRSFWUpdate,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -3167,7 +3170,7 @@ _main::
 	ld	-11 (ix), l
 	jr	00226$
 00225$:
-;src\CFG8266.c:665: bResponse = WaitForRXData(responseRSCERTUpdate,2,60,true,false);
+;src\CFG8266.c:668: bResponse = WaitForRXData(responseRSCERTUpdate,2,60,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -3185,35 +3188,35 @@ _main::
 	pop	af
 	ld	-11 (ix), l
 00226$:
-;src\CFG8266.c:667: if (!bResponse)
+;src\CFG8266.c:670: if (!bResponse)
 	ld	a, -11 (ix)
 	or	a, a
 	jr	NZ,00241$
-;src\CFG8266.c:668: printf("Error requesting to start firmware update.\r\n");
+;src\CFG8266.c:671: printf("Error requesting to start firmware update.\r\n");
 	ld	hl, #___str_71
 	push	hl
 	call	_puts
 	pop	af
 	jp	00245$
 00241$:
-;src\CFG8266.c:671: PrintChar('U');
+;src\CFG8266.c:674: PrintChar('U');
 	ld	a, #0x55
 	push	af
 	inc	sp
 	call	_PrintChar
 	inc	sp
-;src\CFG8266.c:672: do
+;src\CFG8266.c:675: do
 	xor	a, a
 	ld	-2 (ix), a
 	ld	-1 (ix), a
 00235$:
-;src\CFG8266.c:675: PrintChar(8); //backspace
+;src\CFG8266.c:678: PrintChar(8); //backspace
 	ld	a, #0x08
 	push	af
 	inc	sp
 	call	_PrintChar
 	inc	sp
-;src\CFG8266.c:676: PrintChar(advance[i%4]); // next char
+;src\CFG8266.c:679: PrintChar(advance[i%4]); // next char
 	ld	a, -2 (ix)
 	and	a, #0x03
 	ld	-10 (ix), a
@@ -3231,16 +3234,16 @@ _main::
 	inc	sp
 	call	_PrintChar
 	inc	sp
-;src\CFG8266.c:677: ++i;
+;src\CFG8266.c:680: ++i;
 	inc	-2 (ix)
 	jr	NZ,00753$
 	inc	-1 (ix)
 00753$:
-;src\CFG8266.c:678: if (!ucFirstBlock)
+;src\CFG8266.c:681: if (!ucFirstBlock)
 	ld	a, -16 (ix)
 	or	a, a
 	jr	NZ,00230$
-;src\CFG8266.c:680: FileRead = MyRead(iFile, ucServer,256); //try to read 256 bytes of data
+;src\CFG8266.c:683: FileRead = MyRead(iFile, ucServer,256); //try to read 256 bytes of data
 	ld	hl, #0x0100
 	push	hl
 	ld	hl, #_ucServer
@@ -3253,46 +3256,46 @@ _main::
 	pop	af
 	pop	af
 	ld	-13 (ix), l
-;src\CFG8266.c:681: if (FileRead ==0)
+;src\CFG8266.c:684: if (FileRead ==0)
 	ld	-12 (ix), h
 	ld	a, h
 	or	a, -13 (ix)
 	jr	NZ,00231$
-;src\CFG8266.c:683: printf("\rError reading file...\r\n");
+;src\CFG8266.c:686: printf("\rError reading file...\r\n");
 	ld	hl, #___str_73
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:684: break;
+;src\CFG8266.c:687: break;
 	jp	00237$
 00230$:
-;src\CFG8266.c:688: ucFirstBlock = 0;
+;src\CFG8266.c:691: ucFirstBlock = 0;
 	xor	a, a
 	ld	-16 (ix), a
 00231$:
-;src\CFG8266.c:690: TxByte('z'); //Write block
+;src\CFG8266.c:693: TxByte('z'); //Write block
 	ld	a, #0x7a
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:691: TxByte((unsigned char)((FileRead&0xff00)>>8));
+;src\CFG8266.c:694: TxByte((unsigned char)((FileRead&0xff00)>>8));
 	ld	b, -12 (ix)
 	ld	c, #0x00
 	push	bc
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:692: TxByte((unsigned char)(FileRead&0xff));
+;src\CFG8266.c:695: TxByte((unsigned char)(FileRead&0xff));
 	ld	a, -13 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:693: for (ii=0;ii<256;ii++)
+;src\CFG8266.c:696: for (ii=0;ii<256;ii++)
 	ld	bc, #0x0000
 00302$:
-;src\CFG8266.c:694: TxByte(ucServer[ii]);
+;src\CFG8266.c:697: TxByte(ucServer[ii]);
 	ld	hl, #_ucServer
 	add	hl, bc
 	ld	a, (hl)
@@ -3302,12 +3305,12 @@ _main::
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:693: for (ii=0;ii<256;ii++)
+;src\CFG8266.c:696: for (ii=0;ii<256;ii++)
 	inc	bc
 	ld	a, b
 	sub	a, #0x01
 	jr	C,00302$
-;src\CFG8266.c:696: bResponse = WaitForRXData(responseWRBlock,2,600,true,false);
+;src\CFG8266.c:699: bResponse = WaitForRXData(responseWRBlock,2,600,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -3323,20 +3326,20 @@ _main::
 	pop	af
 	pop	af
 	pop	af
-;src\CFG8266.c:698: if (!bResponse)
+;src\CFG8266.c:701: if (!bResponse)
 	ld	-11 (ix), l
 	ld	a, l
 	or	a, a
 	jr	NZ,00234$
-;src\CFG8266.c:700: printf("\rError requesting to write firmware block.\r\n");
+;src\CFG8266.c:703: printf("\rError requesting to write firmware block.\r\n");
 	ld	hl, #___str_75
 	push	hl
 	call	_puts
 	pop	af
-;src\CFG8266.c:701: break;
+;src\CFG8266.c:704: break;
 	jr	00237$
 00234$:
-;src\CFG8266.c:703: SentFileSize = SentFileSize - FileRead;
+;src\CFG8266.c:706: SentFileSize = SentFileSize - FileRead;
 	ld	c, -13 (ix)
 	ld	b, -12 (ix)
 	ld	de, #0x0000
@@ -3351,18 +3354,18 @@ _main::
 	ld	-4 (ix), a
 	ld	a, -3 (ix)
 	sbc	a, d
-;src\CFG8266.c:705: while(SentFileSize);
+;src\CFG8266.c:708: while(SentFileSize);
 	ld	-3 (ix), a
 	or	a, -4 (ix)
 	or	a, -5 (ix)
 	or	a, -6 (ix)
 	jp	NZ, 00235$
 00237$:
-;src\CFG8266.c:708: if (bResponse)
+;src\CFG8266.c:711: if (bResponse)
 	ld	a, -11 (ix)
 	or	a, a
 	jr	Z,00245$
-;src\CFG8266.c:709: FinishUpdate(false);
+;src\CFG8266.c:712: FinishUpdate(false);
 	xor	a, a
 	push	af
 	inc	sp
@@ -3370,13 +3373,13 @@ _main::
 	inc	sp
 	jr	00245$
 00244$:
-;src\CFG8266.c:713: Print("\rError reading firmware file!\n");
+;src\CFG8266.c:716: Print("\rError reading firmware file!\n");
 	ld	hl, #___str_76
 	push	hl
 	call	_Print
 	pop	af
 00245$:
-;src\CFG8266.c:714: Close(iFile);
+;src\CFG8266.c:717: Close(iFile);
 	ld	l, -15 (ix)
 	ld	h, -14 (ix)
 	push	hl
@@ -3384,7 +3387,7 @@ _main::
 	pop	af
 	jp	00294$
 00247$:
-;src\CFG8266.c:718: printf("Error, couldn't open %s ...\r\n",ucFile);
+;src\CFG8266.c:721: printf("Error, couldn't open %s ...\r\n",ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	ld	hl, #___str_77
@@ -3392,11 +3395,11 @@ _main::
 	call	_printf
 	pop	af
 	pop	af
-;src\CFG8266.c:719: return 0;
+;src\CFG8266.c:722: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00250$:
-;src\CFG8266.c:724: printf("Error, %s is 0 bytes long...\r\n",ucFile);
+;src\CFG8266.c:727: printf("Error, %s is 0 bytes long...\r\n",ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	ld	hl, #___str_78
@@ -3404,11 +3407,11 @@ _main::
 	call	_printf
 	pop	af
 	pop	af
-;src\CFG8266.c:725: return 0;
+;src\CFG8266.c:728: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00253$:
-;src\CFG8266.c:730: printf("Error, couldn't open %s ...\r\n",ucFile);
+;src\CFG8266.c:733: printf("Error, couldn't open %s ...\r\n",ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	ld	hl, #___str_77
@@ -3416,15 +3419,15 @@ _main::
 	call	_printf
 	pop	af
 	pop	af
-;src\CFG8266.c:731: return 0;
+;src\CFG8266.c:734: return 0;
 	ld	hl, #0x0000
 	jp	00304$
 00280$:
-;src\CFG8266.c:736: if (ucIsFw)
+;src\CFG8266.c:739: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00256$
-;src\CFG8266.c:737: printf ("Ok, updating FW using server: %s port: %u\r\nFile path: %s\nPlease Wait, it can take up to a few minutes!\r\n",ucServer,uiPort,ucFile);
+;src\CFG8266.c:740: printf ("Ok, updating FW using server: %s port: %u\r\nFile path: %s\nPlease Wait, it can take up to a few minutes!\r\n",ucServer,uiPort,ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	ld	hl, (_uiPort)
@@ -3440,7 +3443,7 @@ _main::
 	pop	af
 	jr	00257$
 00256$:
-;src\CFG8266.c:739: printf ("Ok, updating certificates using server: %s port: %u\r\nFile path: %s\nPlease Wait, it can take up to a few minutes!\r\n",ucServer,uiPort,ucFile);
+;src\CFG8266.c:742: printf ("Ok, updating certificates using server: %s port: %u\r\nFile path: %s\nPlease Wait, it can take up to a few minutes!\r\n",ucServer,uiPort,ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	ld	hl, (_uiPort)
@@ -3455,7 +3458,7 @@ _main::
 	pop	af
 	pop	af
 00257$:
-;src\CFG8266.c:740: uiCMDLen = strlen(ucServer) + 3; //3 = 0 terminator + 2 bytes port
+;src\CFG8266.c:743: uiCMDLen = strlen(ucServer) + 3; //3 = 0 terminator + 2 bytes port
 	ld	hl, #_ucServer
 	push	hl
 	call	_strlen
@@ -3464,7 +3467,7 @@ _main::
 	inc	de
 	inc	de
 	inc	de
-;src\CFG8266.c:741: uiCMDLen += strlen(ucFile);
+;src\CFG8266.c:744: uiCMDLen += strlen(ucFile);
 	ld	hl, #_ucFile
 	push	hl
 	call	_strlen
@@ -3472,11 +3475,11 @@ _main::
 	add	hl, de
 	ld	-2 (ix), l
 	ld	-1 (ix), h
-;src\CFG8266.c:742: if (ucIsFw)
+;src\CFG8266.c:745: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00259$
-;src\CFG8266.c:743: TxByte('U'); //Request Update Main Firmware remotely
+;src\CFG8266.c:746: TxByte('U'); //Request Update Main Firmware remotely
 	ld	a, #0x55
 	push	af
 	inc	sp
@@ -3484,48 +3487,48 @@ _main::
 	inc	sp
 	jr	00260$
 00259$:
-;src\CFG8266.c:745: TxByte('u'); //Request Update spiffs remotely
+;src\CFG8266.c:748: TxByte('u'); //Request Update spiffs remotely
 	ld	a, #0x75
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
 00260$:
-;src\CFG8266.c:746: TxByte((unsigned char)((uiCMDLen&0xff00)>>8));
+;src\CFG8266.c:749: TxByte((unsigned char)((uiCMDLen&0xff00)>>8));
 	ld	a, -1 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:747: TxByte((unsigned char)(uiCMDLen&0xff));
+;src\CFG8266.c:750: TxByte((unsigned char)(uiCMDLen&0xff));
 	ld	a, -2 (ix)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:748: TxByte((unsigned char)(uiPort&0xff));
+;src\CFG8266.c:751: TxByte((unsigned char)(uiPort&0xff));
 	ld	a,(#_uiPort + 0)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:749: TxByte((unsigned char)((uiPort&0xff00)>>8));
+;src\CFG8266.c:752: TxByte((unsigned char)((uiPort&0xff00)>>8));
 	ld	a,(#_uiPort + 1)
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
-;src\CFG8266.c:751: do
+;src\CFG8266.c:754: do
 	ld	c, -2 (ix)
 	ld	b, -1 (ix)
 	ld	e, #0x00
 00262$:
-;src\CFG8266.c:753: tx_data = ucServer[rx_data];
+;src\CFG8266.c:756: tx_data = ucServer[rx_data];
 	ld	hl, #_ucServer
 	ld	d, #0x00
 	add	hl, de
 	ld	d, (hl)
-;src\CFG8266.c:754: TxByte(tx_data);
+;src\CFG8266.c:757: TxByte(tx_data);
 	push	bc
 	push	de
 	push	de
@@ -3534,11 +3537,11 @@ _main::
 	inc	sp
 	pop	de
 	pop	bc
-;src\CFG8266.c:755: --uiCMDLen;
+;src\CFG8266.c:758: --uiCMDLen;
 	dec	bc
-;src\CFG8266.c:756: ++rx_data;
+;src\CFG8266.c:759: ++rx_data;
 	inc	e
-;src\CFG8266.c:758: while((uiCMDLen)&&(tx_data!=0));
+;src\CFG8266.c:761: while((uiCMDLen)&&(tx_data!=0));
 	ld	a, b
 	or	a, c
 	jr	Z,00264$
@@ -3546,11 +3549,11 @@ _main::
 	or	a, a
 	jr	NZ,00262$
 00264$:
-;src\CFG8266.c:760: do
+;src\CFG8266.c:763: do
 	xor	a, a
 	ld	-1 (ix), a
 00267$:
-;src\CFG8266.c:762: tx_data = ucFile[rx_data];
+;src\CFG8266.c:765: tx_data = ucFile[rx_data];
 	ld	a, #<(_ucFile)
 	add	a, -1 (ix)
 	ld	e, a
@@ -3558,30 +3561,30 @@ _main::
 	adc	a, #0x00
 	ld	d, a
 	ld	a, (de)
-;src\CFG8266.c:763: if (tx_data==0)
+;src\CFG8266.c:766: if (tx_data==0)
 	or	a, a
 	jr	Z,00269$
-;src\CFG8266.c:765: TxByte(tx_data);
+;src\CFG8266.c:768: TxByte(tx_data);
 	push	bc
 	push	af
 	inc	sp
 	call	_TxByte
 	inc	sp
 	pop	bc
-;src\CFG8266.c:766: --uiCMDLen;
+;src\CFG8266.c:769: --uiCMDLen;
 	dec	bc
-;src\CFG8266.c:767: ++rx_data;
+;src\CFG8266.c:770: ++rx_data;
 	inc	-1 (ix)
-;src\CFG8266.c:769: while(uiCMDLen);
+;src\CFG8266.c:772: while(uiCMDLen);
 	ld	a, b
 	or	a, c
 	jr	NZ,00267$
 00269$:
-;src\CFG8266.c:771: if (ucIsFw)
+;src\CFG8266.c:774: if (ucIsFw)
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	Z,00271$
-;src\CFG8266.c:772: bResponse = WaitForRXData(responseOTAFW,2,18000,true,false);
+;src\CFG8266.c:775: bResponse = WaitForRXData(responseOTAFW,2,18000,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -3600,7 +3603,7 @@ _main::
 	ld	c, l
 	jr	00272$
 00271$:
-;src\CFG8266.c:774: bResponse = WaitForRXData(responseOTASPIFF,2,18000,true,false);
+;src\CFG8266.c:777: bResponse = WaitForRXData(responseOTASPIFF,2,18000,true,false);
 	xor	a, a
 	ld	d,a
 	ld	e,#0x01
@@ -3618,66 +3621,66 @@ _main::
 	pop	af
 	ld	c, l
 00272$:
-;src\CFG8266.c:776: if (bResponse)
+;src\CFG8266.c:779: if (bResponse)
 	ld	a, c
 	or	a, a
 	jr	Z,00277$
-;src\CFG8266.c:778: if ((!ucIsFw))
+;src\CFG8266.c:781: if ((!ucIsFw))
 	ld	a,(#_ucIsFw + 0)
 	or	a, a
 	jr	NZ,00274$
-;src\CFG8266.c:779: printf("\rSuccess updating certificates!\r\n");
+;src\CFG8266.c:782: printf("\rSuccess updating certificates!\r\n");
 	ld	hl, #___str_82
 	push	hl
 	call	_puts
 	pop	af
 	jr	00275$
 00274$:
-;src\CFG8266.c:781: printf("\rSuccess, firmware updated, wait a minute so it is fully flashed.\r\n");
+;src\CFG8266.c:784: printf("\rSuccess, firmware updated, wait a minute so it is fully flashed.\r\n");
 	ld	hl, #___str_84
 	push	hl
 	call	_puts
 	pop	af
 00275$:
-;src\CFG8266.c:782: FinishUpdate(true);
+;src\CFG8266.c:785: FinishUpdate(true);
 	ld	a, #0x01
 	push	af
 	inc	sp
 	call	_FinishUpdate
 	inc	sp
-;src\CFG8266.c:783: return 0;
+;src\CFG8266.c:786: return 0;
 	ld	hl, #0x0000
 	jr	00304$
 00277$:
-;src\CFG8266.c:786: printf("\rFailed to update from remote server...\r\n");
+;src\CFG8266.c:789: printf("\rFailed to update from remote server...\r\n");
 	ld	hl, #___str_86
 	push	hl
 	call	_puts
 	pop	af
 	jr	00294$
 00290$:
-;src\CFG8266.c:790: printf("ESP device not found...\r\n");
+;src\CFG8266.c:793: printf("ESP device not found...\r\n");
 	ld	hl, #___str_88
 	push	hl
 	call	_puts
 	pop	af
 	jr	00294$
 00293$:
-;src\CFG8266.c:793: printf(strUsage);
+;src\CFG8266.c:796: printf(strUsage);
 	ld	hl, #_strUsage
 	push	hl
 	call	_printf
 	pop	af
 00294$:
-;src\CFG8266.c:795: return 0;
+;src\CFG8266.c:798: return 0;
 	ld	hl, #0x0000
 00304$:
-;src\CFG8266.c:796: }
+;src\CFG8266.c:799: }
 	ld	sp, ix
 	pop	ix
 	ret
 ___str_29:
-	.ascii "> SM-X ESP8266 WIFI Module Configuration v1.10 <"
+	.ascii "> SM-X ESP8266 WIFI Module Configuration v1.20 <"
 	.db 0x0d
 	.db 0x0a
 	.ascii "(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com"
@@ -3743,10 +3746,14 @@ ___str_50:
 	.db 0x0d
 	.db 0x00
 ___str_52:
+	.db 0x0d
+	.db 0x0a
 	.ascii "User canceled by ESC key..."
 	.db 0x0d
 	.db 0x00
 ___str_54:
+	.db 0x0d
+	.db 0x0a
 	.ascii "Scan results: no answer..."
 	.db 0x0d
 	.db 0x00

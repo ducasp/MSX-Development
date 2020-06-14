@@ -1,6 +1,11 @@
 /*
 --
 -- waitwifi.c
+--   Added explanation about /T
+--   KdL updated the animation so it won't update as much as it was updating before,
+--   so it is easier on the eye
+--   Revision 0.13
+--
 --   Revision by Luca Chiodi (KdL), thanks!
 --   Added /T parameter (= terse output) to show only the connection result.
 --   Minor text improvements.
@@ -84,7 +89,7 @@ enum TcpipErrorCodes {
     ERR_INV_OPER
 };
 
-const char strPresentation[] = "UNAPI TCP Wait Connection Tool v0.12\r\n(c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n";
+const char strPresentation[] = "UNAPI TCP Wait Connection Tool v0.13\r\n(c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n";
 
 Z80_registers regs;
 int i;
@@ -161,9 +166,12 @@ void PrintImplementationName()
 
 int main (char** argv, int argc)
 {
-    unsigned int TimeOut,Time1,TimeLeap;
+    unsigned int Time0,Time1,TimeOut,TimeLeap;
     unsigned char advance[4] = {'-','\\','|','/'};
 
+    TickCount = 0;
+
+    Time0 = TickCount + 5;
     // Timeout for a packet
     Time1 = TickCount;
     TimeOut = 600 + Time1;
@@ -194,7 +202,7 @@ int main (char** argv, int argc)
     i = 0;
     if (HideStr)
         PrintImplementationName();
-    printChar('W');
+
     do
     {
         // Check if timeout expired
@@ -203,7 +211,7 @@ int main (char** argv, int argc)
             if (TickCount>TimeOut)
             {
                 print("\rTime-out and not connected!\r\n\n");
-                break;
+                return 1;
             }
         }
         else
@@ -217,9 +225,13 @@ int main (char** argv, int argc)
         }
 
         // Our nice animation to show we are not stuck
-        printChar(8); //backspace
-        printChar(advance[i%4]); // next char
-        ++i;
+        if (TickCount>Time0)
+        {
+            Time0 = TickCount + 5;
+            printChar(advance[i%4]); // next char
+            printChar(29); // move left a char
+            ++i;
+        }
         // Check Connection
         UnapiCall(&codeBlock, TCPIP_NET_STATE, &regs, REGS_NONE, REGS_MAIN);
     }
