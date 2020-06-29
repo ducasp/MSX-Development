@@ -46,12 +46,12 @@ unapi_code_block helperCodeBlock;
 Z80_registers helperRegs; //auxiliary structure for asm function calling
 char chHelperString[128];
 
-void UnapiBreath()
+void Breath()
 {
     UnapiCall(&helperCodeBlock, TCPIP_WAIT, &helperRegs, REGS_NONE, REGS_NONE);
 }
 
-unsigned char InitializeTCPIPUnapi ()
+unsigned char InitializeTCPIP ()
 {
     unsigned char uchRet = 0;
     uint uiSpecVersion;
@@ -103,7 +103,7 @@ unsigned char InitializeTCPIPUnapi ()
     return uchRet;
 }
 
-unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize)
+unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize, unsigned char ucWaitAllDataReceived)
 {
     unsigned char ucRet = 0;
 
@@ -155,7 +155,7 @@ unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsi
 
         UnapiCall(&helperCodeBlock, TCPIP_TCP_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
         if (helperRegs.Bytes.A == ERR_BUFFER)
-            UnapiBreath();
+            Breath();
     }
     while (helperRegs.Bytes.A == ERR_BUFFER);
 
@@ -176,7 +176,7 @@ unsigned char TxUnsafeData (unsigned char ucConnNumber, unsigned char * lpucData
 
         UnapiCall(&helperCodeBlock, TCPIP_TCP_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
         if (helperRegs.Bytes.A == ERR_BUFFER)
-            UnapiBreath();
+            Breath();
     }
     while (helperRegs.Bytes.A == ERR_BUFFER);
 
@@ -212,7 +212,7 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
 
     do
     {
-        UnapiBreath();
+        Breath();
         helperRegs.Bytes.B = 0;
         UnapiCall(&helperCodeBlock, TCPIP_DNS_S, &helperRegs, REGS_MAIN, REGS_MAIN);
     }

@@ -2,10 +2,12 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Revision 1.32
+--   Also supports Andres Ortiz ESP8266 implementation behind a FOSSIL driver
+--   Revision 1.33
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2020 Andres Ortiz for serial interface using Fossil driver
 -- All rights reserved.
 --
 -- Redistribution and use of this source code or any derivative works, are
@@ -35,7 +37,11 @@
 */
 #include "Telnet.h"
 #include "print.h"
+#ifndef AO_FOSSIL_ADAPTER
 #include "UnapiHelper.h"
+#else
+#include "AOFossilHelper.h"
+#endif
 #include "XYMODEM.h"
 
 /*
@@ -290,7 +296,11 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 
 	//Defaults
     ucAutoDownload = 1; //Auto download On
+#ifndef AO_FOSSIL_ADAPTER
     ucStandardDataTransfer = 1; //usually standard
+#else
+    ucStandardDataTransfer = 0; //AO Fossil implementation does telnet negotiation for us
+#endif
     *ucAnsiOption = 1; //try to render ANSI if possible
 
 	if (argc)
@@ -329,7 +339,14 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
             }
         }
 	}
+#ifdef AO_FOSSIL_ADAPTER
+	else
+    {
+        serialmode=1;
+        iRet=1;
 
+    }
+#endif
 	return iRet;
 }
 
@@ -360,8 +377,13 @@ int main(char** argv, int argc)
 	// Telnet Protocol Flags
     // Flag that indicates that a SUB OPTION reception is in progress
     ucState = TELNET_IDLE;
+#ifndef AO_FOSSIL_ADAPTER
 	// If server do not negotiate, we will echo
 	ucEcho = 1;
+#else
+	// If server do not negotiate, we won't echo, adapter takes care for us
+	ucEcho = 0;
+#endif
     // Initialize our text print engine
 	initPrint();
 
@@ -406,18 +428,12 @@ int main(char** argv, int argc)
         print(ucSWInfo);
     }
     else
-    {
         print(ucSWInfoANSI);
-        print(ucNyanCat);
-        print("\x1b[31mDedicated to the memory of GZIP, fly high little fella!\x1b[0m\r\n");
-        TickCount = 0;
-        while (TickCount<90);
-    }
 
-    // Time to check for UNAPI availability
-	if (!InitializeTCPIPUnapi())
+    // Time to check for TCPIP availability
+	if (!InitializeTCPIP())
     {
-        if (ucAnsi) //loaded ansi-drv.bin?
+        if (ucAnsi) //Using MSX2ANSI?
             endAnsi();
         //restore cursor status
         ucCursorDisplayed = ucCursorSave;
@@ -428,12 +444,24 @@ int main(char** argv, int argc)
     memcpy(ucFnkBackup,ucFnkStr,160);
     // Make sure those won't have any text
     memset(ucFnkStr,'\0',160);
+#ifdef AO_FOSSIL_ADAPTER
+    if (serialmode)
+    {
+        ucRet = ERR_OK;
+        if (ucAnsi)
+            print("\x1b[32mTerminal in command mode. Type help for available commands\x1b[0m\r\n\r\n");
+        else
+            print("Terminal in command mode. Type help for available commands\r\n\r\n");
+    }
+    else
+#endif
+    {
+        sprintf (chTextLine,"Connecting to server: %s:%s \r\n", ucServer, ucPort);
+        print (chTextLine);
 
-    sprintf (chTextLine,"Connecting to server: %s:%s \r\n", ucServer, ucPort);
-    print (chTextLine);
-
-    // Open TCP connection to server/port
-    ucRet = OpenSingleConnection (ucServer, ucPort, &ucConnNumber);
+        // Open TCP connection to server/port
+        ucRet = OpenSingleConnection (ucServer, ucPort, &ucConnNumber);
+    }
 
     if ( ucRet == ERR_OK)
     {
@@ -444,7 +472,7 @@ int main(char** argv, int argc)
             //ok, after 255 loops w/o data, we check for connection state, and this is the counter of loops
             ++ucAliveConnCount;
             //UNAPI Breathing just in case adapter need it
-            UnapiBreath();
+            Breath();
 
             if ((ucMT6 & 0x21)==1) //F1 and not shift: Start Transfer
                 XYModemGet(ucConnNumber, ucStandardDataTransfer); //no need to lock, function will wait for key input
@@ -511,7 +539,7 @@ int main(char** argv, int argc)
 
             // Is there DATA?
             uiGetSize = RcvMemorySize;
-            if (RXData(ucConnNumber, ucRcvDataMemory, &uiGetSize))
+            if (RXData(ucConnNumber, ucRcvDataMemory, &uiGetSize,0))
             {
                 //Data received?
                 if(uiGetSize)

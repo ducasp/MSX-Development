@@ -75,23 +75,23 @@ enum TcpipErrorCodes {
 
 __at 0x8400 unsigned char ucUnsafeDataTXBuffer[];
 
-// UnapiBreath
+// Breath
 //
 // Some UNAPI adapters will work better if you do not check them again and leave
 // some "breathing room" so they can work on VDP Interrupt and proccess data.
 //
 // It is up to the adapter to make this call take as long as the adapter need,
 // or return immediately if such "breathing" is not needed
-void UnapiBreath();
+void Breath();
 
-// InitializeTCPIPUnapi
+// InitializeTCPIP
 //
 // Check if there are any TCP-IP Unapi Implementations available, and if there
 // are, use the first available
 //
 // Return 0 if no TCP-IP Unapi implementation found
 // Return 1 if a TCP-IP Unapi implementation has been found
-unsigned char InitializeTCPIPUnapi ();
+unsigned char InitializeTCPIP ();
 
 // OpenSingleConnection
 //
@@ -121,7 +121,8 @@ unsigned char IsConnected (unsigned char ucConnNumber);
 //
 // Return 0 and uiSize = 0 if no data
 // Return 1 and uiSize = bytes read if data was available
-unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize);
+// ucWaitAllDataReceived has no effects on this interface, it nevers wait for all data
+unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize, unsigned char ucWaitAllDataReceived);
 
 // TXByte
 //

@@ -145,7 +145,7 @@ int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
         ucTmpPointer = *ucPacket + PktStatus;
 
         // Read data
-        if (RXData (chTransferConn, ucTmpPointer, &uiReadHelper))
+        if (RXData (chTransferConn, ucTmpPointer, &uiReadHelper,1))
         {
             if (!ucFoundStart)
             {
@@ -219,7 +219,7 @@ int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
 
         }
 
-        UnapiBreath();
+        Breath();
 
         if (TimeLeap == 0)
         {

@@ -29,6 +29,7 @@
 				<ExtraCommands>
 					<Add after="cmd /c ren bin\Release\Telnet.exe Telnet.ihx" />
 					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\Telnet.ihx" />
+					<Add after="cmd /c copy bin\Release\Telnet.com c:\fusion-c\dsk /y" />
 				</ExtraCommands>
 			</Target>
 		</Build>
