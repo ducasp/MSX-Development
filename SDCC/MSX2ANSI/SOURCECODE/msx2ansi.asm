@@ -31,6 +31,9 @@
 ; line offset again in DYL, being that the value was already adjusted
 ; OPJ - Ugly hack to fix Insert and Delete lines, work for now, beautyful code
 ; might come in another release :)
+; OPJ - Synchronet started to send non ANSI escape sequences all over the place
+; and as result, those codes are showing (as they should). I've disabled the
+; output of unknown CSI sequences
 ;
 ; v1.6:
 ; OPJ - Changed the way HMMC is handled in the code, this resulted in 7% faster
@@ -121,11 +124,13 @@
 ;
 ; void AnsiInit()
 _AnsiInit::
-	PUSH	IX					; Interslot call might mess with IX and C expect it to be intact
+	PUSH	IX					; Interslot call might mess with IX, IY and C expect it to be intact
+	PUSH	IY
 	CALL	V9938_Init			; Initialize screen mode, etc
 	CALL	V9938_InitCursor	; Initialize cursor and return 
 	CALL	V9938_ClearScreen	; Clear screen
-	POP	IX						; Restore IX so C won't have issues
+	POP	IY
+	POP	IX						; Restore IX, IY so C won't have issues
 	RET
 
 
@@ -140,9 +145,11 @@ _AnsiInit::
 ;
 ; void AnsiFinish()
 _AnsiFinish::
-	PUSH	IX					; Interslot call might mess with IX and C expect it to be intact
-	CALL	V9938_Finish		; Restore	
-	POP	IX						; Restore IX so C won't have issues
+	PUSH	IX					; Interslot call might mess with IX, IY and C expect it to be intact
+	PUSH	IY
+	CALL	V9938_Finish		; Restore
+	POP	IY
+	POP	IX						; Restore IX, IY so C won't have issues
 	RET
 
 
@@ -285,8 +292,8 @@ BufferChar.CNT:
 	CP	#48
 	JR	C,BufferChar.END		; Character is less than '0', not a parameter I understand, so finished buffering code
 	; No, '0' or greater
-	CP	#60				
-	JR	NC,BufferChar.END		; If A > ';' not a parameter I understand, so finished buffering code
+	CP	#'@'
+	JR	NC,BufferChar.END		; If A > '@' not a parameter I understand, so finished buffering code
 	;Otherwise it is between 0 and ; so ESC command has not finished yet
 	RET
 BufferChar.END:	
@@ -458,7 +465,7 @@ Parameters.SCN:
 	JR	Z,Parameters.END
 	CP	#'0'
 	JR	C,Parameters.END
-	CP	#':'
+	CP	#'@'
 	JR	NC,Parameters.END
 	INC	C
 	LD	(DE),A
@@ -475,7 +482,14 @@ Parameters.END:
 	JR	Z,Parameters.RD2		; READ TWO DIGITS
 	CP	#3
 	JR	Z,Parameters.RD3		; READ THREE DIGITS
-Parameters.ERR:	
+	; More than three digits, just ignore for now
+	PUSH	AF
+	LD	A,#'?'					; A command we do not support to make sure this is ignored
+	LD	(#Parameters.TRM),A		; TERMINATING CHARACTER
+	POP	AF
+	JR	Parameters.SET
+Parameters.ERR:
+	LD	HL,(#EndAddress)		; Do not print sequences we do not handle
 	XOR	A
 	JP	PrintText.RLP
 Parameters.RD1:	
@@ -516,22 +530,22 @@ Parameters.RD3:
 	LD	A,(#Parameters.PST+2)
 	SUB	#48
 	ADD	A,C
-Parameters.SET:	
+Parameters.SET:
 	LD	DE,(#Parameters.PPT)	; PARAMETER POINTER
 	LD	(DE),A
 	INC	DE
 	LD	(#Parameters.PPT),DE
 	LD	A,(#Parameters.PCT)		; PARAMETER COUNT
 	INC	A
-Parameters.SETOMT:		
-	LD	B,A	
+Parameters.SETOMT:
+	LD	B,A
 	LD	(#Parameters.PCT),A
 	LD	A,(#Parameters.TRM)		; TERMINATING CHARACTER
 	CP	#';'
 	JP	Z,Parameters.RLP
+	LD	(#EndAddress),HL
 	CP	#20
 	JP	C,Parameters.ERR
-	LD	(#EndAddress),HL
 	CP	#'H'
 	JP	Z,ANSI_CUP
 	CP	#'f'
@@ -1302,7 +1316,7 @@ _BIOS_C:						; BIOS_C: [IX]
 ;
 ;	This is where all V9938 (MSX2/2+) specific routines and defines are
 ;
-
+VDP_07	.equ	#0xF3E6
 VDP_08	.equ	#0xFFE7
 VDP_09	.equ	#0xFFE8
 VDP_23	.equ	#0xFFF6
@@ -1311,6 +1325,7 @@ VDP_06	.equ	#0xF3E5
 VDP_05	.equ	#0xF3E4
 VDP_11	.equ	#0xFFEA
 VDP_14	.equ	#0xFFED
+VDP_16	.equ	#0xFFEF
 
 ; SUB-ROM entries
 ;
@@ -1376,12 +1391,13 @@ V9938_Init:
 	CALL	_BIOS_C				; Interslot call to set screen 7		
 	; Now let's set a lot of registers :)
 	LD	A,#0x00
-	LD	(#VDP_23),A				; R#23, first line to draw is 0	
+	LD	(#VDP_23),A				; R#23, first line to draw is 0
 	DI
 	LD	A,#0xF0					; Text1 and Text2 color 15, Border and Background color 0
+	LD	(#VDP_07),A				; R#7 status
 	OUT	(#0x99),A
 	LD	A,#0x80+7
-	OUT	(#0x99),A				; Write to register 7	
+	OUT	(#0x99),A				; Write to register 7
 	LD	A,(#VDP_08)				; Get a copy of register 8
 	OR	#0b00100010				; Set bit so color 0 is 0 in palette and disable sprites	
 	LD	(#VDP_08),A				; Save our value
@@ -1395,6 +1411,7 @@ V9938_Init:
 	LD	A,#0x80+9
 	OUT	(#0x99),A				; Write to register 9		
 	LD	A,#0x00					; Palette register pointer set to 0
+	LD	(#VDP_16),A				; Save R16 status
 	OUT	(#0x99),A				; Send value to VDP
 	LD	A,#0x80+16
 	OUT	(#0x99),A				; Write to register 16, new palette pointer
@@ -1410,7 +1427,8 @@ V9938_Finish:
 	LD	A,#0x00
 	OUT	(#0x99),A
 	LD	A,#0x80+23
-	OUT	(#0x99),A				; Register 23 goes to 0 to reset vertical offset	
+	OUT	(#0x99),A				; Register 23 goes to 0 to reset vertical offset
+	LD	(#VDP_23),A				; R#23, first line to draw is 0
 	LD	IX,#0xD2
 	LD	IY,(#0xFCC0)			; Call TOTEXT bios function
 	CALL CALSLT
@@ -1802,7 +1820,8 @@ V9938_ClearScreen:
 	DI
 	;OPJ - Set border color same as back color
 	LD	A,(#BackColor)			; Text1 and Text2 color 15, Border and Background color 0
-	LD (#BorderColor),A			; Save the new border color
+	LD	(#BorderColor),A			; Save the new border color
+	LD	(#VDP_07),A
 	OUT	(#0x99),A
 	LD	A,#0x80+7
 	OUT	(#0x99),A				; Write to register 7
@@ -1841,7 +1860,7 @@ V9938_ClearScreen:
 	LD	A,#0x00
 	OUT	(C),A					; ARG
 	LD	A,#0xC0
-	OUT	(C),A					; CMD	
+	OUT	(C),A					; CMD
 	RET
 
 V9938_InsertChars:

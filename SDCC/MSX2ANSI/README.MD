@@ -29,7 +29,9 @@ Piter Punk provided the following fixes:
 
 Fix on Backspace behavior, when called as sub on the first column it was not
 behaving properly, causing the code to wander a print garbage
+
 Fix on ErDis1, wrong opcodes used and it was not multiplying A contents
+
 Fix on DO_HMMV, when doing a second pass, the second run would add the line
 offset again in DYL, being that the value was already adjusted
 
@@ -37,10 +39,20 @@ And I have done this:
 
 Minor improvments on unnecessary returns and unnecessary loading of parameters
 that do not change at all
+
 Fix on LineFeed, the previous version would always return cursor column to 0
 on LF which was not correct
+
 Ugly hack to fix Insert and Delete lines, work for now, beautyful code might
 come in another release :)
+
+Synchronet started to send non ANSI escape sequences all over the place and as
+result, those codes are showing (as they should). I've disabled the output of
+unknown CSI sequences due to a huge respect to HispaMSX administrator and
+community, this shouldn't be mandatory and Synchronet team thinks otherwise,
+if they know in advance through TELNET negotiations that the terminal is ANSI
+they should never, ever, send a XTERM specific code to control mouse, but they
+think it is ok and up to terminal programs to ignore it, big ego on their part
 
 # MSX2ANSI v1.6: 
 
