@@ -6,7 +6,7 @@
 		<Option pch_mode="2" />
 		<Option compiler="sdcc" />
 		<Build>
-			<Target title="Release">
+			<Target title="Release UNAPI">
 				<Option output="bin/Release/Telnet" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
@@ -32,19 +32,58 @@
 					<Add after="cmd /c copy bin\Release\Telnet.com c:\fusion-c\dsk /y" />
 				</ExtraCommands>
 			</Target>
+			<Target title="Release AOFossil">
+				<Option output="bin/Release/TelnetF" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="sdcc" />
+				<Option use_console_runner="0" />
+				<Compiler>
+					<Add option="--out-fmt-ihx" />
+					<Add option="--no-std-crt0" />
+					<Add option="-mz80" />
+					<Add option="--opt-code-speed" />
+					<Add option="--verbose" />
+					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196  --allow-unsafe-read" />
+					<Add option="-DAO_FOSSIL_ADAPTER" />
+					<Add directory="c:/fusion-c/fusion-c/header" />
+				</Compiler>
+				<Linker>
+					<Add option="c:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel" />
+					<Add library="C:/fusion-c/fusion-c/lib/fusion.lib" />
+					<Add library="C:/fusion-c/fusion-c/lib/msx2ansi.lib" />
+				</Linker>
+				<ExtraCommands>
+					<Add after="cmd /c ren bin\Release\Telnetf.exe Telnetf.ihx" />
+					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\Telnetf.ihx" />
+				</ExtraCommands>
+			</Target>
 		</Build>
+		<Unit filename="src/AOFossilHelper.c">
+			<Option compilerVar="CC" />
+			<Option target="Release AOFossil" />
+		</Unit>
+		<Unit filename="src/AOFossilHelper.h">
+			<Option target="Release AOFossil" />
+		</Unit>
 		<Unit filename="src/Telnet.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/Telnet.h" />
 		<Unit filename="src/UnapiHelper.c">
 			<Option compilerVar="CC" />
+			<Option target="Release UNAPI" />
 		</Unit>
-		<Unit filename="src/UnapiHelper.h" />
+		<Unit filename="src/UnapiHelper.h">
+			<Option target="Release UNAPI" />
+		</Unit>
 		<Unit filename="src/XYMODEM.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/XYMODEM.h" />
+		<Unit filename="src/fossil_interface.h">
+			<Option target="Release AOFossil" />
+		</Unit>
 		<Unit filename="src/print.c">
 			<Option compilerVar="CC" />
 		</Unit>
