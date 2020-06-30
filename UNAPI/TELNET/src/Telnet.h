@@ -137,8 +137,13 @@ __at 0xFBEC unsigned char ucMT7;
 //IMPORTANT: You need to check the map compiler generates to make sure this
 //address do not overlap functions, variables, etc
 //UNAPI requires memory buffer @ 0x8000 or higher...
-__at 0x8000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
 #define RcvMemorySize 1024
+#ifdef AO_FOSSIL_ADAPTER
+unsigned char ucRcvDataMemory[RcvMemorySize]; //area to hold data sent to Fossil driver, avoid 0x8000 as it seems somehow it is used
+#else
+__at 0x8000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
+#endif
+
 unsigned int uiGetSize;
 
 Z80_registers regs; //auxiliary structure for asm function calling

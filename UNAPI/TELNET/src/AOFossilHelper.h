@@ -56,8 +56,6 @@ enum TcpipErrorCodes {
     ERR_INV_OPER
 };
 
-__at 0x8400 unsigned char ucUnsafeDataTXBuffer[];
-
 // Breath
 //
 // Some UNAPI adapters will work better if you do not check them again and leave

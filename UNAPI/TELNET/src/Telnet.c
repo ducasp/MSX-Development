@@ -447,7 +447,7 @@ int main(char** argv, int argc)
 #ifdef AO_FOSSIL_ADAPTER
     if (serialmode)
     {
-        ucRet = ERR_OK;
+        ucRet = OpenSingleConnection (0, 0, &ucConnNumber);
         if (ucAnsi)
             print("\x1b[32mTerminal in command mode. Type help for available commands\x1b[0m\r\n\r\n");
         else

@@ -43,6 +43,7 @@
 #include "fossil_interface.h"
 
 char chHelperString[128];
+unsigned char ucFossilUnsafeDataTXBuffer[128];
 const char modem_atz[] = "ATZ\r\n";
 const char modem_cmd[] = "+++";
 const char modem_disc[] = "ATH\r\n";
@@ -64,15 +65,19 @@ unsigned char InitializeTCPIP ()
         // Fossil_FastInt(0);
         Fossil_Init();
         TxUnsafeData(0x50,modem_atz,5);
+        uchRet = 1;
     }
     return uchRet;
 }
 
 unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uchPort, unsigned char * uchConn)
 {
-    sprintf(cmdline,"ATD\"%s:%s\"\r\n",uchHost,uchPort);
-    //print(cmdline);
-    TxUnsafeData(0x50,cmdline,strlen(cmdline));
+    if ((uchHost)&&(uchPort))
+    {
+        sprintf(cmdline,"ATD\"%s:%s\"\r\n",uchHost,uchPort);
+        //print(cmdline);
+        TxUnsafeData(0x50,cmdline,strlen(cmdline));
+    }
     *uchConn = 0x50;
     return ERR_OK;
 }
@@ -163,13 +168,13 @@ unsigned char TxUnsafeData (unsigned char ucConnNumber, unsigned char * lpucData
 
     if (uiDataSize<128)
     {
-        memcpy (ucUnsafeDataTXBuffer,lpucData,uiDataSize);
+        memcpy (ucFossilUnsafeDataTXBuffer,lpucData,uiDataSize);
         for (unsigned int i=0; i<uiDataSize; i++)
         {
-            //sprintf(c," code: %x \r\n",ucUnsafeDataTXBuffer[i]);
+            //sprintf(c," code: %x \r\n",ucFossilUnsafeDataTXBuffer[i]);
             //print(c);
             //while (Fossil_TXReady()!=0);
-            Fossil_RsOut(ucUnsafeDataTXBuffer[i]);
+            Fossil_RsOut(ucFossilUnsafeDataTXBuffer[i]);
             //for (int k =0; k<500; k++);
 
         }
