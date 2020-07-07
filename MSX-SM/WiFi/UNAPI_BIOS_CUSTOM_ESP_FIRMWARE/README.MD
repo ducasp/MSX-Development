@@ -270,6 +270,8 @@ and how to work with it, best practices, etc. Accepting to ship every SM-X sold
 with the Custom ESP firmware I've developed was something unexpected and that
 I'm really grateful.
 
+# BORING COPYRIGHT STUFF
+
 All source code and binaries: 
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
