@@ -243,6 +243,33 @@ anything else, I've tried to make the code faster at expense of size and
 perhaps legibility... It might get better, probably it can even be a little
 faster, who knows? :)
 
+# SPECIAL THANKS TO...
+
+KdL - He has a very keen eye to details and has been really helpful, both by
+suggesting different approaches / design choices and testing this BIOS with
+extensive care. It wouldn't be nearly as good as it is now without his help,
+and also is bringing my attention to details and to a better level.
+
+Konamiman - SM-X Network support is something that has started in early 2019,
+by then I had the idea that making a BIOS for a device or even fully coding in
+z80 ASM was something out of my league. And, perhaps, it was, but thanks to
+starting slow and getting things to work, the desire to get it to an even
+better state drove me to push beyond my limits, and, I surely wouldn't be able
+to do it without the kind help of Konamiman. Whenever I asked what probably
+were silly questions for him, he was kind enough to take time and answer me,
+also, by leaving all UNAPI Drivers, BIOS and Network applications source code
+available. Source code is a huge classroom, with lots and lots of useful
+information and approaches. Also, he was very kind to work along with me on all
+my suggestions that lead to improvments in the current stack of NETWORK
+softwares like TFTP and HGET, which, most of us that are programmers know is
+not the usual in software development. :) 
+
+Victor Trucco - Once I've volunteered to work on SM-X WiFi features, he also
+was really kind offering help and examples, teaching me quite a lot about FPGA
+and how to work with it, best practices, etc. Accepting to ship every SM-X sold
+with the Custom ESP firmware I've developed was something unexpected and that
+I'm really grateful.
+
 All source code and binaries: 
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
