@@ -317,7 +317,7 @@ PATCH:
 	call	GETSLT					; Our Slot in A
 	ld	(EXTBIO+1),a				; Next EXTBIO hook byte
 	ld	hl,DO_EXTBIO				; Our EXTBIO routine address
-	ld	(EXTBIO+2),hl				; Goes to the followingtwo bytes in the hook
+	ld	(EXTBIO+2),hl				; Goes to the following two bytes in the hook
 
 	ld	hl,EXTBIO+5					; Must patch DISINT and ENAINT as well
 	ld	b,5*2
@@ -410,12 +410,15 @@ CLK_MSX1_GO:
 	call	ISCLKAUTO
 	ld	a,(ix+0)					; Auto Clock Current setting
 	cp	3							; If 3 adapter disabled
-	jr	nz,CLK_MSX1_ADAPTERDIS
+	jr	z,CLK_MSX1_ADAPTERDIS
 	ld	hl,MMENU_CLOCK_0_MSX1
 	call	PRINTHL
-	jr	CLK_MSX1_WAIT_OPT_INPUT
+	jr	CLK_MSX1_OPT
 CLK_MSX1_ADAPTERDIS:
 	ld	hl,MMENU_CLOCK_3_MSX1
+	call	PRINTHL
+CLK_MSX1_OPT:
+	ld	hl,MMENU_CLOCK_OPT
 	call	PRINTHL
 CLK_MSX1_WAIT_OPT_INPUT:
 	call	CHGET
@@ -432,9 +435,9 @@ CLK_MSX1_SEND_CMD:
 	sub	'0'							; correct format
 	ld	(ix+0),a					; Save it
 	ld	a,#D
-	call CHPUT
+	call	CHPUT
 	ld	a,#A
-	call CHPUT
+	call	CHPUT
 	jp	CLK_AUTO_GMT_CHK_DONE		; and sending the command will be done there
 
 START_CLK_AUTO:
@@ -722,6 +725,8 @@ WIFI_LIST_LOOP:
 	ld	a,e
 	add	a,'0'						; convert in number
 	call	CHPUT
+	ld	a,' '
+	call	CHPUT
 	ld	a,'-'
 	call	CHPUT
 	ld	a,' '
@@ -813,7 +818,7 @@ WIFI_CONNECT_APSIZE:
 	call	PRINTHL					; Inform that user need to input PWD
 	pop	hl							; restore HL
 	ld	iy,0						; iy will help in backspacing
-	ld	ixh,0						; Start not hidden
+	ld	ixh,1						; Start hidden
 WIFI_CONNECT_RCV_PWD:
 	call	CHGET
 	cp	#1b							; ESC?
@@ -839,7 +844,7 @@ WIFI_CONNECT_RCV_PWD:
 	jp	WIFI_CONNECT_RCV_PWD		; and back to receiving digits
 WIFI_CONNECT_RCV_PWD_CHAR:
 	pop	af
-	call	CHPUT					; Print an *
+	call	CHPUT					; Print a char
 	jp	WIFI_CONNECT_RCV_PWD		; and back to receiving digits
 
 WIFI_CONNECT_RCV_PWDH:
@@ -1099,6 +1104,12 @@ SET_ESP_WIFI_TIMEOUT:
 	jp	WAIT_2S_AND_THEN_MAINMENU
 
 SET_NAGLE_OFF:
+	ld	a,'O'
+	call	CHPUT
+	ld	a,#D
+	call	CHPUT
+	ld	a,#A
+	call	CHPUT
 	ld	hl,STR_SENDING				; Indicate it is sending a command
 	call	PRINTHL
 	ld	a,20
@@ -1127,6 +1138,12 @@ STARTWIFISCAN:
 	jp	MENU_SUB_BAD_END			; If error, nothing much to do, main menu
 
 SET_NAGLE_ON:
+	ld	a,'O'
+	call	CHPUT
+	ld	a,#D
+	call	CHPUT
+	ld	a,#A
+	call	CHPUT
 	ld	hl,STR_SENDING				; Indicate it is sending a command
 	call	PRINTHL
 	ld	a,20
@@ -5115,23 +5132,23 @@ GOLEFT					equ	29
 
 WELCOME_S:
 	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
-	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF,LF
+	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
 	db	"ducasp@gmail.com",CR,LF,LF
-	db	"Quick Rcv not supported",CR,LF
-	db	"SM-X FW Update Recommended",CR,LF,LF,STTERMINATOR
+	db	"Quick Rcv not supported.",CR,LF
+	db	"Machine FW Update Suggested!",CR,LF,LF,STTERMINATOR
 
 WELCOME_SF:
-	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF,LF
+	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
 	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
-	db	"ducasp@gmail.com",CR,LF
-	db	"Quick Rcv supported",CR,LF,LF,STTERMINATOR
+	db	"ducasp@gmail.com",CR,LF,LF
+	db	"Quick Rcv supported.",CR,LF,LF,STTERMINATOR
 
 MMENU_S:
-	db	"1 - Change Nagle Setting",CR,LF
-	db	"2 - Change WiFi On Period",CR,LF
+	db	"1 - Set Nagle Algorithm",CR,LF
+	db	"2 - Set WiFi On Period",CR,LF
 	db	"3 - Scan/Join Access Points",CR,LF
-	db	"4 - WiFi On/Off & Auto Clock",CR,LF,LF
-	db	"ESC to exit setup",CR,LF,LF
+	db	"4 - WiFi and Clock Settings",CR,LF,LF
+	db	"ESC to exit setup.",CR,LF,LF
 	db	"Option: ",STTERMINATOR
 
 MMENU_CLOCK_MSX2:
@@ -5156,56 +5173,57 @@ MMENU_CLOCK_MSX1:
 	db	"3 - WiFi & UNAPI are disabled",GOLEFT,CR,LF,LF,STTERMINATOR
 
 MMENU_CLOCK_0_MSX1:
-	db	"Currently Enabled",CR,LF,STTERMINATOR
+	db	"Currently ENABLED.",STTERMINATOR
 
 MMENU_CLOCK_3_MSX1:
-	db	"Currently Disabled",CR,LF,STTERMINATOR
+	db	"Currently DISABLED.",STTERMINATOR
 
 MMENU_CLOCK_0:
-	db	"Currently off, GMT: ",STTERMINATOR
+	db	"Currently ENABLED, GMT: ",STTERMINATOR
 
 MMENU_CLOCK_1:
-	db	"Currently on, GMT: ",STTERMINATOR
+	db	"Currently TIME-OPT1, GMT: ",STTERMINATOR
 
 MMENU_CLOCK_2:
-	db	"Currently on (WiFi off after",CR,LF
-	db	"boot), GMT: ",STTERMINATOR
+	db	"Currently TIME-OPT2, GMT: ",STTERMINATOR
 
 MMENU_CLOCK_3:
-	db	"Currently disabled, GMT: ",STTERMINATOR
+	db	"Currently DISABLED, GMT: ",STTERMINATOR
 
 MMENU_CLOCK_OPT:
-	db	CR,LF,LF,"ESC to return to main menu",CR,LF,LF
+	db	CR,LF,LF,"ESC to return to main menu.",CR,LF,LF
 	db	"Option: ",STTERMINATOR
 
 MMENU_GMT_OPT:
-	db	CR,LF,"Time Zone Adjustment: ",STTERMINATOR
+	db	CR,LF,"Time Zone adjustment: ",STTERMINATOR
 
 
 MMENU_SCAN:
-	db	CLS,"      [ Scan/Join APs ]",CR,LF,LF
-	db	"Up to 10 APs will be listed",CR,LF,LF
-	db	"Scanning networks...",STTERMINATOR
+	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
+	db	"Up to 10 APs will be listed.",CR,LF,LF
+	db	"Scanning networks...",CR,LF,STTERMINATOR
 
 MMENU_SCANF:
-	db	CR,"Error or no networks found!",CR,LF,STTERMINATOR
+	db	CR,LF,"Error or no networks found!",CR,LF,STTERMINATOR
 
 MMENU_SCANN:
-	db	CR,"No networks found!         ",CR,LF,STTERMINATOR
+	db	CR,LF,"No networks found!",CR,LF,STTERMINATOR
 
 MMENU_SCANS:
-	db	CR,"Networks Available: ",CR,LF,LF,STTERMINATOR
+	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
+	db	CR,"Networks available: ",CR,LF,LF,STTERMINATOR
 
 MMENU_CONNECTING:
-	db	CR,LF,"Requesting connection...",CR,LF,STTERMINATOR
+	db	CR,LF,LF,"Requesting connection...",STTERMINATOR
 
 MMENU_ASKPWD:
-	db	CR,LF,"(Hit DEL as first character",CR,LF
-	db	"to hide it) Password : ",STTERMINATOR
+	db	CR,LF,"Hit DEL as first character",CR,LF
+	db	"to hide/show the typing.",CR,LF
+	db	"Password: ",STTERMINATOR
 
 MMENU_SCANQ:
-	db	CR,LF,"ESC to return to main menu",CR,LF,LF
-	db	"Number to connect : ",STTERMINATOR
+	db	CR,LF,"ESC to return to main menu.",CR,LF,LF
+	db	"Number to connect: ",STTERMINATOR
 
 SCAN_TERMINATOR_OPEN:
 	db	CR,LF,STTERMINATOR
@@ -5214,47 +5232,48 @@ SCAN_TERMINATOR_ENC:
 	db	" *",CR,LF,STTERMINATOR
 
 MMENU_TIMEOUT:
-	db	CLS,"     [ WiFi On Period ]",CR,LF,LF
+	db	CLS,"   [ Set WiFi On Period ]",CR,LF,LF
 	db	"WiFi On Period allows to set",CR,LF
 	db	"a given period of time of",CR,LF
 	db	"inactivity to turn off WiFi",CR,LF
 	db	"automatically.",CR,LF,LF
 	db	"0         - ALWAYS ON",CR,LF
-	db	"1 to 30   - 30s",GOLEFT,CR,LF
+	db	"1 to 30   - 30s",CR,LF
 	db	"30 to 600 - Use given period",CR,LF
 	db	"> 600     - 600s",CR,LF,LF,STTERMINATOR
 
 MMENU_TIMEOUT_ALWAYSON:
-	db	"WiFi is ALWAYS ON",CR,LF,LF
-	db	"ESC to return to main menu",CR,LF,LF
-	db	"Type desired period : ",STTERMINATOR
+	db	"WiFi is ALWAYS ON.",CR,LF,LF
+	db	"ESC to return to main menu.",CR,LF,LF
+	db	"Type desired period: ",STTERMINATOR
 
 MMENU_TIMEOUT_NOTALWAYSON1:
 	db	"WiFi period set to ",STTERMINATOR
 MMENU_TIMEOUT_NOTALWAYSON2:
-	db	"s",CR,LF,LF
-	db	"ESC to return to main menu",CR,LF,LF
-	db	"Type desired period : ",STTERMINATOR
+	db	"s.",CR,LF,LF
+	db	"ESC to return to main menu.",CR,LF,LF
+	db	"Type desired period: ",STTERMINATOR
 
 MMENU_NAGLE:
-	db	CLS,"     [ Nagle Algorithm ]",CR,LF,LF
+	db	CLS,"   [ Set Nagle Algorithm ]",CR,LF,LF
 	db	"Nagle Algorithm might lower",CR,LF
 	db	"performance but create less",CR,LF
 	db	"network congestion. Nowadays",CR,LF
 	db	"it is mostly not needed and",CR,LF
 	db	"is the cause of latency and",CR,LF
 	db	"low performance on packet",CR,LF
-	db	"driven protocols.",CR,LF,LF,STTERMINATOR
+	db	"driven protocols.",CR,LF,LF
+	db	"O - Turn it on/off",CR,LF,LF,STTERMINATOR
 
 MMENU_NAGLE_ON:
-	db	"Nagle Algorithm is ON.",CR,LF,LF
-	db	"ESC to return to main menu",CR,LF,LF
-	db	"O - Turn it off",CR,LF,STTERMINATOR
+	db	"Nagle is currently ON.",CR,LF,LF
+	db	"ESC to return to main menu.",CR,LF,LF
+	db	"Option: ",STTERMINATOR
 
 MMENU_NAGLE_OFF:
-	db	"Nagle Algorithm is OFF.",CR,LF,LF
-	db	"ESC to return to main menu",CR,LF,LF
-	db	"O - Turn it on",CR,LF,STTERMINATOR
+	db	"Nagle is currently OFF.",CR,LF,LF
+	db	"ESC to return to main menu.",CR,LF,LF
+	db	"Option: ",STTERMINATOR
 
 STR_SENDING:
 	db	"Sending command, wait...",CR,LF,STTERMINATOR
@@ -5263,7 +5282,7 @@ STR_SENDING_OK:
 	db	"Command sent Ok, done!",CR,LF,STTERMINATOR
 
 STR_SENDING_OK_JN:
-	db	"Command Ok, connected!",CR,LF,STTERMINATOR
+	db	"Successfully connected!",CR,LF,STTERMINATOR
 
 STR_SENDING_NOK_JN:
 	db	"Fail to connect, if protected",GOLEFT,CR,LF
@@ -5274,18 +5293,21 @@ STR_SENDING_FAIL:
 
 STR_CLKUPDT_FAIL:
 	db	"Failure retrieving date and",CR,LF
-	db	"time from SNTP server!",CR,LF,STTERMINATOR
+	db	"time from SNTP server!",CR,LF,LF
+	db	"Press and hold F1 during",CR,LF
+	db	"system boot to enter setup.",CR,LF,STTERMINATOR
 
 OK_S:
-	db	"Installed successfully.",CR,LF
+	db	"Installed successfully!",CR,LF
 	db	CR,LF,STTERMINATOR
 
 FAIL_S:
-	db	"ESP8266 Not Found! Check if",CR,LF
-	db	"it is properly connected.",CR,LF,STTERMINATOR
+	db	"ESP8266 Not Found!",CR,LF,LF
+	db	"Check that it is properly",CR,LF
+	db	"inserted in its connector.",CR,LF,STTERMINATOR
 
 FAIL_F:
-	db	"ESP8266 Firmware needs update",GOLEFT,CR,LF,STTERMINATOR
+	db	"ESP8266 FW Update Required!",CR,LF,STTERMINATOR
 
 ;============================
 ;===  UNAPI related data  ===

@@ -46,15 +46,15 @@ WiFi at the configuration menu, option 4.
 While booting your computer, if you keep F1 key pressed, you will be presented
 with a configuration menu. It has four options:
 
-1 - Change Nagle Settings
-2 - Change WiFi On Period
+1 - Set Nagle Algorithm
+2 - Set WiFi On Period
 3 - Scan/Join Access Points
-4 - WiFi On/Off & Auto Clock
+4 - WiFi and Clock Settings
 
 At any point in the main configuration menu you can hit the ESC key to resume
 the boot sequence of your computer.
 
-# Nagle Settings
+# Set Nagle Algorithm
 
 Nagle Algorithm is something designed to avoid network congestion due to
 excessive amount of small packets. Nowadays, this is mostly not the case, and
@@ -67,15 +67,15 @@ Nagle Disable, but in this menu you can turn it on if you find the need to.
 
 Default option is to have Nagle Algorithm turned off.
 
-# Change WiFi On Period
+# Set WiFi On Period
 
 Some users have interference from the WiFi module on the SM-X analog audio
 output, so, in this menu you can choose two possible behaviors: 
 
-1 - ALWAYS ON: by choosing 0 as period, WiFi will be always on, this is my
+ALWAYS ON: by choosing 0 as period, WiFi will be always on, this is my
 personal preference as I do not have any audio issues in my SM-X.
 
-2 - TURN OFF WHEN IDLE: by choosing 1 to 999 as period, WiFi will be turned on
+TURN OFF WHEN IDLE: by choosing 1 to 999 as period, WiFi will be turned on
 at startup, and then after the choosen time elapses after the last command has
 been received by the interface, it will check if there are any open connections
 (i.e.: an application running), and if there is, schedule the time-out again.
@@ -117,13 +117,13 @@ related to it on the screen. If the Access Point requires a password, it will
 be requested. By default, what you type is printed on the screen, but you can
 hit the DELETE key before entering the password to not show it while you type.
 
-# WiFi On/Off & Auto Clock
+# WiFi and Clock Settings
 
 This option allows you to:
 
 	- Have the adapter and WiFi enabled (option 0)
-	- Same as 0, but will update date and time during boot (option 1)
-	- Same as 1, but turn WiFi off immediatelly after setting clock
+	- Same as above, but will update date and time during boot (option 1)
+	- Same as above, but turn WiFi off immediatelly after setting clock
 	- Disable the adapter and WiFi (option 3)
 
 Options 1 and 2 are a great way to have clock and date properly set-up at
@@ -135,7 +135,7 @@ soon as clock is adjusted. For those that do not have this issue or that are
 not bothered by it, option 1 allows for faster operation at start-up of UNAPI
 applications if the WiFi On Period is set to ALWAYS ON. And for those that just
 do not want to have anything WiFi related enabled, option 3 will make sure that
-noise intereference do not occur even at boot time.
+noise interference do not occur even at boot time.
 
 Default options is adapter and WiFi enabled but do not update clock.
 
@@ -145,10 +145,13 @@ To have this BIOS properly working, your ESP8266 must have at least version 1.2
 of firmware installed. If an older firmware is not installed, the BIOS will not
 initialize and print an error message, but you can still use UNAPI with the
 RAM / Memory Mapper driver (ESP8266.COM) and update the firmware to version 1.2
-using CFG8266. Once you do that, please remove RAMHELPR.COM, ESP8266.COM,
-WAITWIFI.COM, SNTP.COM and CFG8266.COM from your autoexec routine, those are no
-longer needed for your AUTOEXEC.BAT if you just use it to set up time and date
-and ESP8266.COM is not needed when BIOS is running.
+using CFG8266. Please remember to update certificates after updating firmware,
+otherwise TLS/SSL connections will fail.
+
+Once you do that, please remove RAMHELPR.COM, ESP8266.COM, WAITWIFI.COM,
+SNTP.COM and CFG8266.COM from your autoexec routine, those are no longer needed
+for your AUTOEXEC.BAT if you just use it to set up time and date and
+ESP8266.COM is not needed when BIOS is running.
 
 WAITWIFI.COM and CFG8266.COM can still be used with the BIOS version, and if
 you have other TCP-IP applications than SNTP on your AUTOEXEC.BAT you might
