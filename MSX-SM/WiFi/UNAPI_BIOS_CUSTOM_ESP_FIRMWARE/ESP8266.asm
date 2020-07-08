@@ -811,7 +811,7 @@ WIFI_CONNECT_APSIZE:
 	; check for encryption
 	ld	a,(de)
 	or	a
-	jr	z,WIFI_CONNECT_SENDCMD		; If no password requested, good to go
+	jp	z,WIFI_CONNECT_SENDCMD		; If no password requested, good to go
 	; Shoot, need to request password, well, let's do it
 	push	hl						; Save HL
 	ld	hl,MMENU_ASKPWD
@@ -829,6 +829,7 @@ WIFI_CONNECT_RCV_PWD:
 	jp	z,WIFI_PWD_CHECK_INPUT		; Check if ok
 	cp	#7f							; delete?
 	jp	z,WIFI_CONNECT_RCV_PWDH		; Change password from clear to hidden or vice versa
+WIFI_CONNECT_RCV_PWD_STR:
 	; Ok, so it is a digit and store
 	ld	(de),a
 	inc	bc
@@ -844,13 +845,22 @@ WIFI_CONNECT_RCV_PWD:
 	jp	WIFI_CONNECT_RCV_PWD		; and back to receiving digits
 WIFI_CONNECT_RCV_PWD_CHAR:
 	pop	af
+	cp	32
+	jr	nc,WIFI_CONNECT_RCV_CHKPRT2	; Ok, not below space, but is it delete?
+	ld	a,'?'						; Prints a question mark
+	jr	WIFI_CONNECT_RCV_CHKPRTD
+WIFI_CONNECT_RCV_CHKPRT2:
+	cp	#7f
+	jr	nz,WIFI_CONNECT_RCV_CHKPRTD
+	ld	a,'?'						; Prints a question mark if it is del
+WIFI_CONNECT_RCV_CHKPRTD:
 	call	CHPUT					; Print a char
 	jp	WIFI_CONNECT_RCV_PWD		; and back to receiving digits
 
 WIFI_CONNECT_RCV_PWDH:
 	ld	a,iyl
 	or	iyh
-	jp	nz,WIFI_CONNECT_RCV_PWD		; if digits entered, can't change password behavior
+	jp	nz,WIFI_CONNECT_RCV_PWD_STR	; if digits entered, can't change password behavior, so it is a pass phrase char
 	xor	a
 	or	ixh
 	ld	ixh,1

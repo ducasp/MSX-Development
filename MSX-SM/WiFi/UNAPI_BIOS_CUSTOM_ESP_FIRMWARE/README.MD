@@ -114,8 +114,21 @@ set-up, whenever WiFi is on, the adapter will automatically try to connect to
 the configured access point. It will list up to ten Access Points and you can
 choose to connect to any of the listed access points by hitting the number key
 related to it on the screen. If the Access Point requires a password, it will
-be requested. By default, what you type is printed on the screen, but you can
-hit the DELETE key before entering the password to not show it while you type.
+be requested. By default, what you type is not printed on the screen, but you
+can hit the DELETE key before entering the password to show it while you type.
+
+P.s.: Some Access Points allow non-standard characters to be used for the pass
+phrase. This ROM will accept any keyboard key and get it's input code and use
+it, except for NULL (code 0x00), BACK SPACE (code 0x08), ESC (code 0x1B) or
+ENTER (code 0x13), which are used to indicate end of string, erase a wrong
+entry, abort entering password and end of entry. As many keyboard entries are
+not printable on screen, a '?' character will be printed if that is the case.
+Also notice as DELETE is used to toggle between hiding or showing what is typed
+as pass phrase, 0x7F is not possible as first character in a pass phrase, but
+can be used for any other position.
+Non-standard characters in the pass phrase should be avoided, if you must have
+those, at least avoid having 0x00, 0x08, 0x13 and 0x1B, and it is up to you to
+figure out which keys translate to a given hex code. :)
 
 # WiFi and Clock Settings
 
