@@ -5144,25 +5144,32 @@ WELCOME_S:
 	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
 	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
 	db	"ducasp@gmail.com",CR,LF,LF
+;
 	db	"Quick Rcv not supported.",CR,LF
 	db	"Machine FW Update Suggested!",CR,LF,LF,STTERMINATOR
+;
 
 WELCOME_SF:
 	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
 	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
 	db	"ducasp@gmail.com",CR,LF,LF
+;
 	db	"Quick Rcv supported.",CR,LF,LF,STTERMINATOR
+;
 
 MMENU_S:
 	db	"1 - Set Nagle Algorithm",CR,LF
 	db	"2 - Set WiFi On Period",CR,LF
 	db	"3 - Scan/Join Access Points",CR,LF
 	db	"4 - WiFi and Clock Settings",CR,LF,LF
+;
 	db	"ESC to exit setup.",CR,LF,LF
+;
 	db	"Option: ",STTERMINATOR
 
 MMENU_CLOCK_MSX2:
 	db	CLS," [ WiFi and Clock Settings ]",CR,LF,LF
+;
 	db	"0 - WiFi & UNAPI are enabled",CR,LF
 	db	"1 - Also wait up to 10s for",CR,LF
 	db	"    internet availability and",GOLEFT,CR,LF
@@ -5172,15 +5179,19 @@ MMENU_CLOCK_MSX2:
 	db	"    also will turn off WiFi",CR,LF
 	db	"    when done",CR,LF
 	db	"3 - WiFi & UNAPI are disabled",GOLEFT,CR,LF,LF
+;
 	db	"MSX boot will take longer if",CR,LF
 	db	"options 1 or 2 are active.",CR,LF,LF,STTERMINATOR
+;
 
 MMENU_CLOCK_MSX1:
 	db	CLS," [ WiFi and Clock Settings ]",CR,LF,LF
+;
 	db	"0 - WiFi & UNAPI are enabled",CR,LF
 	db	"1 - Unavailable for MSX1",CR,LF
 	db	"2 - Unavailable for MSX1",CR,LF
 	db	"3 - WiFi & UNAPI are disabled",GOLEFT,CR,LF,LF,STTERMINATOR
+;
 
 MMENU_CLOCK_0_MSX1:
 	db	"Currently ENABLED.",STTERMINATOR
@@ -5201,7 +5212,9 @@ MMENU_CLOCK_3:
 	db	"Currently DISABLED, GMT: ",STTERMINATOR
 
 MMENU_CLOCK_OPT:
+;
 	db	CR,LF,LF,"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Option: ",STTERMINATOR
 
 MMENU_GMT_OPT:
@@ -5210,7 +5223,9 @@ MMENU_GMT_OPT:
 
 MMENU_SCAN:
 	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
+;
 	db	"Up to 10 APs will be listed.",CR,LF,LF
+;
 	db	"Scanning networks...",CR,LF,STTERMINATOR
 
 MMENU_SCANF:
@@ -5221,18 +5236,23 @@ MMENU_SCANN:
 
 MMENU_SCANS:
 	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
+;
 	db	CR,"Networks available: ",CR,LF,LF,STTERMINATOR
+;
 
 MMENU_CONNECTING:
+;
 	db	CR,LF,LF,"Requesting connection...",STTERMINATOR
 
 MMENU_ASKPWD:
 	db	CR,LF,"Hit DEL as first character",CR,LF
 	db	"to hide/show the typing.",CR,LF
+;
 	db	"Password: ",STTERMINATOR
 
 MMENU_SCANQ:
 	db	CR,LF,"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Number to connect: ",STTERMINATOR
 
 SCAN_TERMINATOR_OPEN:
@@ -5243,29 +5263,37 @@ SCAN_TERMINATOR_ENC:
 
 MMENU_TIMEOUT:
 	db	CLS,"   [ Set WiFi On Period ]",CR,LF,LF
+;
 	db	"WiFi On Period allows to set",CR,LF
 	db	"a given period of time of",CR,LF
 	db	"inactivity to turn off WiFi",CR,LF
 	db	"automatically.",CR,LF,LF
+;
 	db	"0         - ALWAYS ON",CR,LF
 	db	"1 to 30   - 30s",CR,LF
 	db	"30 to 600 - Use given period",CR,LF
 	db	"> 600     - 600s",CR,LF,LF,STTERMINATOR
+;
 
 MMENU_TIMEOUT_ALWAYSON:
 	db	"WiFi is ALWAYS ON.",CR,LF,LF
+;
 	db	"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Type desired period: ",STTERMINATOR
 
 MMENU_TIMEOUT_NOTALWAYSON1:
 	db	"WiFi period set to ",STTERMINATOR
 MMENU_TIMEOUT_NOTALWAYSON2:
 	db	"s.",CR,LF,LF
+;
 	db	"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Type desired period: ",STTERMINATOR
 
 MMENU_NAGLE:
 	db	CLS,"   [ Set Nagle Algorithm ]",CR,LF,LF
+;
 	db	"Nagle Algorithm might lower",CR,LF
 	db	"performance but create less",CR,LF
 	db	"network congestion. Nowadays",CR,LF
@@ -5273,16 +5301,22 @@ MMENU_NAGLE:
 	db	"is the cause of latency and",CR,LF
 	db	"low performance on packet",CR,LF
 	db	"driven protocols.",CR,LF,LF
+;
 	db	"O - Turn it on/off",CR,LF,LF,STTERMINATOR
+;
 
 MMENU_NAGLE_ON:
 	db	"Nagle is currently ON.",CR,LF,LF
+;
 	db	"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Option: ",STTERMINATOR
 
 MMENU_NAGLE_OFF:
 	db	"Nagle is currently OFF.",CR,LF,LF
+;
 	db	"ESC to return to main menu.",CR,LF,LF
+;
 	db	"Option: ",STTERMINATOR
 
 STR_SENDING:
@@ -5304,6 +5338,7 @@ STR_SENDING_FAIL:
 STR_CLKUPDT_FAIL:
 	db	"Failure retrieving date and",CR,LF
 	db	"time from SNTP server!",CR,LF,LF
+;
 	db	"Press and hold F1 during",CR,LF
 	db	"system boot to enter setup.",CR,LF,STTERMINATOR
 
@@ -5313,6 +5348,7 @@ OK_S:
 
 FAIL_S:
 	db	"ESP8266 Not Found!",CR,LF,LF
+;
 	db	"Check that it is properly",CR,LF
 	db	"inserted in its connector.",CR,LF,STTERMINATOR
 
