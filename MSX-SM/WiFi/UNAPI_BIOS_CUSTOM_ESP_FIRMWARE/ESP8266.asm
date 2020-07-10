@@ -97,6 +97,10 @@
 
 ;--- SM-X ROM is less verbose
 SMX_ROM:				equ	1
+;--- Do we want a entering setup message?
+ENTERING_SETUP_MSG:		equ	1
+;--- Non-FPGA versions do not check ocm hardware, it is not OCM
+CHECK_OCM_HW:			equ	1
 
 ;--- System variables and routines
 KILBUF:					equ	#0156
@@ -187,11 +191,30 @@ INIT:
 	ld	a,h							; Let's test if we are mirrored and being executed in wrong page
 	cp	#40							; is MSB 0x40?
 	ret	nz							; if not, return, it is a mirror
+	if	CHECK_OCM_HW = 1
+	; Below code has been kindly provided by KdL
+	ld	a,#d4						; Let's test the Machine Type ID
+	out	(#40),a
+	in	a,(#49)
+	and	%00111100
+	rra
+	rra
+	cp	0							; is the ID = 0?
+	ret	z							; if yes, return, it is 1chipMSX
+	cp	1							; is the ID = 1?
+	ret	z							; if yes, return, it is Zemmix Neo
+	; ### Remove the next line to use the ROM with the emulators ###
+	cp	15							; is the ID = 15?
+	ret	z							; if yes, return, it is Unknown or a generic MSX system
+	; Ok, ID = 2 "SM-X" or ID > 2 "Newer Machines"
+	endif
 	ld	a,6
 	call	SNSMAT
 	bit	5,a							; Test F1
 	jp	z,ESPSETUP					; If F1 is pressed, let's execute our setup menu
 	if	SMX_ROM = 0
+	ld	hl,WELCOME
+	call	PRINTHL
 	ld	hl,WELCOME_S
 	call	PRINTHL
 	endif
@@ -377,12 +400,21 @@ ESPSETUP.EXIT:
 	jp	INIT_NEXT					; When done, resume initialization
 ; Pretty simple setup for the device
 ESPSETUP:
+	if	ENTERING_SETUP_MSG = 1
+	ld	hl,ENTERING_WIFI_SETUP
+	call	PRINTHL
+	call	WAIT_1500MS_AND_THEN_CONTINUE
+	endif
 	in	a,(IN_STS_PORT)
 	bit	3,a							; Quick Receive Supported?
 	jr	z,ESPSETUP.1NF				; If not, no fast receive
+	ld	hl,WELCOME
+	call	PRINTHL
 	ld	hl,WELCOME_SF
 	jp	ESPSETUP.1F					; Report quick receive supported
 ESPSETUP.1NF:
+	ld	hl,WELCOME
+	call	PRINTHL
 	ld	hl,WELCOME_S
 ESPSETUP.1F:
 	call	PRINTHL					; Print Welcome message
@@ -406,7 +438,7 @@ MM_WAIT_INPUT:
 
 CLK_MSX1_GO:
 	ld	hl,MMENU_CLOCK_MSX1
-	call	PRINTHL
+	call	PRINTHL					; Print Main Clock MSX1 message
 	call	ISCLKAUTO
 	ld	a,(ix+0)					; Auto Clock Current setting
 	cp	3							; If 3 adapter disabled
@@ -441,12 +473,15 @@ CLK_MSX1_SEND_CMD:
 	jp	CLK_AUTO_GMT_CHK_DONE		; and sending the command will be done there
 
 START_CLK_AUTO:
+	ld	a,'4'
+	call	CHPUT
+	call	WAIT_250MS_AND_THEN_CONTINUE
 	ld	a,(#002D)					; Check MSX Version
 	or	a
 	jp	z,CLK_MSX1_GO				; If zero, MSX 1, so can just enable or disable adapter
 CLK_AUTO_GO:
 	ld	hl,MMENU_CLOCK_MSX2
-	call	PRINTHL
+	call	PRINTHL					; Print Main Clock MSX2 message
 	call	ISCLKAUTO
 	ld	a,(ix+0)					; Auto Clock Current setting
 	or	a							; If zero, off
@@ -686,7 +721,10 @@ CLK_AUTO_GMT_CHK_RESULT:
 	jp	WAIT_2S_AND_THEN_MAINMENU
 
 START_WIFI_SCAN:
-	ld hl,MMENU_SCAN
+	ld	a,'3'
+	call	CHPUT
+	call	WAIT_250MS_AND_THEN_CONTINUE
+	ld	hl,MMENU_SCAN
 	call	PRINTHL					; Print Main Scan message
 	call	STARTWIFISCAN			; Request WiFi Scan to start
 	ld	de,(TXTTAB)					; we will borrow Basic Program memory area for now...
@@ -946,8 +984,11 @@ WIFI_SCAN_TIMEOUT:
 	jp	WAIT_4S_AND_THEN_MAINMENU
 
 SET_WIFI_TIMEOUT:
-	ld hl,MMENU_TIMEOUT
-	call	PRINTHL					; Print Main Nagle message
+	ld	a,'2'
+	call	CHPUT
+	call	WAIT_250MS_AND_THEN_CONTINUE
+	ld	hl,MMENU_TIMEOUT
+	call	PRINTHL					; Print Main Timeout message
 	call	CHECKTIMEOUT			; TimeOut is on or off?
 	jp	z,WIFI_SET_ALWAYS_ON		; if 0, always ON
 	; otherwise there is a timeout
@@ -1054,7 +1095,10 @@ SET_WIFI_EXECUTE_SET_COMMAND:
 	jp	SET_ESP_WIFI_TIMEOUT		; and set and done
 
 SET_NAGLE:
-	ld hl,MMENU_NAGLE
+	ld	a,'1'
+	call	CHPUT
+	call	WAIT_250MS_AND_THEN_CONTINUE
+	ld	hl,MMENU_NAGLE
 	call	PRINTHL					; Print Main Nagle message
 	call	CHECKNAGLE				; Nagle is on or off?
 	jr	nz,NAGLE_IS_ON				;
@@ -1169,15 +1213,23 @@ SET_NAGLE_ON:
 
 WAIT_4S_AND_THEN_MAINMENU:
 	ld	a,240						; Wait 4 seconds with message on screen
-	jr	WAIT_2S_AND_THEN_MAINMENU_WAIT
+	jr	WAIT_AND_THEN_MAINMENU
 WAIT_2S_AND_THEN_MAINMENU:
 	ld	a,120						; Wait 2 seconds with message on screen
-WAIT_2S_AND_THEN_MAINMENU_WAIT:
+WAIT_AND_THEN_MAINMENU:
+	call	WAIT_BEFORE_CONTINUING
+	jp	ESPSETUP					; When done, back to main setup
+WAIT_1500MS_AND_THEN_CONTINUE:
+	ld	a,90						; Wait 1500 ms then continue
+	jr	WAIT_BEFORE_CONTINUING
+WAIT_250MS_AND_THEN_CONTINUE:
+	ld	a,15						; Wait 250 ms then continue
+WAIT_BEFORE_CONTINUING:
 	halt
 	dec	a
 	; If not zero, our time out has not elapsed
-	jr	nz,WAIT_2S_AND_THEN_MAINMENU_WAIT
-	jp	ESPSETUP					; When done, back to main setup
+	jr	nz,WAIT_BEFORE_CONTINUING
+	ret								; Time out and continue
 
 ; Check Auto Clock 
 ISCLKAUTO:
@@ -2515,7 +2567,7 @@ TCPIP_DNS_S:
 	;--- Ok, we have a result, is it success?
 	dec a
 	jr	z,TCPIP_DNS_S_HASRESULT		; If it is 1, it was not an error
-	;--- Shoot, there is an error....
+	;--- Shoot, there is an error...
 	;--- And sure thing, ESP do not tell us details, it is always failure :-P
 	bit	0,b							;--- clear error after this?	
 	jr	z,TCP_IP_DNS_S_NOCLR
@@ -5140,220 +5192,234 @@ CLS						equ	12
 CR						equ	13
 GOLEFT					equ	29
 
+ENTERING_WIFI_SETUP:
+	db	CLS
+	db	"Entering WiFi Setup..."		,STTERMINATOR
+
+WELCOME:
+	db	CLS
+	db	"ESP8266 TCP/IP UNAPI 1.2"		,CR,LF
+	db	"(c)2020 Oduvaldo Pavan Junior"	,GOLEFT,CR,LF
+	db	"ducasp@gmail.com"				,CR,LF,LF,STTERMINATOR
+;---
+
 WELCOME_S:
-	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
-	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
-	db	"ducasp@gmail.com",CR,LF,LF
-;
-	db	"Quick Rcv not supported.",CR,LF
-	db	"Machine FW Update Suggested!",CR,LF,LF,STTERMINATOR
-;
+	db	"Quick Rcv not supported."		,CR,LF
+	db	"Machine FW Update Suggested!"	,CR,LF,LF,STTERMINATOR
+;---
 
 WELCOME_SF:
-	db	CLS,"ESP8266 TCP/IP UNAPI 1.2",CR,LF
-	db	"(c)2020 Oduvaldo Pavan Junior",GOLEFT,CR,LF
-	db	"ducasp@gmail.com",CR,LF,LF
-;
-	db	"Quick Rcv supported.",CR,LF,LF,STTERMINATOR
-;
+	db	"Quick Rcv supported."			,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_S:
-	db	"1 - Set Nagle Algorithm",CR,LF
-	db	"2 - Set WiFi On Period",CR,LF
-	db	"3 - Scan/Join Access Points",CR,LF
-	db	"4 - WiFi and Clock Settings",CR,LF,LF
-;
-	db	"ESC to exit setup.",CR,LF,LF
-;
-	db	"Option: ",STTERMINATOR
+	db	"1 - Set Nagle Algorithm"		,CR,LF
+	db	"2 - Set WiFi On Period"		,CR,LF
+	db	"3 - Scan/Join Access Points"	,CR,LF
+	db	"4 - WiFi and Clock Settings"	,CR,LF,LF
+;---
+	db	"ESC to exit setup."			,CR,LF,LF
+;---
+	db	"Option: "						,STTERMINATOR
 
 MMENU_CLOCK_MSX2:
-	db	CLS," [ WiFi and Clock Settings ]",CR,LF,LF
-;
-	db	"0 - WiFi & UNAPI are enabled",CR,LF
-	db	"1 - Also wait up to 10s for",CR,LF
-	db	"    internet availability and",GOLEFT,CR,LF
-	db	"    get time from SNTP server",GOLEFT,CR,LF
-	db	"    adjusting the timezone",CR,LF
-	db	"2 - The same as option 1 but",CR,LF
-	db	"    also will turn off WiFi",CR,LF
-	db	"    when done",CR,LF
-	db	"3 - WiFi & UNAPI are disabled",GOLEFT,CR,LF,LF
-;
-	db	"MSX boot will take longer if",CR,LF
-	db	"options 1 or 2 are active.",CR,LF,LF,STTERMINATOR
-;
+	db	CLS
+	db	" [ WiFi and Clock Settings ]"	,CR,LF,LF
+;---
+	db	"0 - WiFi & UNAPI are enabled"	,CR,LF
+	db	"1 - Also wait up to 10s for"	,CR,LF
+	db	"    internet availability and"	,GOLEFT,CR,LF
+	db	"    get time from SNTP server"	,GOLEFT,CR,LF
+	db	"    adjusting the timezone"	,CR,LF
+	db	"2 - The same as option 1 but"	,CR,LF
+	db	"    also will turn off WiFi"	,CR,LF
+	db	"    when done"					,CR,LF
+	db	"3 - WiFi & UNAPI are disabled"	,GOLEFT,CR,LF,LF
+;---
+	db	"MSX boot will take longer if"	,CR,LF
+	db	"options 1 or 2 are active."	,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_CLOCK_MSX1:
-	db	CLS," [ WiFi and Clock Settings ]",CR,LF,LF
-;
-	db	"0 - WiFi & UNAPI are enabled",CR,LF
-	db	"1 - Unavailable for MSX1",CR,LF
-	db	"2 - Unavailable for MSX1",CR,LF
-	db	"3 - WiFi & UNAPI are disabled",GOLEFT,CR,LF,LF,STTERMINATOR
-;
+	db	CLS
+	db	" [ WiFi and Clock Settings ]"	,CR,LF,LF
+;---
+	db	"0 - WiFi & UNAPI are enabled"	,CR,LF
+	db	"1 - Unavailable for MSX1"		,CR,LF
+	db	"2 - Unavailable for MSX1"		,CR,LF
+	db	"3 - WiFi & UNAPI are disabled"	,GOLEFT,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_CLOCK_0_MSX1:
-	db	"Currently ENABLED.",STTERMINATOR
+	db	"Currently ENABLED."			,STTERMINATOR
 
 MMENU_CLOCK_3_MSX1:
-	db	"Currently DISABLED.",STTERMINATOR
+	db	"Currently DISABLED."			,STTERMINATOR
 
 MMENU_CLOCK_0:
-	db	"Currently ENABLED, GMT: ",STTERMINATOR
+	db	"Currently ENABLED, GMT: "		,STTERMINATOR
 
 MMENU_CLOCK_1:
-	db	"Currently TIME-OPT1, GMT: ",STTERMINATOR
+	db	"Currently TIME-OPT1, GMT: "	,STTERMINATOR
 
 MMENU_CLOCK_2:
-	db	"Currently TIME-OPT2, GMT: ",STTERMINATOR
+	db	"Currently TIME-OPT2, GMT: "	,STTERMINATOR
 
 MMENU_CLOCK_3:
-	db	"Currently DISABLED, GMT: ",STTERMINATOR
+	db	"Currently DISABLED, GMT: "		,STTERMINATOR
 
 MMENU_CLOCK_OPT:
-;
-	db	CR,LF,LF,"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Option: ",STTERMINATOR
+	db	CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Option: "						,STTERMINATOR
 
 MMENU_GMT_OPT:
-	db	CR,LF,"Time Zone adjustment: ",STTERMINATOR
-
+	db	CR,LF
+	db	"Time Zone adjustment: "		,STTERMINATOR
 
 MMENU_SCAN:
-	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
-;
-	db	"Up to 10 APs will be listed.",CR,LF,LF
-;
-	db	"Scanning networks...",CR,LF,STTERMINATOR
+	db	CLS
+	db	" [ Scan/Join Access Points ]"	,CR,LF,LF
+;---
+	db	"Up to 10 APs will be listed."	,CR,LF,LF
+;---
+	db	"Scanning networks..."			,CR,LF,STTERMINATOR
 
 MMENU_SCANF:
-	db	CR,LF,"Error or no networks found!",CR,LF,STTERMINATOR
+	db	CR,LF
+	db	"Error or no networks found!"	,CR,LF,STTERMINATOR
 
 MMENU_SCANN:
-	db	CR,LF,"No networks found!",CR,LF,STTERMINATOR
+	db	CR,LF
+	db	"No networks found!"			,CR,LF,STTERMINATOR
 
 MMENU_SCANS:
-	db	CLS," [ Scan/Join Access Points ]",CR,LF,LF
-;
-	db	CR,"Networks available: ",CR,LF,LF,STTERMINATOR
-;
+	db	CLS
+	db	" [ Scan/Join Access Points ]"	,CR,LF,LF
+;---
+	db	"Networks available: "			,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_CONNECTING:
-;
-	db	CR,LF,LF,"Requesting connection...",STTERMINATOR
+	db	CR,LF,LF
+;---
+	db	"Requesting connection..."		,STTERMINATOR
 
 MMENU_ASKPWD:
-	db	CR,LF,"Hit DEL as first character",CR,LF
-	db	"to hide/show the typing.",CR,LF
-;
-	db	"Password: ",STTERMINATOR
+	db	CR,LF
+	db	"Hit DEL as first character"	,CR,LF
+	db	"to hide/show the typing."		,CR,LF
+	db	"Password: "					,STTERMINATOR
 
 MMENU_SCANQ:
-	db	CR,LF,"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Number to connect: ",STTERMINATOR
+	db	CR,LF
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Number to connect: "			,STTERMINATOR
 
 SCAN_TERMINATOR_OPEN:
 	db	CR,LF,STTERMINATOR
 
 SCAN_TERMINATOR_ENC:
-	db	" *",CR,LF,STTERMINATOR
+	db	" *"							,CR,LF,STTERMINATOR
 
 MMENU_TIMEOUT:
-	db	CLS,"   [ Set WiFi On Period ]",CR,LF,LF
-;
-	db	"WiFi On Period allows to set",CR,LF
-	db	"a given period of time of",CR,LF
-	db	"inactivity to turn off WiFi",CR,LF
-	db	"automatically.",CR,LF,LF
-;
-	db	"0         - ALWAYS ON",CR,LF
-	db	"1 to 30   - 30s",CR,LF
-	db	"30 to 600 - Use given period",CR,LF
-	db	"> 600     - 600s",CR,LF,LF,STTERMINATOR
-;
+	db	CLS
+	db	"   [ Set WiFi On Period ]"		,CR,LF,LF
+;---
+	db	"WiFi On Period allows to set"	,CR,LF
+	db	"a given period of time of"		,CR,LF
+	db	"inactivity to turn off WiFi"	,CR,LF
+	db	"automatically."				,CR,LF,LF
+;---
+	db	"0         - ALWAYS ON"			,CR,LF
+	db	"1 to 30   - 30s"				,CR,LF
+	db	"30 to 600 - Use given period"	,CR,LF
+	db	"> 600     - 600s"				,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_TIMEOUT_ALWAYSON:
-	db	"WiFi is ALWAYS ON.",CR,LF,LF
-;
-	db	"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Type desired period: ",STTERMINATOR
+	db	"WiFi is ALWAYS ON."			,CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Type desired period: "			,STTERMINATOR
 
 MMENU_TIMEOUT_NOTALWAYSON1:
-	db	"WiFi period set to ",STTERMINATOR
+	db	"WiFi period set to "			,STTERMINATOR
+
 MMENU_TIMEOUT_NOTALWAYSON2:
-	db	"s.",CR,LF,LF
-;
-	db	"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Type desired period: ",STTERMINATOR
+	db	"s."							,CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Type desired period: "			,STTERMINATOR
 
 MMENU_NAGLE:
-	db	CLS,"   [ Set Nagle Algorithm ]",CR,LF,LF
-;
-	db	"Nagle Algorithm might lower",CR,LF
-	db	"performance but create less",CR,LF
-	db	"network congestion. Nowadays",CR,LF
-	db	"it is mostly not needed and",CR,LF
-	db	"is the cause of latency and",CR,LF
-	db	"low performance on packet",CR,LF
-	db	"driven protocols.",CR,LF,LF
-;
-	db	"O - Turn it on/off",CR,LF,LF,STTERMINATOR
-;
+	db	CLS
+	db	"   [ Set Nagle Algorithm ]"	,CR,LF,LF
+;---
+	db	"Nagle Algorithm might lower"	,CR,LF
+	db	"performance but create less"	,CR,LF
+	db	"network congestion. Nowadays"	,CR,LF
+	db	"it is mostly not needed and"	,CR,LF
+	db	"is the cause of latency and"	,CR,LF
+	db	"low performance on packet"		,CR,LF
+	db	"driven protocols."				,CR,LF,LF
+;---
+	db	"O - Turn it on/off"			,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_NAGLE_ON:
-	db	"Nagle is currently ON.",CR,LF,LF
-;
-	db	"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Option: ",STTERMINATOR
+	db	"Nagle is currently ON."		,CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Option: "						,STTERMINATOR
 
 MMENU_NAGLE_OFF:
-	db	"Nagle is currently OFF.",CR,LF,LF
-;
-	db	"ESC to return to main menu.",CR,LF,LF
-;
-	db	"Option: ",STTERMINATOR
+	db	"Nagle is currently OFF."		,CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF,LF
+;---
+	db	"Option: "						,STTERMINATOR
 
 STR_SENDING:
-	db	"Sending command, wait...",CR,LF,STTERMINATOR
+	db	"Sending command, wait..."		,CR,LF,STTERMINATOR
 
 STR_SENDING_OK:
-	db	"Command sent Ok, done!",CR,LF,STTERMINATOR
+	db	"Command sent Ok, done!"		,CR,LF,STTERMINATOR
 
 STR_SENDING_OK_JN:
-	db	"Successfully connected!",CR,LF,STTERMINATOR
+	db	"Successfully connected!"		,CR,LF,STTERMINATOR
 
 STR_SENDING_NOK_JN:
-	db	"Fail to connect, if protected",GOLEFT,CR,LF
-	db	"network check password!",CR,LF,STTERMINATOR
-	
+	db	"Fail to connect, if protected"	,GOLEFT,CR,LF
+	db	"network check password!"		,CR,LF,STTERMINATOR
+
 STR_SENDING_FAIL:
-	db	"Command failure...",CR,LF,STTERMINATOR
+	db	"Command failure..."			,CR,LF,STTERMINATOR
 
 STR_CLKUPDT_FAIL:
-	db	"Failure retrieving date and",CR,LF
-	db	"time from SNTP server!",CR,LF,LF
-;
-	db	"Press and hold F1 during",CR,LF
-	db	"system boot to enter setup.",CR,LF,STTERMINATOR
+	db	"Failure retrieving date and"	,CR,LF
+	db	"time from SNTP server!"		,CR,LF,LF
+;---
+	db	"Press and hold F1 during"		,CR,LF
+	db	"system boot to enter setup."	,CR,LF,STTERMINATOR
 
 OK_S:
-	db	"Installed successfully!",CR,LF
-	db	CR,LF,STTERMINATOR
+	db	"Installed successfully!"		,CR,LF,LF,STTERMINATOR
 
 FAIL_S:
-	db	"ESP8266 Not Found!",CR,LF,LF
-;
-	db	"Check that it is properly",CR,LF
-	db	"inserted in its connector.",CR,LF,STTERMINATOR
+	db	"ESP8266 Not Found!"			,CR,LF,LF
+;---
+	db	"Check that it is properly"		,CR,LF
+	db	"inserted in its connector."	,CR,LF,STTERMINATOR
 
 FAIL_F:
-	db	"ESP8266 FW Update Required!",CR,LF,STTERMINATOR
+	db	"ESP8266 FW Update Required!"	,CR,LF,STTERMINATOR
 
 ;============================
 ;===  UNAPI related data  ===
@@ -5369,6 +5435,11 @@ UNAPI_ID_END:
 APIINFO:				db	"ESP8266 WiFi UNAPI",0
 
 
-ID_END:	ds	#8000-ID_END,#FF
+ID_END:	ds	#7FF0-ID_END,#FF
+
+;--- Build date to be viewed via Hex Editor (16 bytes)
+
+BUILD_DATE:				db	"BUILD 2020/07/10"
+
 SEG_CODE_END:
-;Final size must be 16384 bytes 
+; Final size must be 16384 bytes
