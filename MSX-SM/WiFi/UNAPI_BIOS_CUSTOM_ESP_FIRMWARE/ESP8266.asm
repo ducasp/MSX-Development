@@ -98,7 +98,7 @@
 ;--- SM-X ROM is less verbose
 SMX_ROM:				equ	1
 ;--- Do we want a entering setup message?
-ENTERING_SETUP_MSG:		equ	1
+ENTERING_SETUP_MSG:		equ	0
 ;--- Non-FPGA versions do not check ocm hardware, it is not OCM
 CHECK_OCM_HW:			equ	1
 
@@ -214,7 +214,7 @@ INIT:
 	if	ENTERING_SETUP_MSG = 1
 	jp	z,ENTERING_ESPSETUP			; If F1 is pressed, let's execute our setup menu
 	else
-	jp	z,ESPSETUP			; If F1 is pressed, let's execute our setup menu
+	jp	z,ESPSETUP					; If F1 is pressed, let's execute our setup menu
 	endif
 	if	SMX_ROM = 0
 	ld	hl,WELCOME
@@ -222,10 +222,9 @@ INIT:
 	ld	hl,WELCOME_S
 	call	PRINTHL
 	endif
-INIT_NEXT:
 	call	RESET_ESP
 	or	a
-	jp	z,INIT_UNAPI				; Well, if reset succesful, initialize UNAPI
+	jp	z,INIT_UNAPI				; Well, if reset succesful, continue
 	; If here, ESP was not found, so, exit with and error message
 	ld	a,b
 	or	a
@@ -401,15 +400,33 @@ PATCH_H_TIMI:
 ESPSETUP.EXIT:
 	ld	a,CLS
 	call	CHPUT
-	jp	INIT_NEXT					; When done, resume initialization
+	jp	INIT_UNAPI					; When done, resume initialization
 ; Pretty simple setup for the device
 	if	ENTERING_SETUP_MSG = 1
 ENTERING_ESPSETUP:
 	ld	hl,ENTERING_WIFI_SETUP
 	call	PRINTHL
-	call	WAIT_1500MS_AND_THEN_CONTINUE
+	call	WAIT_500MS_AND_THEN_CONTINUE
 	endif
 ESPSETUP:
+	call	RESET_ESP
+	or	a
+	jp	z,ESPSETUP_NEXT				; Well, if reset succesful, continue
+	; If here, ESP was not found, so, exit with and error message
+	ld	a,b
+	or	a
+	ld	hl,FAIL_S					; If 0, non responsive
+	jr	z,ESPSETUP_F_ERRMSG
+	ld	hl,FAIL_F					; Otherwise, firmware is old
+ESPSETUP_F_ERRMSG:
+	call	PRINTHL
+ESPSETUP_F_WAIT:
+	ld	b,255
+ESPSETUP_F_LOOP_WAIT:
+	halt
+	djnz	ESPSETUP_F_LOOP_WAIT
+	ret								; And done
+ESPSETUP_NEXT:
 	in	a,(IN_STS_PORT)
 	bit	3,a							; Quick Receive Supported?
 	jr	z,ESPSETUP.1NF				; If not, no fast receive
@@ -1224,8 +1241,8 @@ WAIT_2S_AND_THEN_MAINMENU:
 WAIT_AND_THEN_MAINMENU:
 	call	WAIT_BEFORE_CONTINUING
 	jp	ESPSETUP					; When done, back to main setup
-WAIT_1500MS_AND_THEN_CONTINUE:
-	ld	a,90						; Wait 1500 ms then continue
+WAIT_500MS_AND_THEN_CONTINUE:
+	ld	a,30						; Wait 500 ms then continue
 	jr	WAIT_BEFORE_CONTINUING
 WAIT_250MS_AND_THEN_CONTINUE:
 	ld	a,15						; Wait 250 ms then continue
@@ -4949,6 +4966,11 @@ WRFE_RET_ERROR:
 ;*** failure							   ***
 ;*********************************************
 RESET_ESP:
+	ld	b,10						; Retry up to 10 times
+RESET_ESP_LOOP:
+	ld	a,b
+	or	a							; No more retries?
+	jr	z,RESET_CHK_IF_INSTALLED	; Then check if it is old ESP FW
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	xor	a
@@ -4958,11 +4980,16 @@ RESET_ESP:
 	ld	a,CMD_WRESET_ESP
 	out	(OUT_TX_PORT),a
 	ld	hl,RSP_CMD_RESET_ESP		; Expected response
-	ld	de,180						; Up to 3s @ 60Hz
+	ld	de,90						; Up to 1.5s @ 60Hz
 	ld	a,RSP_CMD_RESET_ESP_SIZE	; Size of response
+	push	bc						; Save retry counter
 	call	WAIT_RESPONSE_FROM_ESP
-	or	a
-	ret	z
+	pop	bc							; restore retry counter
+	or	a							; Did WAIT RESPONSE return zero?
+	ret	z							; Yes, Warm Reset Ok and ESP Found
+	dec	b							; No, decrement retry counter
+	jr	RESET_ESP_LOOP				; and let the loop check
+RESET_CHK_IF_INSTALLED:
 	; Ok, Warm Reset did not work, is ESP installed?
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
@@ -5191,6 +5218,9 @@ RSP_CMD_QUERY_ESP		db	"OK"
 RSP_CMD_QUERY_ESP_SIZE	equ	2
 
 ;--- Strings
+; Special thanks to KdL
+; He has contributed a lot to make the menus and strings
+; concise and much easier to read and understand!
 STTERMINATOR			equ	0
 LF						equ	10
 CLS						equ	12
@@ -5199,7 +5229,8 @@ GOLEFT					equ	29
 
 ENTERING_WIFI_SETUP:
 	db	CLS
-	db	"Entering WiFi Setup..."		,STTERMINATOR
+	db	"Entering WiFi Setup..."		,CR,LF,LF,STTERMINATOR
+;---
 
 WELCOME:
 	db	CLS
@@ -5444,7 +5475,7 @@ ID_END:	ds	#7FF0-ID_END,#FF
 
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:				db	"BUILD 2020/07/10"
+BUILD_DATE:				db	"BUILD 2020/07/11"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
