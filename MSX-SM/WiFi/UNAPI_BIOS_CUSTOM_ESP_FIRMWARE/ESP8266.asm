@@ -211,7 +211,11 @@ INIT:
 	ld	a,6
 	call	SNSMAT
 	bit	5,a							; Test F1
-	jp	z,ESPSETUP					; If F1 is pressed, let's execute our setup menu
+	if	ENTERING_SETUP_MSG = 1
+	jp	z,ENTERING_ESPSETUP			; If F1 is pressed, let's execute our setup menu
+	else
+	jp	z,ESPSETUP			; If F1 is pressed, let's execute our setup menu
+	endif
 	if	SMX_ROM = 0
 	ld	hl,WELCOME
 	call	PRINTHL
@@ -399,12 +403,13 @@ ESPSETUP.EXIT:
 	call	CHPUT
 	jp	INIT_NEXT					; When done, resume initialization
 ; Pretty simple setup for the device
-ESPSETUP:
 	if	ENTERING_SETUP_MSG = 1
+ENTERING_ESPSETUP:
 	ld	hl,ENTERING_WIFI_SETUP
 	call	PRINTHL
 	call	WAIT_1500MS_AND_THEN_CONTINUE
 	endif
+ESPSETUP:
 	in	a,(IN_STS_PORT)
 	bit	3,a							; Quick Receive Supported?
 	jr	z,ESPSETUP.1NF				; If not, no fast receive
