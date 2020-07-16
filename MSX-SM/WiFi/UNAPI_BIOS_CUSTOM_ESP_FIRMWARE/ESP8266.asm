@@ -7,6 +7,10 @@
 ; Pieces of this code were based on DENYOTCP.ASM (Denyonet ROM)
 ; made by Konamiman
 ;
+; This code also has contributions from KdL, most specifically in the Wi-Fi
+; setup menus and functionality, he has helped quite a lot to get it to the
+; final format and functionality, thanks!
+;
 ; Note: this implementation depends upon ESP8266 having the UNAPI
 ; firmware flashed. This firmware has been developed by me as well.
 ;
@@ -35,9 +39,9 @@
 ;
 ; After boot, we need RAM in the 4th page. We have the SLOT WORK AREA for
 ; free, it is 8 bytes reserved for our slot, and that is certainly not enough,
-; just the EXTBIOS HOOK backup cost us 5 bytes, so we have three bytes 
+; just the EXTBIOS HOOK backup cost us 5 bytes, so we have three bytes
 ; remaining. Of those, we use two to indicate the bottom of the memory reserved
-; in the 4th page. Whenever more memory is needed, HIMEM_RESERVED_SIZE must 
+; in the 4th page. Whenever more memory is needed, HIMEM_RESERVED_SIZE must
 ; change, just remember that more memory reserved means less memory available
 ; to applications and BASIC, so use it wisely
 ;
@@ -48,7 +52,7 @@
 ;
 ; Current HIMEM mapping offset related to the address stored in the 6th and 7th
 ; bytes of our slot work area:
-; 
+;
 ; 0000 - 0004 	: HTIM_I hook backup
 ; 0005 - 0006	: Counter that our HTIM_I hook updates
 ; 0007			: Store Single Byte some functions need
@@ -99,24 +103,25 @@
 SMX_ROM:				equ	1
 ;--- Do we want a entering setup message?
 ENTERING_SETUP_MSG:		equ	0
-;--- Non-FPGA versions do not check ocm hardware, it is not OCM
+;--- Non-FPGA versions do not check OCM hardware, it is not OCM
 CHECK_OCM_HW:			equ	1
 
 ;--- System variables and routines
-KILBUF:					equ	#0156
+CHGET:					equ	#009F
+CHPUT:					equ	#00A2
 BEEP:					equ	#00C0
 SNSMAT:					equ	#0141
-CHPUT:					equ	#00A2
-CHGET:					equ	#009F
+KILBUF:					equ	#0156
+CLIKSW:					equ	#F3DB
 TXTTAB:					equ	#F676
+ARG:					equ	#F847
 HOKVLD:					equ	#FB20
+HIMEM:					equ	#FC4A
 EXPTBL:					equ	#FCC1
 SLTWRK:					equ	#FD09
-HIMEM:					equ	#FC4A
-EXTBIO:					equ	#FFCA
-ARG:					equ	#F847
 H_TIMI:					equ	#FD9F
 H_CLEA:					equ	#FED0
+EXTBIO:					equ	#FFCA
 OUT_TX_PORT:			equ	#07
 OUT_CMD_PORT:			equ	#06
 IN_DATA_PORT:			equ	#06
@@ -193,9 +198,9 @@ INIT:
 	ret	nz							; if not, return, it is a mirror
 	if	CHECK_OCM_HW = 1
 	; Below code has been kindly provided by KdL
-	ld	a,#d4						; Let's test the Machine Type ID
+	ld	a,#d4						; set OCM ID = 212
 	out	(#40),a
-	in	a,(#49)
+	in	a,(#49)						; Let's test the Machine Type ID
 	and	%00111100
 	rra
 	rra
@@ -208,6 +213,8 @@ INIT:
 	ret	z							; if yes, return, it is Unknown or a generic MSX system
 	; Ok, ID = 2 "SM-X" or ID > 2 "Newer Machines"
 	endif
+	xor	a							; A = 0
+	ld	(CLIKSW),a					; when key press, click disabled
 	ld	a,6
 	call	SNSMAT
 	bit	5,a							; Test F1
@@ -224,7 +231,7 @@ INIT:
 	endif
 	call	RESET_ESP
 	or	a
-	jp	z,INIT_UNAPI				; Well, if reset succesful, continue
+	jp	z,INIT_UNAPI				; Well, if reset successful, continue
 	; If here, ESP was not found, so, exit with and error message
 	ld	a,b
 	or	a
@@ -256,20 +263,33 @@ INIT_UNAPI:
 	ret	z							; if disabled, disabled it is, nothing to do
 	ld	a,(#002D)					; Check MSX Version
 	or	a
-	jr	z,INIT_NOCLOCKUPDATE		; If zero, MSX 1, can't set clock
+	jr	z,INIT_NOCLOCKUPDATE		; If zero, MSX1, can't set clock
 	xor	a
 	or	(ix+0)
 	jr	z,INIT_NOCLOCKUPDATE		; if turned off, skip
 	; Ok, not zero, so we are going to simply request the time, it might take up to 10s
 	inc	ix
 	inc	ix							; ok, leave IX+0 and IX+1  intact
+	; b = number of response check attempts
+	ld	b,5							; 5 * 2s = 10s
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	ld	a,CMD_GET_TIME
 	out	(OUT_TX_PORT),a
-	ld	hl,900						; Wait Up To 15s
+TRY_AGAIN:
+	push	bc
+	ld	hl,120						; Wait Up To 2s per attempt
 	call	WAIT_MENU_CMD_RESPONSE
 	jr	nz,INIT_CLOCKUPDATE			; if ok, follow up
+	ld	hl,STR_WAITING				; Print Waiting for connection message
+	call	PRINTHL
+	ld	a,#FF
+	cp	b							; Was time-out the failure reason?
+	pop	bc							; Restore stack ballance and retry counter
+	jr	nz,STOP_TRYING				; If error return code and not time-out, no more checks needed
+	ld	a,CMD_GET_TIME				; Needed for retries
+	djnz	TRY_AGAIN
+STOP_TRYING:
 	; Leave a message that clock has not been updated
 	ld	hl,STR_CLKUPDT_FAIL
 	call	PRINTHL
@@ -281,9 +301,10 @@ WAIT_4S:
 	jr	nz,WAIT_4S
 	jr	INIT_NOCLOCKUPDATE			; error, just skip to not set garbage in clock
 INIT_CLOCKUPDATE:
+	pop	bc
 	dec	ix
 	dec	ix							; ix back where it should
-	; ix + 0 -> 0 If no need to set clock, 1 if set clock, 2 if set clock and request to turn WiFi Off
+	; ix + 0 -> 0 If no need to set clock, 1 if set clock, 2 if set clock and request to turn Wi-Fi Off
 	; ix + 1 -> GMT setting, well, not going to use it
 	; ix + 2 -> Seconds
 	; ix + 3 -> Minutes
@@ -305,7 +326,7 @@ INIT_CLOCKUPDATE:
 	ld	a,2
 	cp	(ix+0)
 	jr	nz,INIT_NOCLOCKUPDATE
-	; If here, turn off Wifi Immediatelly
+	; If here, turn off Wi-Fi Immediatelly
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	ld	a,CMD_WIFI_OFF
@@ -321,7 +342,7 @@ INIT_NOCLOCKUPDATE:
 	ld	a,#C9						; RET, as we are the first extended BIOS
 	ld	(hl),a
 	jr	PATCH						; And now all we need to do is patch the EXTBIO hook :)
-	
+
 SAVE_HOOK2:
 	; If here, we are not the first to extend bios, so we need to save the previous one
 	call	GETSLT
@@ -406,12 +427,12 @@ ESPSETUP.EXIT:
 ENTERING_ESPSETUP:
 	ld	hl,ENTERING_WIFI_SETUP
 	call	PRINTHL
-	call	WAIT_500MS_AND_THEN_CONTINUE
+	call	WAIT_650MS_AND_THEN_CONTINUE
 	endif
 ESPSETUP:
 	call	RESET_ESP
 	or	a
-	jp	z,ESPSETUP_NEXT				; Well, if reset succesful, continue
+	jp	z,ESPSETUP_NEXT				; Well, if reset successful, continue
 	; If here, ESP was not found, so, exit with and error message
 	ld	a,b
 	or	a
@@ -449,7 +470,7 @@ MM_WAIT_INPUT:
 	jp	z,ESPSETUP.EXIT				; When done, resume initialization
 	cp	'1'							; Setup Nagle?
 	jp	z,SET_NAGLE					;
-	cp	'2'							; Setup WiFiOn period?
+	cp	'2'							; Setup Wi-Fi On Period?
 	jp	z,SET_WIFI_TIMEOUT			;
 	cp	'3'							; Scan networks?
 	jp	z,START_WIFI_SCAN			;
@@ -465,11 +486,11 @@ CLK_MSX1_GO:
 	ld	a,(ix+0)					; Auto Clock Current setting
 	cp	3							; If 3 adapter disabled
 	jr	z,CLK_MSX1_ADAPTERDIS
-	ld	hl,MMENU_CLOCK_0_MSX1
+	ld	hl,MMENU_CLOCK_0
 	call	PRINTHL
 	jr	CLK_MSX1_OPT
 CLK_MSX1_ADAPTERDIS:
-	ld	hl,MMENU_CLOCK_3_MSX1
+	ld	hl,MMENU_CLOCK_3
 	call	PRINTHL
 CLK_MSX1_OPT:
 	ld	hl,MMENU_CLOCK_OPT
@@ -500,7 +521,7 @@ START_CLK_AUTO:
 	call	WAIT_250MS_AND_THEN_CONTINUE
 	ld	a,(#002D)					; Check MSX Version
 	or	a
-	jp	z,CLK_MSX1_GO				; If zero, MSX 1, so can just enable or disable adapter
+	jp	z,CLK_MSX1_GO				; If zero, MSX1, so can just enable or disable adapter
 CLK_AUTO_GO:
 	ld	hl,MMENU_CLOCK_MSX2
 	call	PRINTHL					; Print Main Clock MSX2 message
@@ -510,7 +531,7 @@ CLK_AUTO_GO:
 	jr	nz,CLK_AUTO_CHK1
 	ld	hl,MMENU_CLOCK_0
 	call	PRINTHL
-	jr	CLK_AUTO_GMT
+	jr	CLK_AUTO_GMT_OPT
 CLK_AUTO_CHK1:
 	dec	a							; if 1, on and keep wifi on
 	jr	nz,CLK_AUTO_CHK2
@@ -526,6 +547,7 @@ CLK_AUTO_CHK2:
 CLK_AUTO_3:
 	ld	hl,MMENU_CLOCK_3
 	call	PRINTHL
+	jr	CLK_AUTO_GMT_OPT
 CLK_AUTO_GMT:
 	ld	h,(ix+1)					; Save it for now
 	ld	a,(ix+1)					; GMT current setting
@@ -534,7 +556,11 @@ CLK_AUTO_GMT:
 	ld	a,'-'
 	call	CHPUT
 	res	7,(ix+1)					; clear - indicator
+	jr	CLK_AUTO_GMTM
 CLK_AUTO_GMTP:
+	ld	a,'+'
+	call	CHPUT
+CLK_AUTO_GMTM:
 	ld	a,9
 	cp	(ix+1)						; Greater than 9?
 	jr	nc,CLK_AUTO_GMTD			; if not, just print what is in A + '0'
@@ -748,7 +774,7 @@ START_WIFI_SCAN:
 	call	WAIT_250MS_AND_THEN_CONTINUE
 	ld	hl,MMENU_SCAN
 	call	PRINTHL					; Print Main Scan message
-	call	STARTWIFISCAN			; Request WiFi Scan to start
+	call	STARTWIFISCAN			; Request Wi-Fi Scan to start
 	ld	de,(TXTTAB)					; we will borrow Basic Program memory area for now...
 	ld	ixl,e
 	ld	ixh,d						; address in IX
@@ -1012,7 +1038,7 @@ SET_WIFI_TIMEOUT:
 	ld	hl,MMENU_TIMEOUT
 	call	PRINTHL					; Print Main Timeout message
 	call	CHECKTIMEOUT			; TimeOut is on or off?
-	jp	z,WIFI_SET_ALWAYS_ON		; if 0, always ON
+	jp	z,WIFI_SET_ALWAYS_ON		; if 0, always on
 	; otherwise there is a timeout
 	push	hl
 	ld hl,MMENU_TIMEOUT_NOTALWAYSON1
@@ -1241,8 +1267,8 @@ WAIT_2S_AND_THEN_MAINMENU:
 WAIT_AND_THEN_MAINMENU:
 	call	WAIT_BEFORE_CONTINUING
 	jp	ESPSETUP					; When done, back to main setup
-WAIT_500MS_AND_THEN_CONTINUE:
-	ld	a,30						; Wait 500 ms then continue
+WAIT_650MS_AND_THEN_CONTINUE:
+	ld	a,39						; Wait 650 ms then continue
 	jr	WAIT_BEFORE_CONTINUING
 WAIT_250MS_AND_THEN_CONTINUE:
 	ld	a,15						; Wait 250 ms then continue
@@ -1253,7 +1279,7 @@ WAIT_BEFORE_CONTINUING:
 	jr	nz,WAIT_BEFORE_CONTINUING
 	ret								; Time out and continue
 
-; Check Auto Clock 
+; Check Auto Clock
 ISCLKAUTO:
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
@@ -1556,16 +1582,18 @@ WAIT_MENU_CMD_RESPONSE_END_OK:
 	ld	a,1
 	or	a							; NZ to indicate success
 WAIT_MENU_CMD_RESPONSE_END:
+	ld	b,#FF
 	pop	ix
 	pop	de
 	ret
 WAIT_MENU_CMD_RESPONSE_END_NOK:
+	ld	b,a							; Get result in B, 0xFF for time-out, otherwise was an error return code
 	xor	a
 	pop	ix
 	pop	de
 	ret
 
-; WAIT an ESP WiFi Scan command Response
+; WAIT an ESP Wi-Fi Scan command Response
 ; Inputs:
 ; A -> Command Code
 ; HL -> Timeout
@@ -1915,9 +1943,9 @@ FN_NOT_IMP:
 	ld	a,ERR_NOT_IMP
 	ret
 
-END_OK:	
+END_OK:
 	xor a
-	ret	
+	ret
 
 ; Most functions do not have special handling on time out and can use this.
 ; If there is a need to retry sending or receiving on time-out, then a custom
@@ -2011,7 +2039,7 @@ TCPIP_GET_CAPAB_ST1.1:
 	cp	1							; Is response of our command?
 	jr	nz,TCPIP_GET_CAPAB_ST1
 	; now get return code, if return code other than 0, it is finished
-TCPIP_GET_CAPAB_RC:	
+TCPIP_GET_CAPAB_RC:
 	in	a,(IN_STS_PORT)
 	bit	0,a							; if nz has data
 	jr	nz,TCPIP_GET_CAPAB_RC.1
@@ -2238,7 +2266,7 @@ TCPIP_GET_IPINFO:
 	out	(OUT_TX_PORT),a				; Send the command size lsb
 	ld	a,b
 	out (OUT_TX_PORT),a				; Send the parameter
-	
+
 	; Now wait up to 600 ticks to get response
 	ld	hl,600
 	call	SETCOUNTER
@@ -2591,7 +2619,7 @@ TCPIP_DNS_S:
 	jr	z,TCPIP_DNS_S_HASRESULT		; If it is 1, it was not an error
 	;--- Shoot, there is an error...
 	;--- And sure thing, ESP do not tell us details, it is always failure :-P
-	bit	0,b							;--- clear error after this?	
+	bit	0,b							;--- clear error after this?
 	jr	z,TCP_IP_DNS_S_NOCLR
 	;--- Clear
 	ld b,0							;--- Like I've said, no details
@@ -2620,7 +2648,7 @@ TCP_IP_DNS_S_RES_NOCLR:
 TCPIP_DNS_S_NORESULT:
 	xor	a							;--- OK no query in progress, no result, means nothing in progress
 	ld	b,0							;--- No query in progress
-	ret	
+	ret
 
 ;========================
 ;===  TCPIP_UDP_OPEN  ===
@@ -3010,7 +3038,7 @@ TCPIP_UDP_SEND_ST2.1:
 ;        IX = Source port
 ;        BC = Actual received data size
 
-; Customized TIME OUT routine: If time out receiving data, retry as received data 
+; Customized TIME OUT routine: If time out receiving data, retry as received data
 ; won't be re-sent as host is unaware of this
 TCPIP_UDP_RCV_CHECK_TIME_OUT:
 	; Save registers other than AF
@@ -3203,7 +3231,7 @@ TCPIP_UDP_RCV_R:
 	bit	4,a							; Buffer underrun?
 	jp	nz,TCPIP_TCP_UDP_RETRY_QRCV	; If yes, retry
 	; Otherwise, done
-	; done, restore return data in DE BC and HL 
+	; done, restore return data in DE BC and HL
 	call	REGRESTORE
 	xor	a
 	ret
@@ -3219,7 +3247,7 @@ TCPIP_UDP_RCV_R_NSF.1:
 	jr	nz,TCPIP_UDP_RCV_R_NSF			; We do not use INIR because we don't know if there is more data, avoiding geting a junk 0xFF
 	dec	d
 	jr	nz,TCPIP_UDP_RCV_R_NSF
-	; done, restore return data in DE BC and HL 
+	; done, restore return data in DE BC and HL
 	call	REGRESTORE
 	xor	a
 	ret
@@ -3243,8 +3271,8 @@ TCPIP_UDP_RCV_R_NSF.1:
 ;+8 (2): Suggestion for user timeout value
 ;+10 (1): Flags:
 ;         bit 0: Set for passive connection
-;         bit 1: Set for resident connection	
-;         bit 2: Set for TLS connection	
+;         bit 1: Set for resident connection
+;         bit 2: Set for TLS connection
 ;         bit 3: Set for TLS connection validating host certificate
 ;+11 (2): If 0000 no host name validation, otherwise the hostname string address (zero terminated)
 ;TCP_OPEN_IP1				(ix+0)
@@ -3331,7 +3359,7 @@ TCPIP_TCP_OPEN_CHECK_HOSTOF:
 	or	a							; If zero, hostname terminated
 	; Loop until terminator (0) is found
 	jp	nz,TCPIP_TCP_OPEN_CHECK_HOSTOF
-	
+
 TCPIP_TCP_OPEN_HOSTNAME_SENDCMDWITHHOSTNAME:
 	; Ok, so, DE has the full hostname size, let's start sending from here
 	ld	a,13						; Function TCP OPEN
@@ -3686,7 +3714,7 @@ TCPIP_TCP_STATE_ST2.1:
 	dec	b
 	jr	nz,TCPIP_TCP_STATE_ST2
 
-	; now just get the 16 bytes (Port LSB then MSB, # of packets, packet size LSB then MSB) and order it in C, B, L, H, E, D, IXL and IXH. 
+	; now just get the 16 bytes (Port LSB then MSB, # of packets, packet size LSB then MSB) and order it in C, B, L, H, E, D, IXL and IXH.
 	; Remaining 8 bytes go to TCP_STATE_INFORMATION_BLOCK if its value is other than 0
 TCPIP_TCP_STATE_RESP_ST1:
 	in	a,(IN_STS_PORT)
@@ -3828,7 +3856,7 @@ TCPIP_TCP_STATE_SAVE_IBLOCK.1:
 ;        C  = Flags:
 ;             bit 0: Send the data PUSHed
 ;             bit 1: The data is urgent
-;Output: A = Error code	
+;Output: A = Error code
 TCPIP_TCP_SEND_ERROR:
 	; next two bytes are size bytes, don't care
 	ld	b,a							; save error in b
@@ -3859,7 +3887,7 @@ TCPIP_TCP_SEND:
 	out	(OUT_TX_PORT),a				; Send the command size msb
 	ld	a,l
 	out	(OUT_TX_PORT),a				; Send the command size lsb
-	ld	a,b 
+	ld	a,b
 	out	(OUT_TX_PORT),a				; Send the connection #
 	ld	a,c
 	out	(OUT_TX_PORT),a				; Send the connection flags
@@ -4154,7 +4182,7 @@ TCPIP_CONFIG_AUTOIP:
 	ld	a,2
 	out	(OUT_TX_PORT),a				; Send the command size lsb
 	ld	a,b
-	out	(OUT_TX_PORT),a				; Send the command 
+	out	(OUT_TX_PORT),a				; Send the command
 	ld	a,c
 	out	(OUT_TX_PORT),a				; Send the command parameter
 
@@ -4294,7 +4322,7 @@ TCPIP_CONFIG_TTL:
 	ret	nz
 	ld	a,b
 	or	a
-	; Cant set, so NOT IMP 
+	; Cant set, so NOT IMP
 	ld	a,ERR_NOT_IMP
 	ret	nz							; if not get, not implemented
 	; get, so just return D = #FF, A = OK = 0 and E = 0
@@ -4312,7 +4340,7 @@ TCPIP_CONFIG_TTL:
 ;        B = 0: Get current flag value
 ;            1: Set flag value (ERR_NOT_IMP)
 ;        C = New flag value (only if B=1):
-;            0: Off 
+;            0: Off
 ;            1: On
 ;Output: A = Error code
 ;        C = Flag value after the routine execution
@@ -4324,10 +4352,10 @@ TCPIP_CONFIG_PING:
 	ret	nz
 	ld	a,b
 	or	a
-	; Cant set, so NOT IMP 
+	; Cant set, so NOT IMP
 	ld	a,ERR_NOT_IMP
 	ret	nz							; if not get, not implemented
-	; get, so just return C = 1, A = OK = 0 
+	; get, so just return C = 1, A = OK = 0
 	xor	a
 	ld	c,1
 	ret
@@ -4497,7 +4525,7 @@ GETCOUNTER:
 
 ;--- Set our HTIM_I driven counter value in high memory
 ;    Input:  HL = new counter value
-;    Output: noone
+;    Output: none
 ;    Modifies: AF, HL, DE, BC
 
 SETCOUNTER:
@@ -4677,7 +4705,7 @@ REGBACKUP:
 
 ;--- Restores BC copy saved in high memory
 ;    Input:  none
-;    Output: BC 
+;    Output: BC
 ;    Modifies: AF
 
 BCRESTORE:
@@ -4723,7 +4751,7 @@ BCBACKUP:
 
 ;--- Restores HL copy saved in high memory
 ;    Input:  none
-;    Output: HL 
+;    Output: HL
 ;    Modifies: AF
 
 HLRESTORE:
@@ -4779,7 +4807,7 @@ GETDNSREADY:
 	push	de
 	push	hl
 	call	GETSLT
-	; Slot in A, now get the address 
+	; Slot in A, now get the address
 	call	GETMEMPOINTER
 	; HL has the address of our memory area, DNS ready is 8 bytes after start
 	ld	de,MEMORY_DNS_READY_OFFSET
@@ -4823,7 +4851,7 @@ SETDNSREADY:
 GETDNSRESULT:
 	push	bc
 	call	GETSLT
-	; Slot in A, now get the address 
+	; Slot in A, now get the address
 	call	GETMEMPOINTER
 	; HL has the address of our memory area, DNS result is 9 bytes after start
 	ld	de,MEMORY_DNS_RES_OFFSET
@@ -5154,7 +5182,7 @@ SET_RTC_REG:
 ; Third pair is updated with value in D
 SET_RTC_DATE:
 	call	STOP_RTC_COUNT_SET_MODE0; Select RTC Register 13, and set Mode / Page 0
-	or	1							; Set Bit 0, so Mode / Page 1 
+	or	1							; Set Bit 0, so Mode / Page 1
 	out	(#B5),a						; save it in register 13, now page 1 selected
 	ld	a,#B						; Leap Year Counter Register
 	out	(#B4),a						; Select it
@@ -5162,7 +5190,7 @@ SET_RTC_DATE:
 	out	(#B5),a						; So it has count of leap years (0 is 1980, leap, and every time it is 4, leap year again)
 	call	STOP_RTC_COUNT_SET_MODE0; Select RTC Register 13 and set mode / page 0
 	call	STOP_RTC_COUNT_SET_MODE0; do it a second time... DOS does it, don't want to JYNX it :P
-	ld	e,7							; Register 7 
+	ld	e,7							; Register 7
 SET_RTC_DATE.1:
 	ld	a,l							; A has day
 	call	RTC_SAVE_REGISTERPAIR	; Will convert day to BCD and save in registers 7 and 8
@@ -5198,7 +5226,7 @@ CMD_TIMER_SET			equ	'T'
 CMD_NAGLE_ON			equ	'D'
 ; Turn Nagle Off
 CMD_NAGLE_OFF			equ	'N'
-; Turn WiFi Off
+; Turn Wi-Fi Off
 CMD_WIFI_OFF			equ	'O'
 ; Request to connect to a network
 CMD_WIFI_CONNECT		equ	'A'
@@ -5223,13 +5251,14 @@ RSP_CMD_QUERY_ESP_SIZE	equ	2
 ; concise and much easier to read and understand!
 STTERMINATOR			equ	0
 LF						equ	10
+HOME					equ	11
 CLS						equ	12
 CR						equ	13
 GOLEFT					equ	29
 
 ENTERING_WIFI_SETUP:
 	db	CLS
-	db	"Entering WiFi Setup..."		,CR,LF,LF,STTERMINATOR
+	db	"Entering Wi-Fi Setup..."		,CR,LF,LF,STTERMINATOR
 ;---
 
 WELCOME:
@@ -5250,9 +5279,9 @@ WELCOME_SF:
 
 MMENU_S:
 	db	"1 - Set Nagle Algorithm"		,CR,LF
-	db	"2 - Set WiFi On Period"		,CR,LF
+	db	"2 - Set Wi-Fi On Period"		,CR,LF
 	db	"3 - Scan/Join Access Points"	,CR,LF
-	db	"4 - WiFi and Clock Settings"	,CR,LF,LF
+	db	"4 - Wi-Fi and Clock Settings"	,CR,LF,LF
 ;---
 	db	"ESC to exit setup."			,CR,LF,LF
 ;---
@@ -5260,17 +5289,17 @@ MMENU_S:
 
 MMENU_CLOCK_MSX2:
 	db	CLS
-	db	" [ WiFi and Clock Settings ]"	,CR,LF,LF
+	db	"[ Wi-Fi and Clock Settings ]"	,CR,LF,LF
 ;---
-	db	"0 - WiFi & UNAPI are enabled"	,CR,LF
+	db	"0 - Wi-Fi & UNAPI are online"	,CR,LF
 	db	"1 - Also wait up to 10s for"	,CR,LF
 	db	"    internet availability and"	,GOLEFT,CR,LF
 	db	"    get time from SNTP server"	,GOLEFT,CR,LF
-	db	"    adjusting the timezone"	,CR,LF
+	db	"    adjusting the time zone"	,CR,LF
 	db	"2 - The same as option 1 but"	,CR,LF
-	db	"    also will turn off WiFi"	,CR,LF
+	db	"    also will turn off Wi-Fi"	,CR,LF
 	db	"    when done"					,CR,LF
-	db	"3 - WiFi & UNAPI are disabled"	,GOLEFT,CR,LF,LF
+	db	"3 - Wi-Fi & UNAPI are offline"	,GOLEFT,CR,LF,LF
 ;---
 	db	"MSX boot will take longer if"	,CR,LF
 	db	"options 1 or 2 are active."	,CR,LF,LF,STTERMINATOR
@@ -5278,31 +5307,25 @@ MMENU_CLOCK_MSX2:
 
 MMENU_CLOCK_MSX1:
 	db	CLS
-	db	" [ WiFi and Clock Settings ]"	,CR,LF,LF
+	db	"[ Wi-Fi and Clock Settings ]"	,CR,LF,LF
 ;---
-	db	"0 - WiFi & UNAPI are enabled"	,CR,LF
+	db	"0 - Wi-Fi & UNAPI are online"	,CR,LF
 	db	"1 - Unavailable for MSX1"		,CR,LF
 	db	"2 - Unavailable for MSX1"		,CR,LF
-	db	"3 - WiFi & UNAPI are disabled"	,GOLEFT,CR,LF,LF,STTERMINATOR
+	db	"3 - Wi-Fi & UNAPI are offline"	,GOLEFT,CR,LF,LF,STTERMINATOR
 ;---
 
-MMENU_CLOCK_0_MSX1:
-	db	"Currently ENABLED."			,STTERMINATOR
-
-MMENU_CLOCK_3_MSX1:
-	db	"Currently DISABLED."			,STTERMINATOR
-
 MMENU_CLOCK_0:
-	db	"Currently ENABLED, GMT: "		,STTERMINATOR
+	db	"Currently: ONLINE"				,STTERMINATOR
 
 MMENU_CLOCK_1:
-	db	"Currently TIME-OPT1, GMT: "	,STTERMINATOR
+	db	"Currently: TIME-OPT1, GMT"		,STTERMINATOR
 
 MMENU_CLOCK_2:
-	db	"Currently TIME-OPT2, GMT: "	,STTERMINATOR
+	db	"Currently: TIME-OPT2, GMT"		,STTERMINATOR
 
 MMENU_CLOCK_3:
-	db	"Currently DISABLED, GMT: "		,STTERMINATOR
+	db	"Currently: OFFLINE"			,STTERMINATOR
 
 MMENU_CLOCK_OPT:
 	db	CR,LF,LF
@@ -5363,31 +5386,31 @@ SCAN_TERMINATOR_ENC:
 
 MMENU_TIMEOUT:
 	db	CLS
-	db	"   [ Set WiFi On Period ]"		,CR,LF,LF
+	db	"   [ Set Wi-Fi On Period ]"	,CR,LF,LF
 ;---
-	db	"WiFi On Period allows to set"	,CR,LF
+	db	"Wi-Fi On Period allows to set"	,GOLEFT,CR,LF
 	db	"a given period of time of"		,CR,LF
-	db	"inactivity to turn off WiFi"	,CR,LF
+	db	"inactivity to turn off Wi-Fi"	,CR,LF
 	db	"automatically."				,CR,LF,LF
 ;---
-	db	"0         - ALWAYS ON"			,CR,LF
+	db	"0         - Always on"			,CR,LF
 	db	"1 to 30   - 30s"				,CR,LF
 	db	"30 to 600 - Use given period"	,CR,LF
 	db	"> 600     - 600s"				,CR,LF,LF,STTERMINATOR
 ;---
 
 MMENU_TIMEOUT_ALWAYSON:
-	db	"WiFi is ALWAYS ON."			,CR,LF,LF
+	db	"Wi-Fi is currently: ALWAYS ON"	,GOLEFT,CR,LF,LF
 ;---
 	db	"ESC to return to main menu."	,CR,LF,LF
 ;---
 	db	"Type desired period: "			,STTERMINATOR
 
 MMENU_TIMEOUT_NOTALWAYSON1:
-	db	"WiFi period set to "			,STTERMINATOR
+	db	"Wi-Fi period set to: "			,STTERMINATOR
 
 MMENU_TIMEOUT_NOTALWAYSON2:
-	db	"s."							,CR,LF,LF
+	db	"s"								,CR,LF,LF
 ;---
 	db	"ESC to return to main menu."	,CR,LF,LF
 ;---
@@ -5409,14 +5432,14 @@ MMENU_NAGLE:
 ;---
 
 MMENU_NAGLE_ON:
-	db	"Nagle is currently ON."		,CR,LF,LF
+	db	"Nagle is currently: ON"		,CR,LF,LF
 ;---
 	db	"ESC to return to main menu."	,CR,LF,LF
 ;---
 	db	"Option: "						,STTERMINATOR
 
 MMENU_NAGLE_OFF:
-	db	"Nagle is currently OFF."		,CR,LF,LF
+	db	"Nagle is currently: OFF"		,CR,LF,LF
 ;---
 	db	"ESC to return to main menu."	,CR,LF,LF
 ;---
@@ -5447,6 +5470,7 @@ STR_CLKUPDT_FAIL:
 
 OK_S:
 	db	"Installed successfully!"		,CR,LF,LF,STTERMINATOR
+;---
 
 FAIL_S:
 	db	"ESP8266 Not Found!"			,CR,LF,LF
@@ -5456,6 +5480,12 @@ FAIL_S:
 
 FAIL_F:
 	db	"ESP8266 FW Update Required!"	,CR,LF,STTERMINATOR
+
+STR_WAITING:
+	db	HOME
+	db	"Waiting for connection..."		,CR,LF,LF,LF,STTERMINATOR
+;---
+;---
 
 ;============================
 ;===  UNAPI related data  ===
@@ -5468,14 +5498,14 @@ UNAPI_ID_END:
 
 ;--- Implementation name (up to 63 chars and zero terminated)
 
-APIINFO:				db	"ESP8266 WiFi UNAPI",0
+APIINFO:				db	"ESP8266 Wi-Fi UNAPI",0
 
 
 ID_END:	ds	#7FF0-ID_END,#FF
 
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:				db	"BUILD 2020/07/11"
+BUILD_DATE:				db	"BUILD 2020/07/14"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
