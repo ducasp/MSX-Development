@@ -1581,6 +1581,9 @@ WAIT_MENU_CMD_RESPONSE_GET_DATA.1:
 WAIT_MENU_CMD_RESPONSE_END_OK:
 	ld	a,1
 	or	a							; NZ to indicate success
+	pop	ix
+	pop	de
+	ret
 WAIT_MENU_CMD_RESPONSE_END:
 	ld	b,#FF
 	pop	ix
@@ -4996,9 +4999,6 @@ WRFE_RET_ERROR:
 RESET_ESP:
 	ld	b,10						; Retry up to 10 times
 RESET_ESP_LOOP:
-	ld	a,b
-	or	a							; No more retries?
-	jr	z,RESET_CHK_IF_INSTALLED	; Then check if it is old ESP FW
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	xor	a
@@ -5015,8 +5015,8 @@ RESET_ESP_LOOP:
 	pop	bc							; restore retry counter
 	or	a							; Did WAIT RESPONSE return zero?
 	ret	z							; Yes, Warm Reset Ok and ESP Found
-	dec	b							; No, decrement retry counter
-	jr	RESET_ESP_LOOP				; and let the loop check
+	djnz RESET_ESP_LOOP				; No, decrement retry counter and let the loop check
+	; No more retries? Then check if it is old ESP FW
 RESET_CHK_IF_INSTALLED:
 	; Ok, Warm Reset did not work, is ESP installed?
 	ld	a,20
@@ -5024,7 +5024,7 @@ RESET_CHK_IF_INSTALLED:
 	ld	a,CMD_QUERY_ESP
 	out	(OUT_TX_PORT),a
 	ld	hl,RSP_CMD_QUERY_ESP		; Expected response
-	ld	de,180						; Up to 1s @ 60Hz
+	ld	de,180						; Up to 3s @ 60Hz
 	ld	a,RSP_CMD_QUERY_ESP_SIZE	; Size of response
 	call	WAIT_RESPONSE_FROM_ESP
 	or	a
@@ -5505,7 +5505,7 @@ ID_END:	ds	#7FF0-ID_END,#FF
 
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:				db	"BUILD 2020/07/14"
+BUILD_DATE:				db	"BUILD 2020/07/16"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
