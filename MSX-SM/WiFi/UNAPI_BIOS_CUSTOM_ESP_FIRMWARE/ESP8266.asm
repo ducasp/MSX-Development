@@ -262,15 +262,22 @@ INIT_UNAPI:
 	ld	a,CMD_QUERY_ACLK_SETTINGS
 	out	(OUT_TX_PORT),a
 	ld	hl,60						; Wait Up To 1s
-	ld	de,(TXTTAB)					; we will borrow Basic Program memory area for now...
+	ld	de,(TXTTAB)					; We will borrow Basic Program memory area for now...
 	ld	ixl,e
-	ld	ixh,d						; address in IX
+	ld	ixh,d						; Address in IX
 	call	WAIT_MENU_CMD_RESPONSE
-	jr	z,INIT_NOCLOCKUPDATE		; if error, just skip
+	jp	z,INIT_NOCLOCKUPDATE		; If error, just skip
 	; Response received, IX+0 and IX+1 has Auto Clock and GMT
 	ld	a,3
 	cp	(ix+0)
-	ret	z							; if disabled, disabled it is, nothing to do
+	jr	nz,INIT_UNAPI2				; If not disabled continue on INIT_UNAPI2
+	; Disabled, ok, so let's ensure connection is not locked (just in case it was setup as disabled right now)
+	ld	a,20
+	out	(OUT_CMD_PORT),a			; Clear UART
+	ld	a,CMD_WIFIRELEASE_ESP
+	out	(OUT_TX_PORT),a				; Just send, no need to wait response
+	ret
+INIT_UNAPI2:
 	ld	a,(#002D)					; Check MSX Version
 	or	a
 	jr	z,INIT_NOCLOCKUPDATE		; If zero, MSX1, can't set clock
@@ -336,17 +343,24 @@ INIT_CLOCKUPDATE:
 	ld	a,2
 	cp	(ix+0)
 	jr	nz,INIT_NOCLOCKUPDATE
-	; If here, turn off Wi-Fi Immediatelly
+	; First, release any hold to Wi-Fi Connection
+	ld	a,20
+	out	(OUT_CMD_PORT),a			; Clear UART
+	ld	a,CMD_WIFIRELEASE_ESP
+	out	(OUT_TX_PORT),a				; Just send, no need to wait response
+	; And, turn off Wi-Fi Immediatelly
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	ld	a,CMD_WIFI_OFF
 	out	(OUT_TX_PORT),a				; Just send, no need to wait response
+	jr	INIT_NOCLOCKUPDAT2
 INIT_NOCLOCKUPDATE:
 	; Release any hold to Wi-Fi Connection
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	ld	a,CMD_WIFIRELEASE_ESP
 	out	(OUT_TX_PORT),a				; Just send, no need to wait response
+INIT_NOCLOCKUPDAT2:
 	; Save existing EXTBIO hook if it exists
 	ld	a,(HOKVLD)
 	bit	0,a
