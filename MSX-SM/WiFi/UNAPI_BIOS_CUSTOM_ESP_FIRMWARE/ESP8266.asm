@@ -106,7 +106,7 @@ SMX_ROM:				equ	1
 ;--- Non-FPGA versions do not check OCM hardware...
 CHECK_OCM_HW:			equ	1
 ;--- FPGA Version can have the Turbo-R logo incorporated or not...
-TURBO_R_LOGO:			equ	0
+TURBO_R_LOGO:			equ	1
 
 ;*******************
 ;***  CONSTANTS  ***
@@ -281,14 +281,14 @@ INIT_UNAPI:
 	inc	ix
 	inc	ix							; ok, leave IX+0 and IX+1 intact
 	; b = number of response check attempts
-	ld	b,8							; 8 * 1.25s = 10s
+	ld	b,5							; 5 * 2s = 10s
 	ld	a,20
 	out	(OUT_CMD_PORT),a			; Clear UART
 	ld	a,CMD_GET_TIME
 	out	(OUT_TX_PORT),a
 TRY_AGAIN:
 	push	bc
-	ld	hl,75						; Wait Up To 1.25s per attempt
+	ld	hl,120						; Wait Up To 2s per attempt
 	call	WAIT_MENU_CMD_RESPONSE
 	jr	nz,INIT_CLOCKUPDATE			; if ok, follow up
 	ld	hl,STR_WAITING				; Print Waiting for connection message
