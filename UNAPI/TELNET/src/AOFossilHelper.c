@@ -96,6 +96,7 @@ unsigned char CloseConnection (unsigned char ucConnNumber)
             ++ucCount;
         }
         while (ucCount<20);
+        Fossil_DeInit();
     }
     else
         uchRet = ERR_INV_PARAM;
