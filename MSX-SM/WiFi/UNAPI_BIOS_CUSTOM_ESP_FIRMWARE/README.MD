@@ -1,4 +1,4 @@
-# WiFi BIOS for ESP8266 w/ Custom Firmware
+# Wi-Fi BIOS for ESP8266 w/ Custom Firmware
 
 This BIOS will offer the SM-X users the following TCP-IP UNAPI functionality:
 
@@ -13,33 +13,33 @@ It doesn't implement the following functionality:
 	- PING: ESP doesn't expose the functionality as UNAPI requires
 	- RAW: Raw connections aren't implemented
 
-The functionalities not supportet are barely used, to my knowledge, by any
+The functionalities not supported are barely used, to my knowledge, by any
 program (except for PING that is used by the PING utility by Konamiman). It is,
 also, one of the very few UNAPI that supports TLS/SSL connections.
 
 By default, it will automatically install itself and make available an UNAPI
 TCP-IP implementation for usage by any applications. Also, by default, the
-connection behavior is: WiFi is turned on at startup, will stay turned on for
+connection behavior is: Wi-Fi is turned on at startup, will stay turned on for
 at least 30s, if there is no connection opened. Whenever a command is received
 it starts to count for inactivity, and if 30s elapses, checks whether there is
 a connection opened (some program using it) or not, and if not, it will turn
-the WiFi radio off. WiFi radio will turn on again automatically upon a DNS
+the Wi-Fi radio off. Wi-Fi radio will turn on again automatically upon a DNS
 request, TCP connection open request or GET IP INFO command. Some applications
 might not use those commands as their first UNAPI command (i.e.: HGET check
 network state first) and might error the first time you try to use a command,
 but then just call the application again and it will work just fine.
 
 Reason for this default behavior is that quite a few users have reported that
-their SM-X has interference noise on the analog audio output when WiFi is 
+their SM-X has interference noise on the analog audio output when Wi-Fi is
 set-up. So, that default behavior alleviates the issue for most users while
-allowing them to keep using WiFi features when needed and not having noise on
-audio while not using it. The reason to not implement the wait for WiFi radio
+allowing them to keep using Wi-Fi features when needed and not having noise on
+audio while not using it. The reason to not implement the wait for Wi-Fi radio
 to be turned on and connected on every UNAPI command is that it could cause
 unexpected behavior on applications on functions that should return pretty
 quickly.
 
 If that still doesn't work for you, you can effectively disable the UNAPI and
-WiFi at the configuration menu, option 4.
+Wi-Fi at the configuration menu, option 4.
 
 # Configuration Menu
 
@@ -47,9 +47,9 @@ While booting your computer, if you keep F1 key pressed, you will be presented
 with a configuration menu. It has four options:
 
 1 - Set Nagle Algorithm
-2 - Set WiFi On Period
+2 - Set Wi-Fi On Period
 3 - Scan/Join Access Points
-4 - WiFi and Clock Settings
+4 - Wi-Fi and Clock Settings
 
 At any point in the main configuration menu you can hit the ESC key to resume
 the boot sequence of your computer.
@@ -62,24 +62,24 @@ it adds latency to small packets, causing really poor performance on protocols
 that have a schema to acknowledge a package has been received and do not send
 the next packet until the acknowledge from the other end is received (and 
 sometimes, if this takes too much time, send a retry packet). It will increase
-latency between packets and kill troughput. In my tests you are better off with
+latency between packets and kill throughput. In my tests you are better off with
 Nagle Disable, but in this menu you can turn it on if you find the need to.
 
 Default option is to have Nagle Algorithm turned off.
 
-# Set WiFi On Period
+# Set Wi-Fi On Period
 
-Some users have interference from the WiFi module on the SM-X analog audio
+Some users have interference from the Wi-Fi module on the SM-X analog audio
 output, so, in this menu you can choose two possible behaviors: 
 
-ALWAYS ON: by choosing 0 as period, WiFi will be always on, this is my
+ALWAYS ON: by choosing 0 as period, Wi-Fi will be always on, this is my
 personal preference as I do not have any audio issues in my SM-X.
 
-TURN OFF WHEN IDLE: by choosing 1 to 999 as period, WiFi will be turned on
-at startup, and then after the choosen time elapses after the last command has
+TURN OFF WHEN IDLE: by choosing 1 to 999 as period, Wi-Fi will be turned on
+at startup, and then after the chosen time elapses after the last command has
 been received by the interface, it will check if there are any open connections
 (i.e.: an application running), and if there is, schedule the time-out again.
-If there are no open connections, it will shutdown the WiFi radio (which, for
+If there are no open connections, it will shut down the Wi-Fi radio (which, for
 users that have the audio interference issue, will stop the interference). The
 minimum time-out period is 30s, so if you choose anything between 1 and 29 the
 period will be set to 30s. Also, the maximum time-out period is 600s, so if you
@@ -89,9 +89,9 @@ Periods lower than 30s are not accepted to avoid impacting applications that
 wait a while between commands and ensure proper functionality once a connection
 has been stablished.
 
-NOTE: Whenever a new command is received, ESP8266 will turn on WiFi again, but
-it takes a few seconds to have it connected to the configure Acces Point. So,
-to avoid applications to return an error when executed if WiFi turned off, this
+NOTE: Whenever a new command is received, ESP8266 will turn on Wi-Fi again, but
+it takes a few seconds to have it connected to the configure Access Point. So,
+to avoid applications to return error when executed if Wi-Fi turned off, this
 interface will wait for that connection to be stablished up to ten seconds
 before returning an error:
 
@@ -100,25 +100,26 @@ before returning an error:
 	- TCPIP_TCP_OPEN
 
 This wait is not implemented on all commands because it would result in bad
-performance and could lead to the feeling applications are unresponsible while
-WiFi connection is being stablished. If for some reason application doesn't use
-any of those functions as their first command, it is possible that application
-will return saying there is no connection. Wait a few seconds and try again.
+performance and could lead to the feeling applications are not responding while
+Wi-Fi connection is being stablished. If for some reason application doesn't
+use any of those functions as their first command, it is possible that the
+application will return telling that there is no connection. Wait a few seconds
+and try again.
 
 Default option is to have a 30s period set-up.
 
 # Scan/Join Access Points
 
 Use this option to configure which Access Point your SM-X will connect to. Once
-set-up, whenever WiFi is on, the adapter will automatically try to connect to
+set-up, whenever Wi-Fi is on, the adapter will automatically try to connect to
 the configured access point. It will list up to ten Access Points and you can
 choose to connect to any of the listed access points by hitting the number key
-related to it on the screen. If the Access Point requires a password, it will
-be requested. By default, what you type is not printed on the screen, but you
-can hit the DELETE key before entering the password to show it while you type.
+related to it on the screen. If the Access Point needs a password, it will be
+requested. By default, what you type is not printed on the screen, but you can
+hit the DELETE key before entering the password to show it while you type.
 
 P.s.: Some Access Points allow non-standard characters to be used for the pass
-phrase. This ROM will accept any keyboard key and get it's input code and use
+phrase. This ROM will accept any keyboard key and get its input code and use
 it, except for NULL (code 0x00), BACK SPACE (code 0x08), ESC (code 0x1B) or
 ENTER (code 0x13), which are used to indicate end of string, erase a wrong
 entry, abort entering password and end of entry. As many keyboard entries are
@@ -130,25 +131,25 @@ Non-standard characters in the pass phrase should be avoided, if you must have
 those, at least avoid having 0x00, 0x08, 0x13 and 0x1B, and it is up to you to
 figure out which keys translate to a given hex code. :)
 
-# WiFi and Clock Settings
+# Wi-Fi and Clock Settings
 
 This option allows you to:
 
-	- Have the adapter and WiFi enabled (option 0)
+	- Have the adapter and Wi-Fi enabled (option 0)
 	- Same as above, but will update date and time during boot (option 1)
-	- Same as above, but turn WiFi off immediatelly after setting clock
-	- Disable the adapter and WiFi (option 3)
+	- Same as above, but turn Wi-Fi off immediately after setting clock
+	- Disable the adapter and Wi-Fi (option 3)
 
 Options 1 and 2 are a great way to have clock and date properly set-up at
 boot time, automatically. It is faster than having WAITWIFI and SNTP programs
 loaded in your AUTOEXEC.BAT, and for those that have interference on the audio
 output of their SM-X, option 2 is perfect as if you don't have any application
-that uses TCP-IP UNAPI commands on your AUTOEXEC.BAT, WiFi is turned off as
+that uses TCP-IP UNAPI commands on your AUTOEXEC.BAT, Wi-Fi is turned off as
 soon as clock is adjusted. For those that do not have this issue or that are
 not bothered by it, option 1 allows for faster operation at start-up of UNAPI
-applications if the WiFi On Period is set to ALWAYS ON. And for those that just
-do not want to have anything WiFi related enabled, option 3 will make sure that
-noise interference do not occur even at boot time.
+applications if the Wi-Fi On Period is set to ALWAYS ON. If you just do not
+want to have anything Wi-Fi related enabled, option 3 will make sure that noise
+interference do not occur even at boot time.
 
 Default options is adapter and WiFi enabled but do not update clock.
 
@@ -176,7 +177,7 @@ use the BIOS functionality to set date and time as it is faster.
 
 Once you have the BIOS properly setup and running, ESP8266.COM is no longer
 needed. CFG8266.COM still is needed to update firmware and certificates of
-ESP8266. WAITWIFI.COM can be used if you want make sure ESP8266 is online
+ESP8266. WAITWIFI.COM can be used if you want to make sure ESP8266 is online
 before executing any program.
 
 # Quick Receive
@@ -210,7 +211,7 @@ UNAPI internally. This results on a high performance as Z80 processing time
 is not wasted buffering data or converting parameters/responses.
 
 It does not need interrupt, so, it is blocking waiting ESP to respond, which
-usually is immediate, so we might loose a few CPU cycles waiting the data
+usually is immediate, so we might lose a few CPU cycles waiting the data
 coming but on the other hand we do not need to move memory/data that is really
 expensive, and UNAPI functions are blocking anyway.
 
@@ -264,7 +265,8 @@ faster, who knows? :)
 KdL - He has a very keen eye to details and has been really helpful, both by
 suggesting different approaches / design choices and testing this BIOS with
 extensive care. It wouldn't be nearly as good as it is now without his help,
-and also is bringing my attention to details and to a better level.
+and working with him also is bringing my attention to details and to a better
+level. ESPSETUP.COM was designed by him as well :) 
 
 Konamiman - SM-X Network support is something that has started in early 2019,
 by then I had the idea that making a BIOS for a device or even fully coding in
@@ -276,11 +278,11 @@ were silly questions for him, he was kind enough to take time and answer me,
 also, by leaving all UNAPI Drivers, BIOS and Network applications source code
 available. Source code is a huge classroom, with lots and lots of useful
 information and approaches. Also, he was very kind to work along with me on all
-my suggestions that lead to improvments in the current stack of NETWORK
-softwares like TFTP and HGET, which, most of us that are programmers know is
+my suggestions that lead to improvements in the current stack of NETWORK
+software like TFTP and HGET, which, most of us that are programmers know is
 not the usual in software development. :) 
 
-Victor Trucco - Once I've volunteered to work on SM-X WiFi features, he also
+Victor Trucco - Once I've volunteered to work on SM-X Wi-Fi features, he also
 was really kind offering help and examples, teaching me quite a lot about FPGA
 and how to work with it, best practices, etc. Accepting to ship every SM-X sold
 with the Custom ESP firmware I've developed was something unexpected and that

@@ -104,7 +104,7 @@
 ;--- SM-X ROM is less verbose...
 SMX_ROM:				equ	1
 ;--- Non-FPGA versions do not check OCM hardware...
-CHECK_OCM_HW:			equ	1
+CHECK_OCM_HW:			equ	0
 ;--- FPGA Version can have the Turbo-R logo incorporated or not...
 TURBO_R_LOGO:			equ	1
 
@@ -131,10 +131,11 @@ H_CLEA:					equ	#FED0
 EXTBIO:					equ	#FFCA
 
 ;--- I/O ports:
-OUT_TX_PORT:			equ	#07
 OUT_CMD_PORT:			equ	#06
+OUT_TX_PORT:			equ	#07
 IN_DATA_PORT:			equ	#06
 IN_STS_PORT:			equ	#07
+PORT_F2:				equ	#F2
 
 ;--- API version and implementation version:
 API_V_P:				equ	1
@@ -231,8 +232,49 @@ INIT:
 	ld	(CLIKSW),a					; when key press, click disabled
 	ld	a,6
 	call	SNSMAT
-	bit	5,a							; Test F1
+	bit	5,a							; Test [F1]
 	jp	z,ENTERING_ESPSETUP			; If F1 is pressed, let's execute our setup menu
+	bit	6,a							; Test [F2]
+	jr	z,BOOT_FROM_POWER_OFF		; If F2 is pressed, let's proceed as "boot from power off"
+	ld	a,8
+	call	SNSMAT
+	bit	3,a							; Test [DEL]
+	ret	z							; If DEL is pressed, UNAPI driver is not loaded and exits
+	; We check if the Port F2 device is available
+	in	a,(PORT_F2)					; a = #FF, default value if it comes from power off or hard reset
+	cpl								; a = #FF - a
+	ld	c,a							; c = #00
+	out	(PORT_F2),a					; a = #00
+	ld	b,12
+WAIT_200MS:
+	halt							; Wait 200ms to ensure a successful hard reset
+	djnz	WAIT_200MS
+	in	a,(PORT_F2)					; a = #00?
+	cpl								; a = #FF - a
+	out	(PORT_F2),a					; a = #FF?
+	cp	c							; If not a = c, port #F2 is writable and available
+	jr	z,BOOT_FROM_POWER_OFF		; If a = c, port #F2 is not available, let's proceed as "boot from power off"
+	; Ok, Port F2 device available
+	cp	#EF							; ESP Not Found
+	ret	z							; If yes, UNAPI driver is not loaded and exits
+	cp	#F0							; UNAPI driver has been loaded at least once
+	jp	z,INIT_NOCLOCKUPDAT2		; If yes, proceed without affecting the connection or the date and time
+	cp	#F1							; User requested to go directly to Wi-Fi Setup
+	jp	z,ENTERING_ESPSETUP			; If yes, let's execute our setup menu
+	cp	#FE							; Unexpected error from the previous reboot
+	jr  nz,BOOT_FROM_POWER_OFF		; If no one is confirmed, let's proceed as "boot from power off"
+	; Oops! An unexpected error occurred on the last reboot
+	ld	hl,STR_OOPS					; Print Oops! An unexpected error message
+	call	PRINTHL					; and let's proceed as "boot from power off"
+	ld	b,120						; Wait 2 seconds with message on screen
+WAIT_2S:
+	halt
+	djnz	WAIT_2S					; If not zero, our time out has not elapsed
+	ld	a,CLS
+	call	CHPUT
+BOOT_FROM_POWER_OFF:
+	ld	a,#FE						; Preset #FE, unexpected error
+	out	(PORT_F2),a					; on port #F2
 	if	SMX_ROM = 0
 	ld	hl,WELCOME
 	call	PRINTHL
@@ -242,6 +284,7 @@ INIT:
 	call	RESET_ESP
 	or	a
 	jp	z,INIT_UNAPI				; Well, if reset successful, continue
+ESP_NOT_FOUND:
 	; If here, ESP was not found, so, exit with an error message
 	ld	a,b
 	or	a
@@ -251,10 +294,13 @@ INIT:
 INIT_F_ERRMSG:
 	call	PRINTHL
 INIT_F_WAIT:
-	ld	b,255
+	ld	b,240						; 4s
 INIT_F_LOOP_WAIT:
 	halt
 	djnz	INIT_F_LOOP_WAIT
+AND_DONE:
+	ld	a,#EF						; Set #EF, ESP Not Found
+	out	(PORT_F2),a					; on port #F2
 	ret								; And done
 INIT_UNAPI:
 	ld	a,20
@@ -408,6 +454,8 @@ INIT_OK:
 	ld	hl,OK_S						; All done and set, nice exit message
 	call	PRINTHL
 	endif
+	ld	a,#F0						; Set #F0, UNAPI driver has been loaded at least once
+	out	(PORT_F2),a					; on port #F2
 	ret
 
 ;==============================
@@ -459,6 +507,8 @@ ESPSETUP.EXIT:
 	call	CHPUT
 	jp	INIT_UNAPI					; When done, resume initialization
 ENTERING_ESPSETUP:
+	ld	a,#FE						; Preset #FE, unexpected error
+	out	(PORT_F2),a					; on port #F2
 	ld	hl,ENTERING_WIFI_SETUP
 	call	PRINTHL
 	call	WAIT_650MS_AND_THEN_CONTINUE
@@ -473,22 +523,9 @@ ENTERING_ESPSETUP:
 ESPSETUP:
 	call	RESET_ESP
 	or	a
-	jp	z,ESPSETUP_NEXT				; Well, if reset successful, continue
-	; If here, ESP was not found, so, exit with an error message
-	ld	a,b
-	or	a
-	ld	hl,FAIL_S					; If 0, non responsive
-	jr	z,ESPSETUP_F_ERRMSG
-	ld	hl,FAIL_F					; Otherwise, firmware is old
-ESPSETUP_F_ERRMSG:
-	call	PRINTHL
-ESPSETUP_F_WAIT:
-	ld	b,255
-ESPSETUP_F_LOOP_WAIT:
-	halt
-	djnz	ESPSETUP_F_LOOP_WAIT
-	ret								; And done
+	jp	nz,ESP_NOT_FOUND			; Not well, ESP was not found
 ESPSETUP_NEXT:
+	; Well, if reset successful, continue
 	in	a,(IN_STS_PORT)
 	bit	3,a							; Quick Receive Supported?
 	jr	z,ESPSETUP.1NF				; If not, tells no Quick Receive support
@@ -654,7 +691,7 @@ CLK_AUTO_WAIT_GMT_INPUT:
 	call	CHGET
 	cp	#1b							; ESC?
 	jp	z,ESPSETUP					; Back to main menu
-	cp	13							; Enter?
+	cp	#0d							; ENTER?
 	jp	z,CLK_AUTO_GMT_CHK_INPUT	; Check if ok to send command
 	cp	#08							; Backspace?
 	jp	z,CLK_AUTO_GMT_CHK_BS		; Check if there is something to erase
@@ -712,7 +749,7 @@ CLK_AUTO_GMT_CHK_INPUT:
 	inc	e							; Increase # of characters printed
 	jp	CLK_AUTO_WAIT_GMT_INPUT		; Continue waiting input
 CLK_AUTO_GMT_CHK_CR:
-	cp	13							; Enter?
+	cp	#0d							; ENTER?
 	jr	nz,CLK_AUTO_GMT_CHK_CD		; If not, check if digit is valid
 	; Enter
 	ld	a,0
@@ -821,6 +858,7 @@ START_WIFI_SCAN:
 	ld	a,'3'
 	call	CHPUT
 	call	WAIT_250MS_AND_THEN_CONTINUE
+START_WIFI_RESCAN:
 	ld	hl,MMENU_SCAN
 	call	PRINTHL					; Print Main Scan message
 	call	STARTWIFISCAN			; Request Wi-Fi Scan to start
@@ -905,6 +943,8 @@ WIFI_SELECT_AP:
 	call	CHGET
 	cp	#1b							; ESC?
 	jp	z,ESPSETUP					; When done, back to main setup
+	cp	#20							; Spacebar?
+	jp	z,START_WIFI_RESCAN			; Rescan
 	cp	'0'							; Check if A is less than 0
 	jp	c,INPUT_WFSAP_BAD_INPUT		; If it is, ignore
 	cp	e							; Check if a is greater than what is in E
@@ -5325,12 +5365,12 @@ WELCOME:
 ;---
 
 WELCOME_S:
-	db	"Quick Rcv not supported."		,CR,LF
+	db	"Quick Receive not supported."	,CR,LF
 	db	"Machine FW Update Suggested!"	,CR,LF,LF,STTERMINATOR
 ;---
 
 WELCOME_SF:
-	db	"Quick Rcv supported."			,CR,LF,LF,STTERMINATOR
+	db	"Quick Receive supported."		,CR,LF,LF,STTERMINATOR
 ;---
 
 MMENU_S:
@@ -5396,7 +5436,7 @@ MMENU_GMT_OPT:
 
 MMENU_SCAN:
 	db	CLS
-	db	" [ Scan/Join Access Points ]"	,CR,LF,LF
+	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
 ;---
 	db	"Up to 10 APs will be listed."	,CR,LF,LF
 ;---
@@ -5412,7 +5452,7 @@ MMENU_SCANN:
 
 MMENU_SCANS:
 	db	CLS
-	db	" [ Scan/Join Access Points ]"	,CR,LF,LF
+	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
 ;---
 	db	"Networks available: "			,CR,LF,LF,STTERMINATOR
 ;---
@@ -5451,7 +5491,7 @@ MMENU_TIMEOUT:
 ;---
 	db	"0         - Always on"			,CR,LF
 	db	"1 to 30   - 30s"				,CR,LF
-	db	"30 to 600 - Use given period"	,CR,LF
+	db	"31 to 600 - Use given period"	,CR,LF
 	db	"> 600     - 600s"				,CR,LF,LF,STTERMINATOR
 ;---
 
@@ -5478,11 +5518,11 @@ MMENU_NAGLE:
 ;---
 	db	"Nagle Algorithm might lower"	,CR,LF
 	db	"performance but create less"	,CR,LF
-	db	"network congestion. Nowadays"	,CR,LF
-	db	"it is mostly not needed and"	,CR,LF
-	db	"is the cause of latency and"	,CR,LF
-	db	"low performance on packet"		,CR,LF
-	db	"driven protocols."				,CR,LF,LF
+	db	"network congestion."			,CR,LF
+	db	"Nowadays it is mostly not"		,CR,LF
+	db	"needed and is the cause of"	,CR,LF
+	db	"latency and low performance"	,CR,LF
+	db	"on packet-driven protocols."	,CR,LF,LF
 ;---
 	db	"O - Turn it on/off"			,CR,LF,LF,STTERMINATOR
 ;---
@@ -5529,6 +5569,7 @@ OK_S:
 ;---
 
 FAIL_S:
+	db	CLS
 	db	"ESP8266 Not Found!"			,CR,LF,LF
 ;---
 	db	"Check that it is properly"		,CR,LF
@@ -5542,6 +5583,11 @@ STR_WAITING:
 	db	"Waiting for connection..."		,CR,LF,LF,LF,STTERMINATOR
 ;---
 ;---
+
+STR_OOPS:
+	db	CLS
+	db	"Oops! An unexpected error"		,CR,LF
+	db	"occurred on the last reboot."	,CR,LF,STTERMINATOR
 
 ;============================
 ;===  UNAPI related data  ===
@@ -5558,8 +5604,9 @@ APIINFO:				db	"ESP8266 Wi-Fi UNAPI",0
 
 	if	CHECK_OCM_HW = 1
 		if	TURBO_R_LOGO = 0
-ID_END:	ds	#7FF0-ID_END,#C9
+ID_END:	ds	#7FE0-ID_END,#C9
 ;--- FS-A1GT compliant BIOS without logo (not for FS-A1ST BIOS)
+BUILD_NAME:				db	"[ ESP8266E.ROM ]"
 		else
 ID_END:	ds	#7900-ID_END,#FF
 ;--- FS-A1GT compliant BIOS with logo (not for FS-A1ST BIOS)
@@ -5673,14 +5720,15 @@ ID_END:	ds	#7900-ID_END,#FF
 	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
-	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
+BUILD_NAME:				db	"[ ESP8266M.ROM ]"
 		endif
 	else
-ID_END:	ds	#7FF0-ID_END,#FF
+ID_END:	ds	#7FE0-ID_END,#FF
+BUILD_NAME:				db	"[ ESP8266 .ROM ]"
 	endif
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:				db	"BUILD 2020/07/18"
+BUILD_DATE:				db	"BUILD 2020/07/26"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes

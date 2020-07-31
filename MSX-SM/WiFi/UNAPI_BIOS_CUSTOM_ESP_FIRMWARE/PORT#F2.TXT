@@ -1,0 +1,23 @@
+Port F2 device (ESP8266 BIOS)
+=============================
+OUT (#F2),A     ; save a byte
+IN  A,(#F2)     ; load a byte
+
+
+#EF is set by ESP8266.ROM when EPS is not found
+
+#F0 is set by ESP8266.ROM when UNAPI driver is loaded almost once
+
+#F1 is set by the user to enter Wi-Fi setup at next attempt
+
+#FE is set by ESP8266.ROM when Unexpected error is found
+
+#FF is set when starting from power off or hard reset
+    and is the only value that is reset by the Port F2 device.
+    This is the default and reloads all ESP settings.
+
+At this release date, any other values ​​proceed as #FF.
+
+
+______________
+KdL 2020.07.23
