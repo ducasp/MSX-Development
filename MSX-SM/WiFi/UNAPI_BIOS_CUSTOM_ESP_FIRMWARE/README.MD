@@ -112,11 +112,18 @@ Default option is to have a 30s period set-up.
 
 Use this option to configure which Access Point your SM-X will connect to. Once
 set-up, whenever Wi-Fi is on, the adapter will automatically try to connect to
-the configured access point. It will list up to ten Access Points and you can
+the configured access point. It will list up to eight Access Points and you can
 choose to connect to any of the listed access points by hitting the number key
-related to it on the screen. If the Access Point needs a password, it will be
-requested. By default, what you type is not printed on the screen, but you can
-hit the DELETE key before entering the password to show it while you type.
+related to it on the screen. If more than eight access points are available, a
+message on screen will tell you about that and hitting SPACE will jump to the
+next page. To enter the network name manually you can hit the ENTER key. In
+that case, after entering the SSID manually, you will be asked whether that AP
+needs a password, Y or y will allow you to enter the password, any other key
+will mean no password is needed.
+
+If the Access Point needs a password, the default behavior is that what you
+type is not printed on the screen, but you can hit the DELETE key before
+entering the password to show it while you type.
 
 P.s.: Some Access Points allow non-standard characters to be used for the pass
 phrase. This ROM will accept any keyboard key and get its input code and use
@@ -130,6 +137,8 @@ can be used for any other position.
 Non-standard characters in the pass phrase should be avoided, if you must have
 those, at least avoid having 0x00, 0x08, 0x13 and 0x1B, and it is up to you to
 figure out which keys translate to a given hex code. :)
+The same applies to SSID, in that case 0x07 can be used as first character in
+a SSID, but again, non-standard characters should be avoided. 
 
 # Wi-Fi and Clock Settings
 

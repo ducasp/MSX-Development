@@ -104,7 +104,7 @@
 ;--- SM-X ROM is less verbose...
 SMX_ROM:				equ	1
 ;--- Non-FPGA versions do not check OCM hardware...
-CHECK_OCM_HW:			equ	0
+CHECK_OCM_HW:			equ	1
 ;--- FPGA Version can have the Turbo-R logo incorporated or not...
 TURBO_R_LOGO:			equ	1
 
@@ -113,6 +113,7 @@ TURBO_R_LOGO:			equ	1
 ;*******************
 
 ;--- System variables and routines:
+CHSNS:					equ	#009C
 CHGET:					equ	#009F
 CHPUT:					equ	#00A2
 BEEP:					equ	#00C0
@@ -157,6 +158,9 @@ MEMORY_REGBACKUP_OFFSET	equ	#0D
 MEMORY_BCBACKUP_OFFSET	equ	#0D
 MEMORY_DEBACKUP_OFFSET	equ	#0F
 MEMORY_HLBACKUP_OFFSET	equ	#11
+
+;--- Scan Page Size
+SCAN_MAX_PAGE_SIZE		equ	8
 
 ;--- Maximum number of available standard and implementation-specific function
 ;--- numbers. Must be 0 to 127.
@@ -525,6 +529,7 @@ ESPSETUP:
 	or	a
 	jp	nz,ESP_NOT_FOUND			; Not well, ESP was not found
 ESPSETUP_NEXT:
+	call	KILBUF					; Clear Keyboard Buffer
 	; Well, if reset successful, continue
 	in	a,(IN_STS_PORT)
 	bit	3,a							; Quick Receive Supported?
@@ -539,9 +544,68 @@ ESPSETUP.1NF:
 	ld	hl,WELCOME_S
 ESPSETUP.1F:
 	call	PRINTHL					; Print Welcome message
+	ld	a,20
+	out	(OUT_CMD_PORT),a			; Clear UART
+	ld	a,CMD_AP_STS
+	out	(OUT_TX_PORT),a				; Get AP conn status and name
+	ld	hl,60						; Wait Up To 1s
+	ld	de,(TXTTAB)					; We will borrow Basic Program memory area for now...
+	ld	ixl,e
+	ld	ixh,d						; Address in IX
+	call	WAIT_MENU_CMD_RESPONSE
+	jp	z,ESPSETUP.1G				; Won't block in case of error
+	; Success, so connection state is in IX+0, then, zero terminated string with SSID starting at IX+1
+	ld	a,(ix+0)
+	ld	hl,WELCOME_CS0
+	cp	0
+	jr	z,ESPSETUP.2F
+	ld	hl,WELCOME_CS1
+	cp	1
+	jr	z,ESPSETUP.2F
+	ld	hl,WELCOME_CS2
+	cp	2
+	jr	z,ESPSETUP.2F
+	ld	hl,WELCOME_CS3
+	cp	3
+	jr	z,ESPSETUP.2F
+	ld	hl,WELCOME_CS4
+	cp	4
+	jr	z,ESPSETUP.2F
+	ld	hl,WELCOME_CS5
+ESPSETUP.2F:
+	ld	iyh,a						; Save current conn status in iyh
+	call	PRINTHL					; Print Status
+	push	ix
+	pop	hl
+	inc	hl							; HL has AP Name
+	call	PRINTHLINE				; Print AP Name
+	ld	a,CR
+	call	CHPUT
+	ld	a,LF
+	call	CHPUT
+	ld	a,LF
+	call	CHPUT					; Give some space...
+ESPSETUP.1G:
 	ld	hl,MMENU_S
 	call	PRINTHL					; Print Main Menu
-	call	KILBUF					; Clear Keyboard Buffer
+CONN_CHG_LOOP:
+	call	CHSNS
+	jr	nz,MM_WAIT_INPUT			; If not zero, there is a key in buffer
+	; Ok, there is not, we can check if connection status changed
+	ld	a,20
+	out	(OUT_CMD_PORT),a			; Clear UART
+	ld	a,CMD_AP_STS
+	out	(OUT_TX_PORT),a				; Get AP conn status and name
+	ld	hl,60						; Wait Up To 1s
+	ld	de,(TXTTAB)					; We will borrow Basic Program memory area for now...
+	ld	ixl,e
+	ld	ixh,d						; Address in IX
+	call	WAIT_MENU_CMD_RESPONSE
+	jp	z,CONN_CHG_LOOP				; Won't block in case of error
+	ld	a,(ix+0)
+	cp	iyh							; If same, zero
+	jr	z,CONN_CHG_LOOP				; Keep loop
+	jp	ESPSETUP_NEXT				; Changed, re-build menu
 MM_WAIT_INPUT:
 	call	CHGET
 	cp	#1b							; ESC?
@@ -591,9 +655,9 @@ CLK_MSX1_SEND_CMD:
 	call	CHPUT					; Print option
 	sub	'0'							; Adjust format
 	ld	(ix+0),a					; Save it
-	ld	a,#D
+	ld	a,#0d
 	call	CHPUT
-	ld	a,#A
+	ld	a,#0a
 	call	CHPUT
 	jp	CLK_AUTO_GMT_CHK_DONE		; And sending the command will be done there
 
@@ -822,9 +886,9 @@ CLK_AUTO_GMT_CHK_CSD2:
 	call	CHPUT					; Print it
 	; And send command
 CLK_AUTO_GMT_CHK_DONE:
-	ld	a,#D
+	ld	a,#0d
 	call	CHPUT
-	ld	a,#A
+	ld	a,#0a
 	call	CHPUT
 	ld	hl,STR_SENDING
 	call	PRINTHL
@@ -898,43 +962,74 @@ WIFI_LIST_LOOP:
 	ld	a,e
 	add	a,'0'						; Convert to number
 	call	CHPUT
-	ld	a,' '
+	ld	a,' '						; Space
 	call	CHPUT
-	ld	a,'-'
+	ld	a,'-'						; Dash
 	call	CHPUT
-	ld	a,' '
+	ld	a,' '						; Space
 	call	CHPUT
+	ld	b,24						; Cuts AP names > 23 chars
 PRT_APNAMELP:
 	ld	a,(hl)
 	or	a
 	jp	z,PRT_APENC
 	call	CHPUT
 	inc	hl
-	jp	PRT_APNAMELP
+	djnz	PRT_APNAMELP
+	push	hl
+	ld	hl,SCAN_TERMINATOR_CUT
+	call	PRINTHL
+	pop	hl
+PRT_APNAMELP_CUT:
+	ld	a,(hl)
+	or	a
+	jp	z,PRT_APENC
+	inc	hl
+	jp	PRT_APNAMELP_CUT
 PRT_APENC:
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jp	z,PRT_APNOTENC
-	ld	bc,SCAN_TERMINATOR_ENC
-	call	PRINTBC
+	push	hl
+	ld	hl,SCAN_TERMINATOR_ENC
+	call	PRINTHL
+	pop	hl
 	jp	PRT_AP_CHKLOOP
 PRT_APNOTENC:
-	ld	bc,SCAN_TERMINATOR_OPEN
-	call	PRINTBC
+	push	hl
+	ld	hl,SCAN_TERMINATOR_OPEN
+	call	PRINTHL
+	pop	hl
 PRT_AP_CHKLOOP:
 	inc	hl
 	inc	e
-	ld	a,10
+	ld	a,SCAN_MAX_PAGE_SIZE
 	cp	e
 	jp	z,APLIST_OVERFLOW
 	dec	d
 	jp	nz,WIFI_LIST_LOOP
+	ld	b,0							; Signal no more list data
+	jr	APLIST_NO_OVERFLOW
 APLIST_OVERFLOW:
-	; If here, whole list has been printed
+	dec	d							; Update remaining itens
+	xor	a
+	or	d							; Still has itens?
+	jr	z,APLIST_NO_OVERFLOW		; No more itens
+	ld	b,1							; Signal that there still is data pending to list in another page
+	push	hl
+	pop	iy							; Save in IY the address to continue from
+	ld	c,d							; And C has the remaining AP count
+	ld	hl,MMENU_SCANQM
+	jr	APLIST_NOFLW
+APLIST_NO_OVERFLOW:
+	; If here, current page has been printed
 	; E has the maximum allowable AP number
+	; B will indicate if there are more itens for a next page
+	; IY will hold the address of the following itens
 	; Let's ask which one to connect
 	ld	hl,MMENU_SCANQ
+APLIST_NOFLW:
 	call	PRINTHL					; Show message asking which network to connect
 	ld	a,'0'
 	add	a,e
@@ -944,21 +1039,110 @@ WIFI_SELECT_AP:
 	cp	#1b							; ESC?
 	jp	z,ESPSETUP					; When done, back to main setup
 	cp	#20							; Spacebar?
-	jp	z,START_WIFI_RESCAN			; Rescan
+	jp	z,WIFI_SELECT_SPACEBAR		; Check if re-scan or next page
+	cp	CR							; ENTER?
+	jp	z,WIFI_CONNECT_ME_CHOOSEN	; Request AP Name and Password if needed
 	cp	'0'							; Check if A is less than 0
 	jp	c,INPUT_WFSAP_BAD_INPUT		; If it is, ignore
 	cp	e							; Check if a is greater than what is in E
 	jp	nc,INPUT_WFSAP_BAD_INPUT	; If it is, ignore
+	jp	WIFI_CONNECT_SELECTION_OK	; Selection Ok if here
+
+WIFI_SELECT_SPACEBAR:
+	xor	a
+	or	b
+	jp	z,START_WIFI_RESCAN			; Rescan if no more itens
+	; Otherwise, more itens, start at IY
+	push	iy
+	pop	ix							; Restore the list from where we finished last time
+	ld	a,c							; Restore the remaining APs to list
+	jp	WIFI_SCAN_SHOW_LIST			; And show
+
+WIFI_CONNECT_ME_CHOOSEN:
+	ld	hl,MMENU_MANUALENTRY
+	call	PRINTHL					; Show message asking AP details....
+	; IX has the AP list, we don't care, but that address is ours to use to handle SSID Entry
+	push	ix
+	pop	hl							; HL has the address
+	ld	c,0							; AP name size
+WIFI_CONNECT_MANUAL_ENTRY:
+	call	CHGET
+	cp	#1b							; ESC?
+	jp	z,ESPSETUP					; Back to main setup
+	cp	#08							; Backspace?
+	jr	z,WIFI_CONNECT_ME_BS		; Check if there is something to erase
+	cp	#0d							; ENTER?
+	jr	z,WIFI_ME_CHECK_INPUT		; Check if ok
+	; Otherwise it is a digit
+	ld	(hl),a
+	inc	c
+	inc hl
+	cp	32
+	jr	nc,WIFI_CONNECT_ME_CHKPRT2	; Ok, not below space, but is it delete?
+	ld	a,'?'						; Prints a question mark
+	jr	WIFI_CONNECT_ME_CHKPRTD
+WIFI_CONNECT_ME_CHKPRT2:
+	cp	#7f
+	jr	nz,WIFI_CONNECT_ME_CHKPRTD
+	ld	a,'?'						; Prints a question mark if it is delete
+WIFI_CONNECT_ME_CHKPRTD:
+	call	CHPUT					; Print a char
+	ld	a,32						; SSID maximum is 32 characters
+	cp	c							; Have we hit it?
+	jr	nz,WIFI_CONNECT_MANUAL_ENTRY; No, just continue waiting characters
+	; Hit the limit or Enter when C not zero
+WIFI_CONNECT_ME_0_TERM:
+	xor	a
+	ld	(hl),a
+	inc	hl
+	push	hl						; Save it
+	ld	hl,MENU_MANUALENTRY_PWD
+	call	PRINTHL					; We are asking if password is needed
+	pop	hl							; Restore it
+	call	CHGET					; Get key, if Y or y, needed, otherwise not
+	call	CHPUT					; Print what was typed
+	res	5,a							; Force upper case
+	cp	'Y'
+	ld	a,1							; Do not change flags, pwd needed
+	jr	z,WIFI_CONNECT_ME_PWD		; And tell using encryption
+	xor	a							; Ok, if here, no pwd, so no encryption
+WIFI_CONNECT_ME_PWD:
+	ld	(hl),a						; Save if encryption is expected
+	push	ix
+	pop	hl							; HL containing the beginning of SSID name
+	jp	WIFI_CONNECT_AP_PWDQ		; And the rest is handled like if menu selected
+WIFI_CONNECT_ME_BS:
+	xor	a
+	cp	c							; Has any data to delete?
+	jr	z,WIFI_CONNECT_MANUAL_ENTRY	; No
+	; Yes
+	dec	hl							; Decrement pointer
+	dec	c							; Decrement counter
+	ld	a,8							; Backspace
+	call	CHPUT					; Print it
+	ld	a,' '						; Space
+	call	CHPUT					; Print it
+	ld	a,8							; Backspace
+	call	CHPUT					; Print it
+	jr	WIFI_CONNECT_MANUAL_ENTRY	; Return
+WIFI_ME_CHECK_INPUT:
+	xor	a
+	cp	c							; Has received any data?
+	jr	z,WIFI_CONNECT_MANUAL_ENTRY	; No
+	jp	WIFI_CONNECT_ME_0_TERM		; Yes, so handle SSID input termination
+
+WIFI_CONNECT_SELECTION_OK:
 	call	CHPUT					; Valid input, print it
 	ld	e,'0'
 	sub	a,e							; Get in decimal
 	ld	e,a							; Back in E
-	;	IX has the AP list, A which one has been selected, now our routine will do it
-	ld	hl,MMENU_CONNECTING
-	call	PRINTHL
-	; put IX in HL
+	; IX has the AP list, A which one has been selected, now our routine will do it
+	ld	a,#0d
+	call	CHPUT
+	ld	a,#0a
+	call	CHPUT
 	push	ix
-	pop	hl
+	pop	hl							; put IX in HL
 WIFI_CONNECT_AP_SRCH:
 	ld	a,e
 	or	a
@@ -1007,6 +1191,10 @@ WIFI_CONNECT_RCV_PWD:
 WIFI_CONNECT_RCV_PWD_STR:
 	; Ok, so it is a digit and store
 	ld	(de),a
+	ld	a,iyl
+	sub	63							; 63 chars password limit (WPA2 encryption)
+	jr	z,WIFI_CONNECT_RCV_PWD
+	ld	a,(de)
 	inc	bc
 	inc	de
 	inc	iy							; Increment counters and pointer
@@ -1063,11 +1251,20 @@ WIFI_PWD_CHECK_INPUT:
 	or	iyh
 	jp	z,WIFI_CONNECT_RCV_PWD		; If no digits entered, no password to send
 	; Otherwise done and ready to send
-
 WIFI_CONNECT_SENDCMD:
-	ld	a,#D
+	call	WAIT_250MS_AND_THEN_CONTINUE
+	push	hl
+	ld	HL,MMENU_CONNECTING
+	call	PRINTHL
+	pop	hl
+	; Print AP name
+	push	hl
+	call	PRINTHL
+	pop	hl
+	ld	a,CR
 	call	CHPUT
-	ld	a,#A
+	ld	a,LF
+	call	CHPUT
 	call	CHPUT
 	; HL has the address of our data, BC the data size, so it is just needed to send the command
 	ld	a,20
@@ -1103,7 +1300,11 @@ INPUT_WFSAP_BAD_INPUT:
 	push	de
 	push	af
 	push	hl
+	push	ix
+	push	iy
 	call	BEEP					; Wrong Input, beep
+	pop	iy
+	pop	ix
 	pop	hl
 	pop	af
 	pop	de
@@ -1305,9 +1506,9 @@ SET_ESP_WIFI_TIMEOUT:
 SET_NAGLE_OFF:
 	ld	a,'O'
 	call	CHPUT
-	ld	a,#D
+	ld	a,#0d
 	call	CHPUT
-	ld	a,#A
+	ld	a,#0a
 	call	CHPUT
 	ld	hl,STR_SENDING				; Indicate it is sending a command
 	call	PRINTHL
@@ -1339,9 +1540,9 @@ STARTWIFISCAN:
 SET_NAGLE_ON:
 	ld	a,'O'
 	call	CHPUT
-	ld	a,#D
+	ld	a,#0d
 	call	CHPUT
-	ld	a,#A
+	ld	a,#0a
 	call	CHPUT
 	ld	hl,STR_SENDING				; Indicate it is sending a command
 	call	PRINTHL
@@ -1818,14 +2019,26 @@ PRINTHL:
 	inc	hl
 	jp	PRINTHL
 
-; Routine to print the string addressed by BC
-PRINTBC:
-	ld	a,(bc)
+; Routine to print the string addressed by HL on a line, if exceeding it, ends with ..
+PRINTHLINE:
+	push	bc
+	ld	b,27
+PHLINEL:
+	ld	a,(hl)
 	or	a
-	ret	z							; When string is finished, done!
+	jr	z,PHLINELR					; When string is finished, done!
 	call	CHPUT
-	inc	bc
-	jp	PRINTBC
+	inc	hl
+	djnz	PHLINEL
+	ld	a,'.'
+	call	CHPUT
+	ld	a,'.'
+	call	CHPUT
+	ld	a,GOLEFT
+	call	CHPUT
+PHLINELR:
+	pop	bc
+	ret
 
 ;===============================
 ;===  HTIM_I hook execution  ===
@@ -5330,6 +5543,8 @@ CMD_WIFI_CONNECT		equ	'A'
 CMD_SCAN_START			equ	'S'
 ; Request network scan result
 CMD_SCAN_RESULTS		equ	's'
+; Request AP Status
+CMD_AP_STS				equ	'g'
 ; Get ESP firmware version
 CMD_GET_ESP_VER			equ	'V'
 ; After finishing Warm reset, ESP returns ready
@@ -5372,6 +5587,24 @@ WELCOME_S:
 WELCOME_SF:
 	db	"Quick Receive supported."		,CR,LF,LF,STTERMINATOR
 ;---
+
+WELCOME_CS0:
+	db	"Wi-Fi is Idle, AP configured:"	,GOLEFT,CR,LF,STTERMINATOR
+
+WELCOME_CS1:
+	db	"Wi-Fi Connecting to AP:"		,CR,LF,STTERMINATOR
+
+WELCOME_CS2:
+	db	"Wi-Fi Wrong Password for AP:"	,CR,LF,STTERMINATOR
+
+WELCOME_CS3:
+	db	"Wi-Fi Did not find AP:"		,CR,LF,STTERMINATOR
+
+WELCOME_CS4:
+	db	"Wi-Fi Failed to connect to:"	,CR,LF,STTERMINATOR
+
+WELCOME_CS5:
+	db	"Wi-Fi Connected to:"			,CR,LF,STTERMINATOR
 
 MMENU_S:
 	db	"1 - Set Nagle Algorithm"		,CR,LF
@@ -5434,11 +5667,23 @@ MMENU_GMT_OPT:
 	db	CR,LF
 	db	"Time Zone adjustment: "		,STTERMINATOR
 
+MMENU_MANUALENTRY:
+	db	CLS
+	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
+;---
+	db	"ESC to return to main menu."	,CR,LF
+	db	"Manual entry, type SSID:"		,CR,LF,STTERMINATOR
+
+MENU_MANUALENTRY_PWD:
+	db	CR,LF,LF
+;---
+	db	"Password needed? "				,STTERMINATOR
+
 MMENU_SCAN:
 	db	CLS
 	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
 ;---
-	db	"Up to 10 APs will be listed."	,CR,LF,LF
+	db	"Up to ",SCAN_MAX_PAGE_SIZE+48," APs per page."	,CR,LF,LF
 ;---
 	db	"Scanning networks..."			,CR,LF,STTERMINATOR
 
@@ -5454,13 +5699,15 @@ MMENU_SCANS:
 	db	CLS
 	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
 ;---
-	db	"Networks available: "			,CR,LF,LF,STTERMINATOR
+	db	"Networks available:"			,CR,LF,LF,STTERMINATOR
 ;---
 
 MMENU_CONNECTING:
-	db	CR,LF,LF
+	db	CLS
+	db	"[ Scan/Join Access Points ]"	,CR,LF,LF
 ;---
-	db	"Requesting connection..."		,STTERMINATOR
+	db	"Requesting connection to:"		,CR,LF,LF,STTERMINATOR
+;---
 
 MMENU_ASKPWD:
 	db	CR,LF
@@ -5470,15 +5717,28 @@ MMENU_ASKPWD:
 
 MMENU_SCANQ:
 	db	CR,LF
-	db	"ESC to return to main menu."	,CR,LF,LF
+	db	"ESC to return to main menu."	,CR,LF
+	db	"SPACE BAR to scan again."	,CR,LF
+	db	"ENTER to type SSID/AP name."	,CR,LF,LF
 ;---
-	db	"Number to connect: "			,STTERMINATOR
+	db	"Number to connect: "		,STTERMINATOR
+
+MMENU_SCANQM:
+	db	CR,LF
+	db	"ESC to return to main menu."	,CR,LF
+	db	"SPACE BAR to show next page."	,CR,LF
+	db	"ENTER to type SSID/AP name."	,CR,LF,LF
+;---
+	db	"Number to connect: "		,STTERMINATOR
+
+SCAN_TERMINATOR_CUT:
+	db	GOLEFT,GOLEFT,GOLEFT,".. ",GOLEFT,STTERMINATOR
+
+SCAN_TERMINATOR_ENC:
+	db	" *"							,GOLEFT
 
 SCAN_TERMINATOR_OPEN:
 	db	CR,LF,STTERMINATOR
-
-SCAN_TERMINATOR_ENC:
-	db	" *"							,CR,LF,STTERMINATOR
 
 MMENU_TIMEOUT:
 	db	CLS
@@ -5728,7 +5988,7 @@ BUILD_NAME:				db	"[ ESP8266 .ROM ]"
 	endif
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:				db	"BUILD 2020/07/26"
+BUILD_DATE:				db	"BUILD 2020/08/04"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
