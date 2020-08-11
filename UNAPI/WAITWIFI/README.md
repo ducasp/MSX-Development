@@ -1,3 +1,8 @@
+# WAITWIFI v0.14
+
+Minor change to the waiting animation, so it is the same on all machines, not
+using '\' as it is a different character on non-international BIOS machines.
+
 # WAITWIFI v0.13
 
 KdL was very kind by improving animation to not look jerky
