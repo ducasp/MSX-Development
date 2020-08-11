@@ -1,4 +1,4 @@
-# CFG8266 v1.20
+# CFG8266 v1.30
 
 Simple Tool to Scan Networks / Configure Parameters / Update Firmware of ESP
 in your MSX-SM / SM-X
@@ -103,11 +103,7 @@ Now telling about how to configure WiFi and some parameters:
 Copyright (c) 2019-2020 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
 All rights reserved.
 
-A simple terminal console where what you type is sent to the ESP and what
-the ESP send back is put on screen. Useful to toy around with it and see
-how it works with AT commands or testing concepts. 
-
-Requires WiFiMSXSM, SDCC and Fusion-C library to compile
+Requires SDCC and Fusion-C library to compile
 
 Redistribution and use of this source code or any derivative works, are
 permitted provided that the following conditions are met:
