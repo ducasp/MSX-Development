@@ -66,7 +66,7 @@ unsigned int MyRead (int Handle, unsigned char* Buffer, unsigned int Size)
 }
 
 // Checks Input Data received from command Line and copy to the variables
-unsigned int IsValidInput (char**argv, int argc)
+unsigned int IsValidInput (char**argv, int argc, unsigned char *cServer, unsigned char *cFile, unsigned char *cPort)
 {
 	unsigned int ret = 1;
 	unsigned char * Input = (unsigned char*)argv[0];
@@ -97,7 +97,7 @@ unsigned int IsValidInput (char**argv, int argc)
                 }
                 else
                 {
-                    strcpy (ucFile,Input);
+                    strcpy (cFile,Input);
                     ucLocalUpdate = 1;
                     if (argc==2)
                     {
@@ -120,12 +120,12 @@ unsigned int IsValidInput (char**argv, int argc)
                     Input = (unsigned char*)argv[2];
                     if (strlen (Input)<7)
                     {
-                        strcpy(ucPort,Input);
+                        strcpy(cPort,Input);
                         Input = (unsigned char*)argv[1];
-                        strcpy(ucServer,Input);
+                        strcpy(cServer,Input);
                         Input = (unsigned char*)argv[3];
-                        strcpy(ucFile,Input);
-                        lPort = atol(ucPort);
+                        strcpy(cFile,Input);
+                        lPort = atol(cPort);
                         uiPort = (lPort&0xffff);
                     }
                     else
@@ -137,12 +137,12 @@ unsigned int IsValidInput (char**argv, int argc)
                     Input = (unsigned char*)argv[2];
                     if (strlen (Input)<7)
                     {
-                        strcpy(ucPort,Input);
+                        strcpy(cPort,Input);
                         Input = (unsigned char*)argv[1];
-                        strcpy(ucServer,Input);
+                        strcpy(cServer,Input);
                         Input = (unsigned char*)argv[3];
-                        strcpy(ucFile,Input);
-                        lPort = atol(ucPort);
+                        strcpy(cFile,Input);
+                        lPort = atol(cPort);
                         uiPort = (lPort&0xffff);
                     }
                     else
@@ -214,7 +214,6 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
 	unsigned int Timeout1,Timeout2;
 	unsigned int ResponseSt = 0;
 	unsigned int ResponseSt2 = 0;
-	unsigned char advance[3] = {'-','+','*'};
 	unsigned int i = 0;
 
 	if (bShowReceivedData)
@@ -229,7 +228,7 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
         i = 0;
     }
     //Command sent, done, just wait response
-    Timeout1 = TickCount + 10; //Drives the animation every 10 ticks or so
+    Timeout1 = TickCount + 9; //Drives the animation every 9 ticks or so
     Timeout2 = TickCount + Timeout; //Wait up to 5 minutes
 
     ResponseSt = 0;
@@ -241,9 +240,8 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
         {
             if (TickCount>Timeout1)
             {
-                Timeout1 = TickCount + 10;
-                PrintChar(advance[i%3]); // next char
-                PrintChar(29); // move left a char
+                Timeout1 = TickCount + 9;
+                printf("%s",advance[i%8]); // next char
                 ++i;
             }
         }
@@ -266,6 +264,8 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
             {
                 if ((ResponseSt)&&(bShowReceivedData))
                     printf ("{%x} != [%x]",rx_data,uchData[ResponseSt]);
+                else if (bShowReceivedData)
+                    printf ("}%x{",rx_data);
                 if ((uiDataSize==2)&&(ResponseSt==1))
                 {
                     if ((bVerbose)&&(!uchData2))
@@ -292,6 +292,9 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
             break;
     }
     while (1);
+
+    if (Timeout>900)
+        printf("%s",aDone); // clear line
 
     return bReturn;
 }
@@ -383,7 +386,6 @@ int main(char** argv, int argc)
 	unsigned char ucPWD[65];
 	unsigned int uiCMDLen;
 	AP stAP[100];
-	unsigned char advance[3] = {'-','+','*'};
 	unsigned int i = 0;
 	unsigned int ii = 0;
 	int iFile;
@@ -405,7 +407,11 @@ int main(char** argv, int argc)
     unsigned char ucVerMinor;
     unsigned char ucAPstsRspSize;
     unsigned int uiAnimationTimeOut;
+    unsigned char ucServer[300];
+    unsigned char ucFile[300];
+    unsigned char ucPort[6];
 
+    //Global Variables Initialization is not working with current DOS CRT
     ucLocalUpdate = 0;
     ucNagleOff = 0;
     ucNagleOn = 0;
@@ -419,15 +425,15 @@ int main(char** argv, int argc)
 
 	printf("> SM-X ESP8266 Wi-Fi Module Configuration v1.30 <\r\n(c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\n");
 
-    if (IsValidInput(argv, argc))
+    if (IsValidInput(argv, argc, ucServer, ucFile, ucPort))
     {
         do
         {
             //Set Speed
             myPort6 = speed;
             ClearUartData();
-            TxByte('?');
             Halt();
+            TxByte('?');
 
             bResponse = WaitForRXData(responseOK,2,60,false,false,NULL,0);
 
@@ -439,7 +445,7 @@ int main(char** argv, int argc)
 
         if (speed<10)
         {
-            printf ("Using Baud Rate #%u\r\n",speed);
+            printf ("Baud Rate: %s\r\n",speedStr[speed]);
             TxByte('V'); //Request version
             bResponse = WaitForRXData(versionResponse,1,20,true,false,NULL,0);
             if (bResponse)
@@ -449,6 +455,7 @@ int main(char** argv, int argc)
                 while(!UartRXData());
                 ucVerMinor = GetUARTData();
             }
+            printf ("FW Version: %c.%c\r\n",ucVerMajor+'0',ucVerMinor+'0');
 
             if ((ucScan)||(ucNagleOff)||(ucNagleOn)||(ucRadioOff)||(ucSetTimeout))
             {
@@ -713,31 +720,31 @@ int main(char** argv, int argc)
                 else
                 {
                     if (ucScan)
-                        printf ("\rScan request: no answer...\n");
+                        printf ("\rScan request: no answer...\r\n");
                     else if (((ucNagleOff)||(ucNagleOn))&&(bResponse))
                     {
-                        printf("\rNagle set as requested...\n");
+                        printf("\rNagle set as requested...\r\n");
                         return 0;
                     }
                     else if ((ucNagleOff)||(ucNagleOn))
                     {
-                        printf("\rNagle not set as requested, error!\n");
+                        printf("\rNagle not set as requested, error!\r\n");
                         return 0;
                     }
                     else if (ucRadioOff)
                     {
                         if (bResponse)
-                            printf("\rRequested to turn off Wi-Fi Radio...\n");
+                            printf("\rRequested to turn off Wi-Fi Radio...\r\n");
                         else
-                            printf("\rRequest to turnoff Wi-Fi Radio error!\n");
+                            printf("\rRequest to turnoff Wi-Fi Radio error!\r\n");
                         return 0;
                     }
                     else if (ucSetTimeout)
                     {
                         if (bResponse)
-                            printf("\rWi-Fi radio on Time-out set successfully...\n");
+                            printf("\rWi-Fi radio on Time-out set successfully...\r\n");
                         else
-                            printf("\rError setting Wi-Fi radio on Time-out!\n");
+                            printf("\rError setting Wi-Fi radio on Time-out!\r\n");
                         return 0;
                     }
                 }
@@ -804,17 +811,15 @@ int main(char** argv, int argc)
                                     printf("Error requesting to start firmware update.\r\n");
                                 else
                                 {
-                                    PrintChar('U');
-                                    uiAnimationTimeOut = TickCount + 30;
+                                    uiAnimationTimeOut = TickCount + 9;
                                     do
                                     {
                                         --uiAnimationTimeOut;
                                         if (TickCount>=uiAnimationTimeOut)
                                         {
-                                            uiAnimationTimeOut = 30;
+                                            uiAnimationTimeOut = 9;
                                             //Our nice animation to show we are not stuck
-                                            PrintChar(8); //backspace
-                                            PrintChar(advance[i%3]); // next char
+                                            printf("%s",advance[i%8]); // next animation step
                                             ++i;
                                         }
                                         if (!ucFirstBlock)
@@ -845,6 +850,7 @@ int main(char** argv, int argc)
                                         SentFileSize = SentFileSize - FileRead;
                                     }
                                     while(SentFileSize);
+                                    printf("%s",aDone);
 
                                     //if here and last command was not error, time to finish flashing
                                     if (bResponse)
@@ -852,7 +858,7 @@ int main(char** argv, int argc)
                                 }
                             }
                             else
-                                Print("\rError reading firmware file!\n");
+                                Print("\rError reading firmware file!\r\n");
                             Close(iFile);
                         }
                         else

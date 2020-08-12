@@ -55,6 +55,19 @@ const char* strAPSts[6] = {
 	"Wi-Fi Failed to connect to: ",
 	"Wi-Fi Connected to: "};
 
+const char* speedStr[10] = {
+    "859372 bps",
+    "346520 bps",
+    "231014 bps",
+    "115200 bps",
+    "57600 bps",
+    "38400 bps",
+    "31250 bps",
+    "19200 bps",
+    "9600 bps",
+    "4800 bps",
+};
+
 //I/O made simple...
 __sfr __at 0x06 myPort6; //reading this is same as IN and writing same as out, without extra instructions
                          //when using Inport and Outport from Fusion-C
@@ -99,7 +112,6 @@ unsigned char GetUARTData()
 #define UartRXData() myPort7&1 ? 1 : 0
 #define scanPageLimit 10
 const char chFiller[128] = {'C','F','G','8','2','6','6',' ','Y','o','u',' ','h','a','v','e',' ','a',' ','g','o','o','d',' ','t','i','m','e',' ','r','e','a','d','i','n','g',' ','t','h','i','s',' ','t','a','l','e',' ','o','f',' ','a','n',' ','w','e','i','r','d',' ','b','e','h','a','v','i','o','r',',',' ','s','i','t',' ','a','n','d',' ','h','a','v','e',' ','f','u','n',' ','a','s',' ','t','h','i','s',' ','i','s',' ','o','v','e','r','w','r','i','t','t','e','n','!',0x0d,0x0a,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-const char responseReady[7] = {'R','e','a','d','y',0x0d,0x0a};
 const char endUpdate[2] = {'E',0};
 const char versionResponse[1] = {'V'};
 const char certificateDone[2] = {'I',0};
@@ -118,6 +130,15 @@ const char responseOTAFW[2] = {'U',0};
 const char responseOTASPIFF[2] = {'u',0};
 const char responseRadioOnTimeout[2] = {'T',0};
 const char radioOffResponse[2] = {'O',0};
+const char advance[8][9] = {{'.',' ',' ',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.','.',' ',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.','.','.',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.','.','.','.',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.','.','.',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.','.',' ',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'.',' ',' ',' ',0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {' ',' ',' ',' ',0x1d,0x1d,0x1d,0x1d,0x00}};
+const char aDone[6] = {' ',' ',' ',' ',0x0d,0x00};
 const char responseReady2[7] = {'R','e','a','d','y',0x0d,0x0a};
 
 const char strUsage[] = "Usage: CFG8266 /s to scan networks and choose one to connect\r\n\n"
@@ -130,10 +151,8 @@ const char strUsage[] = "Usage: CFG8266 /s to scan networks and choose one to co
                         "       CFG8266 /t TIM to change the inactivity time in seconds to disable radio"
                         "               0-600 (0 means never disable)\r\n"
                         "Ex.:   CFG8266 /u 192.168.31.1 80 /fw/fw.bin";
+const char chFiller2[128] = {'C','F','G','8','2','6','6',' ','Y','o','u',' ','h','a','v','e',' ','a',' ','g','o','o','d',' ','t','i','m','e',' ','r','e','a','d','i','n','g',' ','t','h','i','s',' ','t','a','l','e',' ','o','f',' ','a','n',' ','w','e','i','r','d',' ','b','e','h','a','v','i','o','r',',',' ','s','i','t',' ','a','n','d',' ','h','a','v','e',' ','f','u','n',' ','a','s',' ','t','h','i','s',' ','i','s',' ','o','v','e','r','w','r','i','t','t','e','n','!',0x0d,0x0a,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 unsigned char ucScan;
-unsigned char ucServer[300];
-unsigned char ucFile[300];
-unsigned char ucPort[6];
 unsigned int uiPort;
 long lPort;
 unsigned char ucLocalUpdate;

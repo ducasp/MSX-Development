@@ -168,7 +168,6 @@ void PrintImplementationName()
 int main (char** argv, int argc)
 {
     unsigned int Time0,Time1,TimeOut,TimeLeap;
-    unsigned char advance[3] = {'-','+','*'};
 
     TickCount = 0;
 
@@ -192,7 +191,7 @@ int main (char** argv, int argc)
         print(strPresentation);
 
     i = UnapiGetCount("TCP/IP");
-    if(i==0)
+    if (i==0)
     {
         print("No TCP/IP UNAPI implementations found\r\n\n");
         return 1;
@@ -228,9 +227,12 @@ int main (char** argv, int argc)
         // Our nice animation to show we are not stuck
         if (TickCount>Time0)
         {
-            Time0 = TickCount + 10;
-            printChar(advance[i%3]); // next char
-            printChar(29); // move left a char
+            // 1000/60*9 = 150ms per frame
+            Time0 = TickCount + 9;
+            if (i%4==0) print("|   \x1d\x1d\x1d\x1d");
+            if (i%4==1) print("|)  \x1d\x1d\x1d\x1d");
+            if (i%4==2) print("|)) \x1d\x1d\x1d\x1d");
+            if (i%4==3) print("|)))\x1d\x1d\x1d\x1d");
             ++i;
         }
         // Check Connection

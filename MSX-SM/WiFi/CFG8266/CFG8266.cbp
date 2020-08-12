@@ -15,7 +15,7 @@
 					<Add option="--out-fmt-ihx" />
 					<Add option="--no-std-crt0" />
 					<Add option="-mz80" />
-					<Add option="--opt-code-size" />
+					<Add option="--opt-code-speed" />
 					<Add option="--code-loc 0x180 --data-loc 0x0 --disable-warning 196" />
 					<Add directory="c:/fusion-c/fusion-c/header" />
 				</Compiler>
