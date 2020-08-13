@@ -392,24 +392,12 @@ _radioOffResponse:
 	.db #0x00	; 0
 _advance:
 	.db #0x5b	; 91
-	.db #0x2d	; 45
-	.db #0x3e	; 62
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x5d	; 93
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x00	; 0
-	.db #0x5b	; 91
-	.db #0x20	; 32
-	.db #0x2d	; 45
-	.db #0x3e	; 62
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x5d	; 93
@@ -423,69 +411,12 @@ _advance:
 	.db #0x00	; 0
 	.db #0x5b	; 91
 	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x2d	; 45
-	.db #0x3e	; 62
-	.db #0x20	; 32
-	.db #0x5d	; 93
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x00	; 0
-	.db #0x5b	; 91
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x2d	; 45
-	.db #0x3e	; 62
-	.db #0x5d	; 93
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x00	; 0
-	.db #0x5b	; 91
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x3c	; 60
-	.db #0x5d	; 93
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x00	; 0
-	.db #0x5b	; 91
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x3c	; 60
-	.db #0x2d	; 45
-	.db #0x5d	; 93
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x1d	; 29
-	.db #0x00	; 0
-	.db #0x5b	; 91
-	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x3c	; 60
-	.db #0x2d	; 45
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x20	; 32
 	.db #0x5d	; 93
 	.db #0x1d	; 29
@@ -498,10 +429,13 @@ _advance:
 	.db #0x00	; 0
 	.db #0x5b	; 91
 	.db #0x20	; 32
-	.db #0x3c	; 60
-	.db #0x2d	; 45
 	.db #0x20	; 32
-	.db #0x20	; 32
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x5d	; 93
 	.db #0x1d	; 29
 	.db #0x1d	; 29
@@ -512,11 +446,14 @@ _advance:
 	.db #0x1d	; 29
 	.db #0x00	; 0
 	.db #0x5b	; 91
-	.db #0x3c	; 60
-	.db #0x2d	; 45
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x20	; 32
 	.db #0x20	; 32
-	.db #0x20	; 32
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x5d	; 93
 	.db #0x1d	; 29
 	.db #0x1d	; 29
@@ -527,11 +464,14 @@ _advance:
 	.db #0x1d	; 29
 	.db #0x00	; 0
 	.db #0x5b	; 91
-	.db #0x3e	; 62
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x20	; 32
 	.db #0x20	; 32
-	.db #0x20	; 32
-	.db #0x20	; 32
+	.db #0x01	; 1
+	.db #0x57	; 87	'W'
 	.db #0x5d	; 93
 	.db #0x1d	; 29
 	.db #0x1d	; 29
@@ -560,44 +500,51 @@ _responseReady2:
 	.db #0x0d	; 13
 	.db #0x0a	; 10
 _strUsage:
-	.ascii "Usage: CFG8266 /s to scan networks and choose one to connect"
+	.ascii "Usage:  CFG8266 [options]"
 	.db 0x0d
 	.db 0x0a
 	.db 0x0a
-	.ascii "       CFG8266 /n to turn off Nagle Algorithm (default) or /"
-	.ascii "m to turn it on"
+	.ascii " /s  to scan networks and choose one to connect"
+	.db 0x0d
+	.db 0x0a
+	.ascii " /m  to turn on Nagle Algorithm"
+	.db 0x0d
+	.db 0x0a
+	.ascii " /n  to turn off Nagle Algorithm (default)"
+	.db 0x0d
+	.db 0x0a
+	.ascii " /o  to turn off radio now if no connections are open"
 	.db 0x0d
 	.db 0x0a
 	.db 0x0a
-	.ascii "       CFG8266 /o to turn off radio now if no connections ar"
-	.ascii "e open"
+	.ascii " FW.BIN       to update ESP8266 firmware locally"
+	.db 0x0d
+	.db 0x0a
+	.ascii " CERT.BIN /c  to update TLS certificates locally"
 	.db 0x0d
 	.db 0x0a
 	.db 0x0a
-	.ascii "       CFG8266 CERTFILE /c to update ESP8266 firmware locall"
+	.ascii " /u SERVER PORT FILEPATH  to update ESP8266 firmware remotel"
+	.ascii "y"
+	.db 0x0d
+	.db 0x0a
+	.ascii " /c SERVER PORT FILEPATH  to update TLS certificates remotel"
 	.ascii "y"
 	.db 0x0d
 	.db 0x0a
 	.db 0x0a
-	.ascii "       CFG8266 FWFILE to update ESP8266 firmware locally"
+	.ascii " /t TIME  to change the inactivity time in seconds to disabl"
+	.ascii "e radio"
+	.db 0x0d
+	.db 0x0a
+	.ascii "          time range is 0-600 seconds (0 means never disable"
+	.ascii ")"
 	.db 0x0d
 	.db 0x0a
 	.db 0x0a
-	.ascii "       CFG8266 /u SERVER PORT FILEPATH to update ESP8266 fir"
-	.ascii "mware remotely"
+	.ascii "Example:  CFG8266 /u 192.168.31.1 80 /fw/fw.bin"
 	.db 0x0d
 	.db 0x0a
-	.db 0x0a
-	.ascii "       CFG8266 /c SERVER PORT FILEPATH to update TLS certifi"
-	.ascii "cates remotely"
-	.db 0x0d
-	.db 0x0a
-	.ascii "       CFG8266 /t TIM to change the inactivity time in secon"
-	.ascii "ds to disable radio               0-600 (0 means never disab"
-	.ascii "le)"
-	.db 0x0d
-	.db 0x0a
-	.ascii "Ex.:   CFG8266 /u 192.168.31.1 80 /fw/fw.bin"
 	.db 0x00
 _chFiller2:
 	.db #0x43	; 67	'C'
@@ -1580,8 +1527,8 @@ _WaitForRXData::
 	ld	a, 1 (iy)
 	adc	a, #0x00
 	ld	-14 (ix), a
-;src\CFG8266.c:244: printf("%s",advance[i%10]); // next char
-	ld	hl, #0x000a
+;src\CFG8266.c:244: printf("%s",advance[i%5]); // next char
+	ld	hl, #0x0005
 	push	hl
 	ld	l, -2 (ix)
 	ld	h, -1 (ix)
@@ -1594,11 +1541,10 @@ _WaitForRXData::
 	ld	c,l
 	ld	b,h
 	add	hl, hl
-	add	hl, bc
+	add	hl, hl
 	add	hl, hl
 	add	hl, bc
 	add	hl, hl
-	add	hl, bc
 	ex	(sp), hl
 	ld	a, #<(_advance)
 	add	a, -18 (ix)
@@ -4349,8 +4295,8 @@ _main::
 	ld	-4 (ix), #0x09
 	xor	a, a
 	ld	-3 (ix), a
-;src\CFG8266.c:822: printf("%s",advance[i%10]); // next animation step
-	ld	hl, #0x000a
+;src\CFG8266.c:822: printf("%s",advance[i%5]); // next animation step
+	ld	hl, #0x0005
 	push	hl
 	ld	l, -2 (ix)
 	ld	h, -1 (ix)
@@ -4361,11 +4307,10 @@ _main::
 	ld	c, l
 	ld	b, h
 	add	hl, hl
-	add	hl, bc
+	add	hl, hl
 	add	hl, hl
 	add	hl, bc
 	add	hl, hl
-	add	hl, bc
 	ld	de, #_advance
 	add	hl, de
 	push	hl

@@ -12,104 +12,104 @@ Symbol Table
     _Cls                                                           **** GX
   0 _Done_Version                                                  0069 R
     _DosCall                                                       **** GX
-  0 _FinishUpdate                                                  0C1B GR
+  0 _FinishUpdate                                                  0BBB GR
     _Inkey                                                         **** GX
     _InputString                                                   **** GX
-  0 _IsValidInput                                                  04E3 GR
+  0 _IsValidInput                                                  0484 GR
   0 _MyRead                                                        0000 GR
     _Open                                                          **** GX
     _Print                                                         **** GX
     _TickCount                                                  =  FC9E G
-  0 _TxByte                                                        07AE GR
-  0 _WaitForRXData                                                 092A GR
-  0 ___str_10                                                      0BFA R
-  0 ___str_100                                                     275E R
-  0 ___str_101                                                     2772 R
-  0 ___str_102                                                     278B R
-  0 ___str_103                                                     27A9 R
-  0 ___str_104                                                     27C1 R
-  0 ___str_105                                                     27DE R
-  0 ___str_106                                                     27F3 R
-  0 ___str_107                                                     27FE R
-  0 ___str_108                                                     2809 R
-  0 ___str_109                                                     2814 R
-  0 ___str_11                                                      0BFF R
-  0 ___str_110                                                     281F R
-  0 ___str_111                                                     2829 R
-  0 ___str_112                                                     2833 R
-  0 ___str_113                                                     283D R
-  0 ___str_114                                                     2847 R
-  0 ___str_115                                                     2850 R
-  0 ___str_13                                                      0D96 R
-  0 ___str_15                                                      0DC9 R
-  0 ___str_17                                                      0DEC R
-  0 ___str_19                                                      0E1F R
-  0 ___str_2                                                       0BCE R
-  0 ___str_21                                                      0E56 R
-  0 ___str_23                                                      0E92 R
-  0 ___str_25                                                      0EBA R
-  0 ___str_27                                                      0EF4 R
-  0 ___str_29                                                      0F1A R
-  0 ___str_3                                                       0BDC R
-  0 ___str_31                                                      21C9 R
-  0 ___str_32                                                      2230 R
-  0 ___str_33                                                      2240 R
-  0 ___str_34                                                      2254 R
-  0 ___str_36                                                      227C R
-  0 ___str_38                                                      229B R
-  0 ___str_39                                                      229D R
+  0 _TxByte                                                        074F GR
+  0 _WaitForRXData                                                 08CB GR
+  0 ___str_10                                                      0B9A R
+  0 ___str_100                                                     26FD R
+  0 ___str_101                                                     2711 R
+  0 ___str_102                                                     272A R
+  0 ___str_103                                                     2748 R
+  0 ___str_104                                                     2760 R
+  0 ___str_105                                                     277D R
+  0 ___str_106                                                     2792 R
+  0 ___str_107                                                     279D R
+  0 ___str_108                                                     27A8 R
+  0 ___str_109                                                     27B3 R
+  0 ___str_11                                                      0B9F R
+  0 ___str_110                                                     27BE R
+  0 ___str_111                                                     27C8 R
+  0 ___str_112                                                     27D2 R
+  0 ___str_113                                                     27DC R
+  0 ___str_114                                                     27E6 R
+  0 ___str_115                                                     27EF R
+  0 ___str_13                                                      0D36 R
+  0 ___str_15                                                      0D69 R
+  0 ___str_17                                                      0D8C R
+  0 ___str_19                                                      0DBF R
+  0 ___str_2                                                       0B6E R
+  0 ___str_21                                                      0DF6 R
+  0 ___str_23                                                      0E32 R
+  0 ___str_25                                                      0E5A R
+  0 ___str_27                                                      0E94 R
+  0 ___str_29                                                      0EBA R
+  0 ___str_3                                                       0B7C R
+  0 ___str_31                                                      2168 R
+  0 ___str_32                                                      21CF R
+  0 ___str_33                                                      21DF R
+  0 ___str_34                                                      21F3 R
+  0 ___str_36                                                      221B R
+  0 ___str_38                                                      223A R
+  0 ___str_39                                                      223C R
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 2.
 Hexadecimal [16-Bits]
 
 Symbol Table
 
-  0 ___str_4                                                       0BDF R
-  0 ___str_41                                                      22A5 R
-  0 ___str_42                                                      22B2 R
-  0 ___str_44                                                      22BA R
-  0 ___str_46                                                      22C2 R
-  0 ___str_47                                                      22CB R
-  0 ___str_48                                                      2302 R
-  0 ___str_49                                                      2325 R
-  0 ___str_5                                                       0BE3 R
-  0 ___str_50                                                      232C R
-  0 ___str_52                                                      2337 R
-  0 ___str_54                                                      234C R
-  0 ___str_56                                                      2370 R
-  0 ___str_58                                                      2388 R
-  0 ___str_62                                                      23B6 R
-  0 ___str_64                                                      23D5 R
-  0 ___str_66                                                      23F3 R
-  0 ___str_68                                                      2410 R
-  0 ___str_7                                                       0BE8 R
-  0 ___str_70                                                      242C R
-  0 ___str_72                                                      2451 R
-  0 ___str_74                                                      2478 R
-  0 ___str_76                                                      24A0 R
-  0 ___str_78                                                      24CE R
-  0 ___str_79                                                      24F7 R
-  0 ___str_8                                                       0BEA R
-  0 ___str_81                                                      250C R
-  0 ___str_82                                                      2538 R
-  0 ___str_84                                                      253B R
-  0 ___str_86                                                      2553 R
-  0 ___str_87                                                      257F R
-  0 ___str_88                                                      259F R
-  0 ___str_89                                                      25BD R
-  0 ___str_9                                                       0BED R
-  0 ___str_90                                                      25DC R
-  0 ___str_91                                                      2645 R
-  0 ___str_93                                                      26B8 R
-  0 ___str_95                                                      26D9 R
-  0 ___str_97                                                      271C R
-  0 ___str_99                                                      2745 R
+  0 ___str_4                                                       0B7F R
+  0 ___str_41                                                      2244 R
+  0 ___str_42                                                      2251 R
+  0 ___str_44                                                      2259 R
+  0 ___str_46                                                      2261 R
+  0 ___str_47                                                      226A R
+  0 ___str_48                                                      22A1 R
+  0 ___str_49                                                      22C4 R
+  0 ___str_5                                                       0B83 R
+  0 ___str_50                                                      22CB R
+  0 ___str_52                                                      22D6 R
+  0 ___str_54                                                      22EB R
+  0 ___str_56                                                      230F R
+  0 ___str_58                                                      2327 R
+  0 ___str_62                                                      2355 R
+  0 ___str_64                                                      2374 R
+  0 ___str_66                                                      2392 R
+  0 ___str_68                                                      23AF R
+  0 ___str_7                                                       0B88 R
+  0 ___str_70                                                      23CB R
+  0 ___str_72                                                      23F0 R
+  0 ___str_74                                                      2417 R
+  0 ___str_76                                                      243F R
+  0 ___str_78                                                      246D R
+  0 ___str_79                                                      2496 R
+  0 ___str_8                                                       0B8A R
+  0 ___str_81                                                      24AB R
+  0 ___str_82                                                      24D7 R
+  0 ___str_84                                                      24DA R
+  0 ___str_86                                                      24F2 R
+  0 ___str_87                                                      251E R
+  0 ___str_88                                                      253E R
+  0 ___str_89                                                      255C R
+  0 ___str_9                                                       0B8D R
+  0 ___str_90                                                      257B R
+  0 ___str_91                                                      25E4 R
+  0 ___str_93                                                      2657 R
+  0 ___str_95                                                      2678 R
+  0 ___str_97                                                      26BB R
+  0 ___str_99                                                      26E4 R
     __divulong                                                     **** GX
     __modsint                                                      **** GX
     __moduint                                                      **** GX
     __mullong                                                      **** GX
   7 __xinit__speedStr                                              000C R
   7 __xinit__strAPSts                                              0000 R
-  0 _aDone                                                         01C3 GR
+  0 _aDone                                                         0187 GR
   0 _advance                                                       012D GR
   0 _apconfigurationResponse                                       011A GR
   0 _apstsResponse                                                 011C GR
@@ -117,7 +117,7 @@ Symbol Table
     _atol                                                          **** GX
   0 _certificateDone                                               010C GR
   0 _chFiller                                                      0089 GR
-  0 _chFiller2                                                     0463 GR
+  0 _chFiller2                                                     0404 GR
 ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 3.
 Hexadecimal [16-Bits]
 
@@ -125,7 +125,7 @@ Symbol Table
 
   0 _endUpdate                                                     0109 GR
   1 _lPort                                                         0003 GR
-  0 _main                                                          0F2A GR
+  0 _main                                                          0ECA GR
     _myPort6                                                    =  0006 
     _myPort7                                                    =  0007 
   0 _nagleoffResponse                                              0116 GR
@@ -139,14 +139,14 @@ Symbol Table
   0 _responseRSCERTUpdate                                          0121 GR
   0 _responseRSFWUpdate                                            011F GR
   0 _responseRadioOnTimeout                                        0129 GR
-  0 _responseReady2                                                01CC GR
+  0 _responseReady2                                                0190 GR
   0 _responseWRBlock                                               0123 GR
   0 _scanResponse                                                  0110 GR
   0 _scanresNoNetwork                                              0112 GR
   0 _scanresResponse                                               0118 GR
   2 _speedStr                                                      000C GR
   2 _strAPSts                                                      0000 GR
-  0 _strUsage                                                      01D3 GR
+  0 _strUsage                                                      0197 GR
     _strlen                                                        **** GX
   1 _ucIsFw                                                        0008 GR
   1 _ucLocalUpdate                                                 0007 GR
@@ -157,7 +157,7 @@ Symbol Table
   1 _ucSetTimeout                                                  000C GR
   1 _uiPort                                                        0001 GR
   1 _uiTimeout                                                     000D GR
-  0 _ultostr                                                       07BC GR
+  0 _ultostr                                                       075D GR
   0 _versionResponse                                               010B GR
 
 
@@ -166,7 +166,7 @@ Hexadecimal [16-Bits]
 
 Area Table
 
-   0 _CODE                                      size 2859   flags    0
+   0 _CODE                                      size 27F8   flags    0
    1 _DATA                                      size    F   flags    0
    2 _INITIALIZED                               size   20   flags    0
    3 _DABS                                      size    0   flags    8

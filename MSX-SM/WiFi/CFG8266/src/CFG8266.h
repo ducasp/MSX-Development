@@ -130,29 +130,26 @@ const char responseOTAFW[2] = {'U',0};
 const char responseOTASPIFF[2] = {'u',0};
 const char responseRadioOnTimeout[2] = {'T',0};
 const char radioOffResponse[2] = {'O',0};
-const char advance[10][15]={{'[','-','>',' ',' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ','-','>',' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ',' ','-','>',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ',' ',' ','-','>',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ',' ',' ',' ','<',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ',' ',' ','<','-',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ',' ','<','-',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[',' ','<','-',' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[','<','-',' ',' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
-                            {'[','>',' ',' ',' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00}};
+const char advance[5][18]={{'[',0x01,0x57,0x01,0x57,0x01,0x57,' ',' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'[',' ',0x01,0x57,0x01,0x57,0x01,0x57,' ',']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'[',' ',' ',0x01,0x57,0x01,0x57,0x01,0x57,']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'[',0x01,0x57,' ',' ',0x01,0x57,0x01,0x57,']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00},\
+                            {'[',0x01,0x57,0x01,0x57,' ',' ',0x01,0x57,']',0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x1d,0x00}};
 const char aDone[9] = {' ',' ',' ',' ',' ',' ',' ',0x0d,0x00};
 const char responseReady2[7] = {'R','e','a','d','y',0x0d,0x0a};
 
-const char strUsage[] = "Usage: CFG8266 /s to scan networks and choose one to connect\r\n\n"
-                        "       CFG8266 /n to turn off Nagle Algorithm (default) or /m to turn it on\r\n\n"
-                        "       CFG8266 /o to turn off radio now if no connections are open\r\n\n"
-                        "       CFG8266 CERTFILE /c to update ESP8266 firmware locally\r\n\n"
-                        "       CFG8266 FWFILE to update ESP8266 firmware locally\r\n\n"
-                        "       CFG8266 /u SERVER PORT FILEPATH to update ESP8266 firmware remotely\r\n\n"
-                        "       CFG8266 /c SERVER PORT FILEPATH to update TLS certificates remotely\r\n"
-                        "       CFG8266 /t TIM to change the inactivity time in seconds to disable radio"
-                        "               0-600 (0 means never disable)\r\n"
-                        "Ex.:   CFG8266 /u 192.168.31.1 80 /fw/fw.bin";
+const char strUsage[] = "Usage:  CFG8266 [options]\r\n\n"
+                        " /s  to scan networks and choose one to connect\r\n"
+                        " /m  to turn on Nagle Algorithm\r\n"
+                        " /n  to turn off Nagle Algorithm (default)\r\n"
+                        " /o  to turn off radio now if no connections are open\r\n\n"
+                        " FW.BIN       to update ESP8266 firmware locally\r\n"
+                        " CERT.BIN /c  to update TLS certificates locally\r\n\n"
+                        " /u SERVER PORT FILEPATH  to update ESP8266 firmware remotely\r\n"
+                        " /c SERVER PORT FILEPATH  to update TLS certificates remotely\r\n\n"
+                        " /t TIME  to change the inactivity time in seconds to disable radio\r\n"
+                        "          time range is 0-600 seconds (0 means never disable)\r\n\n"
+                        "Example:  CFG8266 /u 192.168.31.1 80 /fw/fw.bin\r\n";
 const char chFiller2[128] = {'C','F','G','8','2','6','6',' ','Y','o','u',' ','h','a','v','e',' ','a',' ','g','o','o','d',' ','t','i','m','e',' ','r','e','a','d','i','n','g',' ','t','h','i','s',' ','t','a','l','e',' ','o','f',' ','a','n',' ','w','e','i','r','d',' ','b','e','h','a','v','i','o','r',',',' ','s','i','t',' ','a','n','d',' ','h','a','v','e',' ','f','u','n',' ','a','s',' ','t','h','i','s',' ','i','s',' ','o','v','e','r','w','r','i','t','t','e','n','!',0x0d,0x0a,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 unsigned char ucScan;
 unsigned int uiPort;

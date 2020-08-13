@@ -241,7 +241,7 @@ bool WaitForRXData(unsigned char *uchData, unsigned int uiDataSize, unsigned int
             if (TickCount>Timeout1)
             {
                 Timeout1 = TickCount + 9;
-                printf("%s",advance[i%10]); // next char
+                printf("%s",advance[i%5]); // next char
                 ++i;
             }
         }
@@ -819,7 +819,7 @@ int main(char** argv, int argc)
                                         {
                                             uiAnimationTimeOut = 9;
                                             //Our nice animation to show we are not stuck
-                                            printf("%s",advance[i%10]); // next animation step
+                                            printf("%s",advance[i%5]); // next animation step
                                             ++i;
                                         }
                                         if (!ucFirstBlock)
