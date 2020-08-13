@@ -391,79 +391,160 @@ _radioOffResponse:
 	.db #0x4f	; 79	'O'
 	.db #0x00	; 0
 _advance:
-	.db #0x2e	; 46
+	.db #0x5b	; 91
+	.db #0x2d	; 45
+	.db #0x3e	; 62
 	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
-	.db #0x2e	; 46
+	.db #0x5b	; 91
+	.db #0x20	; 32
+	.db #0x2d	; 45
+	.db #0x3e	; 62
 	.db #0x20	; 32
 	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
-	.db #0x2e	; 46
-	.db #0x2e	; 46
+	.db #0x5b	; 91
 	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x2d	; 45
+	.db #0x3e	; 62
+	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
-	.db #0x2e	; 46
-	.db #0x2e	; 46
-	.db #0x2e	; 46
+	.db #0x5b	; 91
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x2d	; 45
+	.db #0x3e	; 62
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
-	.db #0x2e	; 46
-	.db #0x2e	; 46
+	.db #0x5b	; 91
 	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x3c	; 60
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
-	.db #0x2e	; 46
+	.db #0x5b	; 91
 	.db #0x20	; 32
 	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x3c	; 60
+	.db #0x2d	; 45
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
-	.db #0x2e	; 46
+	.db #0x5b	; 91
 	.db #0x20	; 32
 	.db #0x20	; 32
+	.db #0x3c	; 60
+	.db #0x2d	; 45
 	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
+	.db #0x5b	; 91
+	.db #0x20	; 32
+	.db #0x3c	; 60
+	.db #0x2d	; 45
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x00	; 0
+	.db #0x5b	; 91
+	.db #0x3c	; 60
+	.db #0x2d	; 45
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x00	; 0
+	.db #0x5b	; 91
+	.db #0x3e	; 62
 	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x20	; 32
+	.db #0x5d	; 93
+	.db #0x1d	; 29
+	.db #0x1d	; 29
+	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x1d	; 29
 	.db #0x00	; 0
 _aDone:
+	.db #0x20	; 32
+	.db #0x20	; 32
+	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x20	; 32
 	.db #0x20	; 32
@@ -1499,17 +1580,23 @@ _WaitForRXData::
 	ld	a, 1 (iy)
 	adc	a, #0x00
 	ld	-14 (ix), a
-;src\CFG8266.c:244: printf("%s",advance[i%8]); // next char
-	ld	a, -2 (ix)
-	and	a, #0x07
-	ld	-8 (ix), a
-	ld	-7 (ix), #0x00
-	ld	c, a
-	ld	b, #0x00
-	ld	l, c
-	ld	h, b
+;src\CFG8266.c:244: printf("%s",advance[i%10]); // next char
+	ld	hl, #0x000a
+	push	hl
+	ld	l, -2 (ix)
+	ld	h, -1 (ix)
+	push	hl
+	call	__moduint
+	pop	af
+	pop	af
+	ld	-8 (ix), l
+	ld	-7 (ix), h
+	ld	c,l
+	ld	b,h
 	add	hl, hl
+	add	hl, bc
 	add	hl, hl
+	add	hl, bc
 	add	hl, hl
 	add	hl, bc
 	ex	(sp), hl
@@ -4262,15 +4349,21 @@ _main::
 	ld	-4 (ix), #0x09
 	xor	a, a
 	ld	-3 (ix), a
-;src\CFG8266.c:822: printf("%s",advance[i%8]); // next animation step
-	ld	a, -2 (ix)
-	and	a, #0x07
-	ld	c, a
-	ld	b, #0x00
-	ld	l, c
-	ld	h, b
+;src\CFG8266.c:822: printf("%s",advance[i%10]); // next animation step
+	ld	hl, #0x000a
+	push	hl
+	ld	l, -2 (ix)
+	ld	h, -1 (ix)
+	push	hl
+	call	__moduint
+	pop	af
+	pop	af
+	ld	c, l
+	ld	b, h
 	add	hl, hl
+	add	hl, bc
 	add	hl, hl
+	add	hl, bc
 	add	hl, hl
 	add	hl, bc
 	ld	de, #_advance
