@@ -61,7 +61,7 @@ unsigned char InitializeTCPIP ()
     if (FossilTest()!=0)
     {
         Fossil_SetBaud(9);
-        Fossil_SetProtocol(11);
+        Fossil_SetProtocol(7); //8N1
         // Fossil_FastInt(0);
         Fossil_Init();
         TxUnsafeData(0x50,modem_atz,5);

@@ -44,7 +44,13 @@
 #include "print.h"
 
 //X and YMODEM Vars
+#ifdef AO_FOSSIL_ADAPTER
+#define RcvPktSize 2200
+unsigned char RcvPkt[RcvPktSize];
+#else
 __at 0x8500 unsigned char RcvPkt[]; //make sure it works in your map file, need to be in 0x8000 and beyond
+#endif // AO_FOSSIL_ADAPTER
+
 unsigned char filename[20];
 //Indicates G-Modem transfer in progress
 unsigned char G;

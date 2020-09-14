@@ -1,6 +1,15 @@
-# TELNET v1.32
+# TELNET v1.33
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v1.33
+	- Farewell GZip, thanks for being with us in v1.32, time to rest friend!
+	- Incorporate revision 1.7 of MSX2ANSI library, this will work around the
+	  issue created by Synchronet team that decided it is cool to send XTerm
+	  specific scape codes to terminals that report to be ANSI only
+	- First release of a version that work with Zimodem ESP8266 firmware on
+	  Andrés Ortiz BadCat WiFi modem (it is not UNAPI based, it is working
+	  with FOSSIL driver), to use with it use TELNETF instead of TELNET
 
 # CHANGELOG v1.32 - GZip Edition
 	- New version of MSX2ANSI library with better compatibility with nCurses
