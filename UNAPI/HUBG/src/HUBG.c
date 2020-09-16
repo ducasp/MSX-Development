@@ -2,7 +2,7 @@
 --
 -- HUBG.c
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.72
+--   Revision 0.80
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -200,6 +200,8 @@ void uninstall(char *package)
     int n, m;
     char c;
     int bytes_read;
+    char undeleted_directories[5][MAX_PATH_SIZE];
+    char undeleted_directories_count = 0;
 
     //Delete status Windows
     AnsiPrint(chClearBothStatusWindows);
@@ -254,7 +256,12 @@ void uninstall(char *package)
                         // Directory not empty. Continue
                         AnsiPrint("\x1b[1;37m\x1b[23;4HWARNING: Directory ");
                         AnsiPrint(chTextLine);
-                        AnsiPrint(" not empty. Keeping it.\x1b[K\x1b[23;80H\x1b[0;31m\xba");
+                        AnsiPrint(" not empty. Will retry later.\x1b[K\x1b[23;80H\x1b[0;31m\xba");
+                        if (undeleted_directories_count<5)
+                        {
+                            strcpy(undeleted_directories[undeleted_directories_count], chTextLine);
+                            ++undeleted_directories_count;
+                        }
                     }
                     else
                     {
@@ -273,6 +280,18 @@ void uninstall(char *package)
     }
 
     dos_close(fp);
+
+    if (undeleted_directories_count)
+    {
+        for (n=0;n<undeleted_directories_count;++n)
+        {
+            c = delete_file(undeleted_directories[n]);
+            if (c == 0xD0)
+            { // Directory not empty yet
+                printf("WARNING: Directory %s not empty. Not deleting it...\r\n", undeleted_directories[n]);
+            }
+        }
+    }
 
     // Remove file in idb
     strcpy(buffer, configpath);
@@ -1047,10 +1066,8 @@ void HTTPStatusUpdate (bool isChunked)
                     sprintf (strBarUpdate,"\x1b[1;32;40m\x1b[23;48H%s KB",ltoa(FileSize,sizeASCII));
                 }
                 else
-                {
-                    ltoa(FileSize,sizeASCII);
                     sprintf (strBarUpdate,"\x1b[1;32;40m\x1b[23;48H%s B",ltoa(FileSize,sizeASCII));
-                }
+
                 AnsiPrint(strBarUpdate);
             }
             BarPosition = 21;
@@ -1114,7 +1131,7 @@ int main(char** argv, int argc)
     }
 
     // Allocate memory for HGET on page 2 so it won't conflict with memory page swapping
-    if (hgetinit(0xC000) != ERR_TCPIPUNAPI_OK)
+    if (hgetinit(HI_MEMBLOCK_START) != ERR_TCPIPUNAPI_OK)
     {
         printf ("Sorry, HUBG requires an working TCP-IP UNAPI interface...\r\n");
         //restore cursor status

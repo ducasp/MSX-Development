@@ -2,15 +2,23 @@
 
  HGETLIB.h
    Header for HGET.c application interface
-   Revision 0.3
+   Revision 0.4
 
-        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.3
+        Oduvaldo Pavan Junior 09/2020 v0.1 - 0.4
 
    Based on HGET Unapi Utility that is a work from:
         Konamiman 1/2011 v1.1
         Oduvaldo Pavan Junior 07/2019 v1.3
 
    HGET Library history:
+   Version 0.4 - some Internet Service Providers have a heavy hand on open
+     connections, so a keep-alive connection might be terminated by the ISP
+     (not the server) if it is idle for a while after the last GET request was
+     serviced. ISP's shouldn't be doing that, but hey, this is life, and we
+     need to live with it, so if a new request comes and it fails and the
+     connection was being kept alive, will just ignore keep alive and treat as
+     a regular connection
+
    Version 0.3 - re-organized code and changed the way code was calling
    Terminate a lot
 

@@ -2,7 +2,7 @@
 --
 -- HUBG.h
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.72
+--   Revision 0.80
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -68,6 +68,9 @@
 #define MAX_LOCAL_PACK_LIST_ITENS 10
 #define MAX_REMOTE_GROUP_ITENS 9
 
+//Where we will allocate memory for hget and other processes
+#define HI_MEMBLOCK_START 0xC000
+
 // Main menu is driven by a state-machine, those are the states
 enum HubGStates {
     STATE_IDLE_LOCAL = 0,
@@ -108,7 +111,7 @@ typedef struct {
 } groups_package;
 
 //Title when installing the first time
-const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.72 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.80 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 
 //Those are not re-usable, they carry configuration for the whole time program is running
 char hubdrive; //Drive HUB is running

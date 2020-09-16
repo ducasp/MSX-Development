@@ -30,6 +30,7 @@
 				<ExtraCommands>
 					<Add after="cmd /c ren bin\Release\HUBG.exe HUBG.ihx" />
 					<Add after="cmd /c c:\fusion-c\hex2bin -e com bin\Release\HUBG.ihx" />
+					<Add after="cmd /c copy bin\Release\HUBG.com c:\fusion-c\dsk" />
 				</ExtraCommands>
 			</Target>
 		</Build>

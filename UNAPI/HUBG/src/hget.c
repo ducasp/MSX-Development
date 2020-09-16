@@ -1,11 +1,26 @@
-/* HTTP getter Library 0.2
-        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
+/* HTTP getter Library 0.4
+        Oduvaldo Pavan Junior 09/2020 v0.1 - 0.4
 
    Based on HGET Unapi Utility that is a work from:
         Konamiman 1/2011 v1.1
         Oduvaldo Pavan Junior 07/2019 v1.3
 
    HGET Library history:
+   Version 0.4 -
+   - Some Internet Service Providers have a heavy hand on open connections, so
+     a keep-alive connection might be terminated by the ISP (not the server) if
+     it is idle for a while after the last GET request was serviced. ISP's
+     shouldn't be doing that, but hey, this is life, and we need to live with
+     it, so if a new request comes and it fails and the connection was being
+     kept alive, will just ignore keep alive and treat as a regular connection
+   Version 0.3 -
+   - re-organized code and changed the way code was calling Terminate a lot
+   - changed a few loops for tick and sequence for TcpIpBreath, this boosts a
+     little performance for OBSONET
+   - as this lib do not support resuming failed transfers, added pre-allocation
+     of the entire file prior to writing when file size is known. This gives
+     quite a boost on performance with a few disk adapters
+
    Version 0.2 - making code cleaner and trying to keep Konamiman style, also
    adding basic support to keep-alive connections, also, agent is defined in
    hgetlib.h so each application can define it own by changing it.
@@ -44,37 +59,45 @@
 */
 #include "hget.h"
 
+
 int hgetinit (unsigned int addressforbuffer)
 {
-    hasinitialized = false;
-    thereisacallback = false;
-    thereisasavecallback = false;
-    unsigned int bufferSize = sizeof(t_TcpConnectionParameters) + sizeof(unapi_code_block) + 0x200 + TCP_BUFFER_SIZE;
+    if (!hasinitialized)
+    {
+        continue_using_keep_alive = 1;
+        conn = 0;
+        fileHandle = 0;
+        hasinitialized = false;
+        thereisacallback = false;
+        thereisasavecallback = false;
+        unsigned int bufferSize = sizeof(t_TcpConnectionParameters) + sizeof(unapi_code_block) + 0x200 + TCP_BUFFER_SIZE;
 #ifdef USE_TLS
-    TlsIsSupported = false;
-    useHttps = false;
+        TlsIsSupported = false;
+        useHttps = false;
 #endif
-    tryKeepAlive = false;
+        tryKeepAlive = false;
 
-    //InitializeBufferPointers - We need room for our data from the beginning of addressforbuffer
-    //And that data MUST NOT be in page 1, that means, 0x4000 to 0x7FFF, as this is where UNAPI
-    //device code resides and calls to UNAPI will switch that page
-    if ((addressforbuffer>=0x8000)||((addressforbuffer+bufferSize)<0x4000)) {
-        TcpConnectionParameters = (t_TcpConnectionParameters*)addressforbuffer; // 69
-        domainName = (char*)((unsigned int)TcpConnectionParameters + sizeof(t_TcpConnectionParameters)); // 512
-        codeBlock = (unapi_code_block*)((unsigned int)domainName + 0x200); // 24
-        TcpInputData = (byte*)((unsigned int)codeBlock + sizeof(unapi_code_block)); //TCP_BUFFER_SIZE -> 1024
+        //InitializeBufferPointers - We need room for our data from the beginning of addressforbuffer
+        //And that data MUST NOT be in page 1, that means, 0x4000 to 0x7FFF, as this is where UNAPI
+        //device code resides and calls to UNAPI will switch that page
+        if ((addressforbuffer>=0x8000)||((addressforbuffer+bufferSize)<0x4000)) {
+            TcpConnectionParameters = (t_TcpConnectionParameters*)addressforbuffer;
+            domainName = (char*)((unsigned int)TcpConnectionParameters + sizeof(t_TcpConnectionParameters));
+            codeBlock = (unapi_code_block*)((unsigned int)domainName + 0x200);
+            TcpInputData = (byte*)((unsigned int)codeBlock + sizeof(unapi_code_block));
 
-        if (!InitializeTcpipUnapi())
-            return ERR_TCPIPUNAPI_NOTFOUND;
-        if (!CheckTcpipCapabilities())
-            return ERR_TCPIPUNAPI_NOT_TCPIP_CAPABLE;
+            if (!InitializeTcpipUnapi())
+                return ERR_TCPIPUNAPI_NOTFOUND;
+            if (!CheckTcpipCapabilities())
+                return ERR_TCPIPUNAPI_NOT_TCPIP_CAPABLE;
 
-        hasinitialized = true;
-        return ERR_TCPIPUNAPI_OK;
-    } else
-        return ERR_HGET_INVALID_BUFFER;
-
+            hasinitialized = true;
+            return ERR_TCPIPUNAPI_OK;
+        } else
+            return ERR_HGET_INVALID_BUFFER;
+    }
+    else
+        return ERR_HGET_ALREADY_INITIALIZED;
 }
 
 
@@ -88,6 +111,8 @@ void hgetfinish (void)
         CloseLocalFile();
     }
 }
+
+
 #ifdef USE_TLS
 int hget (char* url, char* filename, char* credent, int progress_callback, bool checkcertificateifssl, bool checkhostnameifssl, char *rcvbuffer, unsigned int *rcvbuffersize, int data_write_callback, int content_size_callback, bool enableKeepAlive)
 #else
@@ -132,9 +157,9 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
     } else
         thereisasizecallback = false;
 
-    tryKeepAlive = enableKeepAlive;
+    tryKeepAlive = enableKeepAlive & continue_using_keep_alive;
 
-    //did the previous operation asked to keep connection alive?
+    //did the previous operation requested to keep connection alive?
     if (!keepingConnectionAlive) {
         *domainName = '\0';
         funcret = ProcessUrl(url, 0);
@@ -154,13 +179,21 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
         }
     }
 
-    if (!CheckNetworkConnection())
+    if (!CheckNetworkConnection()) {
+        if (keepingConnectionAlive)
+        {
+            tryKeepAlive = false;
+            TerminateConnection();
+        }
         return ERR_TCPIPUNAPI_NO_CONNECTION;
+    }
 
     funcret = DoHttpWork(rcvbuffer, rcvbuffersize);
 
-    if (funcret == ERR_TCPIPUNAPI_OK)
-        Terminate();
+    if (funcret != ERR_TCPIPUNAPI_OK)
+        tryKeepAlive = false;
+
+    TerminateConnection();
 
     return funcret;
 }
@@ -169,8 +202,8 @@ int hget (char* url, char* filename, char* credent, int progress_callback, char 
 /****************************
  ***  FUNCTIONS are here  ***
  ****************************/
-
-void Terminate()
+/* Functions Related to HTTP Handling */
+void TerminateConnection()
 {
     if (!tryKeepAlive) {
         CloseTcpConnection();
@@ -178,52 +211,6 @@ void Terminate()
     }
     else
         keepingConnectionAlive = true;
-    CloseLocalFile();
-}
-
-
-bool InitializeTcpipUnapi()
-{
-    int i;
-    i = UnapiGetCount("TCP/IP");
-    if(i==0)
-        return false;
-    UnapiBuildCodeBlock(NULL, 1, codeBlock);
-    reg.Bytes.B = 0;
-    UnapiCall(codeBlock, TCPIP_TCP_ABORT, &reg, REGS_MAIN, REGS_MAIN);
-    TcpConnectionParameters->remotePort = HTTP_DEFAULT_PORT;
-    TcpConnectionParameters->localPort = 0xFFFF;
-    TcpConnectionParameters->userTimeout = 0;
-    TcpConnectionParameters->flags = 0;
-    return true;
-}
-
-
-bool CheckTcpipCapabilities()
-{
-    reg.Bytes.B = 1;
-    UnapiCall(codeBlock, TCPIP_GET_CAPAB, &reg, REGS_MAIN, REGS_MAIN);
-    if((reg.Bytes.L & (1 << 3)) == 0) {
-        Terminate();
-        return false;
-    }
-
-#ifdef USE_TLS
-    TlsIsSupported = false;
-    safeTlsIsSupported = false;
-
-    if(tcpIpSpecificationVersionMain == 0 || (tcpIpSpecificationVersionMain == 1 && tcpIpSpecificationVersionSecondary == 0))
-        return true; //TCP/IP UNAPI <1.1 has no TLS support at all
-
-    if(reg.Bytes.D & TCPIP_CAPAB_VERIFY_CERTIFICATE)
-		safeTlsIsSupported = true;
-
-    reg.Bytes.B = 4;
-    UnapiCall(codeBlock, TCPIP_GET_CAPAB, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.H & 1)
-        TlsIsSupported = true;
-#endif
-    return true;
 }
 
 
@@ -247,7 +234,7 @@ int ProcessUrl(char* url, byte isRedirection)
 			else
 #endif
 			{
-				pointer = FindFirstSlash(url+7);
+				pointer = strstr(url+7, "/");
 				if ((pointer)&&(strncmpi(url+7, domainName, (pointer-url-7))))
 					redirectionUrlIsNewDomainName = 1;
 				else
@@ -266,7 +253,7 @@ int ProcessUrl(char* url, byte isRedirection)
 				redirectionUrlIsNewDomainName = 1;
 			else
 			{
-				pointer = FindFirstSlash(url+8);
+				pointer = strstr(url+8, "/");
 				if ((pointer)&&(strncmpi(url+8, domainName, (pointer-url-8))))
 					redirectionUrlIsNewDomainName = 1;
 				else
@@ -279,7 +266,7 @@ int ProcessUrl(char* url, byte isRedirection)
 		TcpConnectionParameters->flags = TcpConnectionParameters->flags | TCPFLAGS_USE_TLS ;
     } else
 #endif
-    if(ContainsProtocolSpecifier(url)) {
+    if(strstr(url, "://") != NULL) {
         if(isRedirection) {
             return ERR_TCPIPUNAPI_REDIRECT_TO_HTTPS_WHICH_IS_UNSUPPORTED;
         } else {
@@ -297,7 +284,7 @@ int ProcessUrl(char* url, byte isRedirection)
     } else {
         remoteFilePath[0] = '/';
         remoteFilePath[1] = '\0';
-        pointer = FindFirstSlash(domainName);
+        pointer = strstr(domainName, "/");
         if(pointer != NULL) {
             *pointer = '\0';
             strcpy(remoteFilePath+1, pointer+1);
@@ -310,17 +297,11 @@ int ProcessUrl(char* url, byte isRedirection)
 }
 
 
-int ContainsProtocolSpecifier(char* url)
-{
-    return (strstr(url, "://") != NULL);
-}
-
-
 void ExtractPortNumberFromDomainName()
 {
     char* pointer;
 
-    pointer = FindFirstSemicolon(domainName);
+    pointer = strstr(domainName, ":");
     if(pointer == NULL) {
 #ifdef USE_TLS
 		if (!useHttps)
@@ -339,138 +320,107 @@ void ExtractPortNumberFromDomainName()
 }
 
 
-int StringStartsWith(const char* stringToCheck, const char* startingToken)
-{
-    int len;
-    len = strlen(startingToken);
-    return strncmpi(stringToCheck, startingToken, len) == 0;
-}
-
-
-bool CheckNetworkConnection()
-{
-    UnapiCall(codeBlock, TCPIP_NET_STATE, &reg, REGS_NONE, REGS_MAIN);
-    if(reg.Bytes.B == 0 || reg.Bytes.B == 3) {
-        return false;
-    }
-    return true;
-}
-
-
-char* FindLastSlash(char* string)
-{
-    char* pointer;
-
-    pointer = string + strlen(string);
-    while(pointer >= string) {
-        if(*pointer == '/') {
-            return pointer;
-        }
-        pointer--;
-    }
-
-    return NULL;
-}
-
-
-char* FindFirstSlash(char* string)
-{
-    return strstr(string, "/");
-}
-
-
-char* FindFirstSemicolon(char* string)
-{
-    return strstr(string, ":");
-}
-
-
 int DoHttpWork(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
     int funcret;
-    byte retries = HGET_RETRIES;
-
-    authenticationRequested = 0;
-	redirectionRequests = 0;
-
-    ResetTcpBuffer();
-
-    if ((!keepingConnectionAlive)||((keepingConnectionAlive)&&(redirectionUrlIsNewDomainName))) {
-        funcret = ResolveServerName();
-        if (funcret != ERR_TCPIPUNAPI_OK)
-            return funcret;
-
-        funcret = OpenTcpConnection();
-        if (funcret != ERR_TCPIPUNAPI_OK)
-            return funcret;
-    }
+    byte must_continue;
 
     do {
-        // Initialize HTTP Variables
-        redirectionRequested = 0;
-        authenticationSent = 0;
-        continueReceived = 0;
-        isChunkedTransfer = 0;
-        contentLength = 0;
-        newLocationReceived = 0;
+        must_continue = 0;
+        authenticationRequested = 0;
+        redirectionRequests = 0;
+        keepingConnectionAlive &= continue_using_keep_alive;
 
-        funcret = SendHttpRequest();
-        if (funcret != ERR_TCPIPUNAPI_OK) {
-            if (retries)
-            {
-                --retries;
-                CloseTcpConnection();
-                ResolveServerName();
-                OpenTcpConnection();
-                ResetTcpBuffer();
-                continue;
-            }
-            else
+        ResetTcpBuffer();
+
+        if ((!keepingConnectionAlive)||((keepingConnectionAlive)&&(redirectionUrlIsNewDomainName))) {
+            funcret = ResolveServerName();
+            if (funcret != ERR_TCPIPUNAPI_OK)
                 return funcret;
-        }
-        funcret = ReadResponseHeaders();
-        if (funcret != ERR_TCPIPUNAPI_OK) {
-            if (retries)
-            {
-                --retries;
-                CloseTcpConnection();
-                ResolveServerName();
-                OpenTcpConnection();
-                ResetTcpBuffer();
-                continue;
-            }
-            else
-                return funcret;
-        }
-        funcret = CheckHeaderErrors();
-        if (funcret != ERR_TCPIPUNAPI_OK) {
-            if (retries)
-            {
-                --retries;
-                CloseTcpConnection();
-                ResolveServerName();
-                OpenTcpConnection();
-                ResetTcpBuffer();
-                continue;
-            }
-            else
-                return funcret;
-        }
-        if(redirectionRequested) {
-            if(redirectionUrlIsNewDomainName) {
-                CloseTcpConnection();
-                ResolveServerName();
-                OpenTcpConnection();
-            }
-            ResetTcpBuffer();
-        } else if(continueReceived || authenticationRequested) {
-            funcret = DiscardBogusHttpContent();
+
+            funcret = OpenTcpConnection();
             if (funcret != ERR_TCPIPUNAPI_OK)
                 return funcret;
         }
-    } while(continueReceived || redirectionRequested || authenticationRequested);
 
-	DownloadHttpContents(rcvbuffer, rcvbuffersize);
+        do {
+            // Initialize HTTP Variables
+            redirectionRequested = 0;
+            authenticationSent = 0;
+            continueReceived = 0;
+            isChunkedTransfer = 0;
+            contentLength = 0;
+            newLocationReceived = 0;
+            indicateblockprogress = 0;
+
+            funcret = SendHttpRequest();
+            if (funcret != ERR_TCPIPUNAPI_OK) {
+                if ((keepingConnectionAlive)&&(continue_using_keep_alive)) {
+                    keepingConnectionAlive = 0;
+                    continue_using_keep_alive = 0;
+                    must_continue = 1;
+                    break;
+                }
+                else
+                    return funcret;
+            }
+
+            funcret = ReadResponseHeaders();
+            if (funcret != ERR_TCPIPUNAPI_OK) {
+                if ((keepingConnectionAlive)&&(continue_using_keep_alive)) {
+                    keepingConnectionAlive = 0;
+                    continue_using_keep_alive = 0;
+                    must_continue = 1;
+                    break;
+                }
+                else
+                    return funcret;
+            }
+
+            funcret = CheckHeaderErrors();
+            if (funcret != ERR_TCPIPUNAPI_OK) {
+                if ((keepingConnectionAlive)&&(continue_using_keep_alive)) {
+                    keepingConnectionAlive = 0;
+                    continue_using_keep_alive = 0;
+                    must_continue = 1;
+                    break;
+                }
+                else
+                    return funcret;
+            }
+
+            if(redirectionRequested) {
+                if(redirectionUrlIsNewDomainName) {
+                    CloseTcpConnection();
+                    funcret = ResolveServerName();
+                    if (funcret != ERR_TCPIPUNAPI_OK)
+                        return funcret;
+                    funcret = OpenTcpConnection();
+                    if (funcret != ERR_TCPIPUNAPI_OK)
+                        return funcret;
+                }
+                ResetTcpBuffer();
+            } else if(continueReceived || authenticationRequested) {
+                funcret = DiscardBogusHttpContent();
+                if (funcret != ERR_TCPIPUNAPI_OK) {
+                    if ((keepingConnectionAlive)&&(continue_using_keep_alive)) {
+                        keepingConnectionAlive = 0;
+                        continue_using_keep_alive = 0;
+                        must_continue = 1;
+                        break;
+                    }
+                    else
+                        return funcret;
+                }
+            }
+        } while(continueReceived || redirectionRequested || authenticationRequested);
+
+        if (must_continue)
+            continue;
+        funcret = DownloadHttpContents(rcvbuffer, rcvbuffersize);
+        break;
+    } while (1);
+
     return funcret;
 }
 
@@ -665,9 +615,8 @@ int ProcessNextHeader()
         contentLength = atol(headerContents);
         if (thereisasizecallback)
             SendContentSize(contentLength);
-        if(contentLength == 0) {
+        if(contentLength == 0)
             zeroContentLengthAnnounced = true;
-        }
     }
 
     if(HeaderTitleIs("Transfer-Encoding")) {
@@ -680,7 +629,6 @@ int ProcessNextHeader()
         pointer = headerContents;
         SkipCharsUntil(pointer, ' ');
         *pointer = '\0';
-        Terminate();
         return ERR_HGET_UNK_AUTH_METHOD_REQUEST;
     }
 
@@ -717,20 +665,14 @@ void ExtractHeaderTitleAndContents()
 
 int CheckHeaderErrors()
 {
-    if(contentLength == 0 && !zeroContentLengthAnnounced && !isChunkedTransfer) {
+    if(contentLength == 0 && !zeroContentLengthAnnounced && !isChunkedTransfer)
         return ERR_TCPIPUNAPI_OK;
-    }
-
-    if(redirectionRequested && !newLocationReceived) {
-        Terminate();
+    else if(redirectionRequested && !newLocationReceived)
         return ERR_HGET_REDIRECT_BUT_NO_NEW_LOCATION_PROVIDED;
-    }
-
-    if(authenticationRequested && credentials == NULL) {
-        Terminate();
+    else if(authenticationRequested && credentials == NULL)
         return ERR_HGET_AUTH_REQUESTED_BUT_NO_CREDENTIALS_PROVIDED;
-    }
-    return ERR_TCPIPUNAPI_OK;
+    else
+        return ERR_TCPIPUNAPI_OK;
 }
 
 
@@ -755,94 +697,13 @@ int SendLineToTcp(char* string)
 }
 
 
-int EnsureThereIsTcpDataAvailable()
-{
-    int funcret;
-    ticksWaited = 0;
-
-	sysTimerHold = *SYSTIMER;
-	while(remainingInputData == 0) {
-		LetTcpipBreathe();
-		if (sysTimerHold != *SYSTIMER) {
-			ticksWaited++;
-			sysTimerHold = *SYSTIMER;
-		}
-		if(ticksWaited >= TICKS_TO_WAIT) {
-			Terminate();
-			return ERR_HGET_TRANSFER_TIMEOUT;
-		}
-
-		funcret = ReadAsMuchTcpDataAsPossible();
-		if (funcret!=ERR_TCPIPUNAPI_OK)
-            return funcret;
-		if(remainingInputData == 0) {
-			if (!EnsureTcpConnectionIsStillOpen()) {
-                Terminate();
-                return ERR_HGET_CONN_LOST;
-			}
-		}
-	}
-	return ERR_TCPIPUNAPI_OK;
-}
-
-
-bool EnsureTcpConnectionIsStillOpen()
-{
-    reg.Bytes.B = conn;
-    reg.Words.HL = 0;
-    UnapiCall(codeBlock, TCPIP_TCP_STATE, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.A != 0 || reg.Bytes.B != 4) {
-        Terminate();
-        return false;
-    }
-
-    return true;
-}
-
-
-int ReadAsMuchTcpDataAsPossible()
-{
-    if(AbortIfEscIsPressed())
-        return ERR_HGET_ESC_CANCELLED;
-    reg.Bytes.B = conn;
-    reg.Words.DE = (int)(TcpInputData);
-    reg.Words.HL = TCP_BUFFER_SIZE;
-    UnapiCall(codeBlock, TCPIP_TCP_RCV, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.A != 0) {
-        Terminate();
-        return ERR_TCPIPUNAPI_RECEIVE_ERROR;
-    }
-    remainingInputData = reg.UWords.BC;
-    inputDataPointer = TcpInputData;
-
-    return ERR_TCPIPUNAPI_OK;
-}
-
-
-int GetInputByte(byte *data)
-{
-    int funcret;
-    funcret = EnsureThereIsTcpDataAvailable();
-    if (funcret == ERR_TCPIPUNAPI_OK) {
-        if (data)
-            *data = *inputDataPointer;
-        inputDataPointer++;
-        remainingInputData--;
-    }
-    return funcret;
-}
-
-
 int DownloadHttpContents(char *rcvbuffer, unsigned int *rcvbuffersize)
 {
     int funcret;
 
     if ((!rcvbuffersize)||(!*rcvbuffersize)) {
         if (!CreateLocalFile())
-        {
-            Terminate();
             return ERR_HGET_CANT_CREATE_FILE;
-        }
     }
 
     if(isChunkedTransfer) {
@@ -850,7 +711,7 @@ int DownloadHttpContents(char *rcvbuffer, unsigned int *rcvbuffersize)
     } else
         funcret = DoDirectDatatransfer(rcvbuffer, rcvbuffersize);
 
-    Terminate();
+    CloseLocalFile();
 
     return funcret;
 }
@@ -872,6 +733,8 @@ int DoDirectDatatransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
 	if (contentLength) {
 		blockSize = contentLength/25;
 		currentBlock = 0;
+		if (blockSize)
+            indicateblockprogress = 1;
 	}
 
 	if (bufferAvailable)
@@ -902,10 +765,7 @@ int DoDirectDatatransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
             currentBlock += remainingInputData;
             UpdateReceivingMessage();
             if (!WriteContentsToFile(inputDataPointer, remainingInputData))
-            {
-                Terminate();
                 return ERR_HGET_DISK_WRITE_ERROR;
-            }
             ResetTcpBuffer();
         }
     return funcret;
@@ -993,10 +853,8 @@ int DoChunkedDataTransfer(char *rcvbuffer, unsigned int *rcvbuffersize)
             chunkSizeInBuffer = currentChunkSize > remainingInputData ? remainingInputData : currentChunkSize;
             receivedLength += chunkSizeInBuffer;
             UpdateReceivingMessage();
-            if (!WriteContentsToFile(inputDataPointer, chunkSizeInBuffer)) {
-                Terminate();
+            if (!WriteContentsToFile(inputDataPointer, chunkSizeInBuffer))
                 return ERR_HGET_DISK_WRITE_ERROR;
-            }
             inputDataPointer += chunkSizeInBuffer;
             currentChunkSize -= chunkSizeInBuffer;
             remainingInputData -= chunkSizeInBuffer;
@@ -1033,27 +891,13 @@ long GetNextChunkSize()
 }
 
 
-bool CreateLocalFile()
-{
-    if (thereisasavecallback)
-        return true;
-    reg.Bytes.A = 0;
-    reg.Bytes.B = 0;
-    reg.Words.DE = (int)localFileName;
-    DosCall(_CREATE, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.A != 0) {
-        Terminate();
-        return false;
-    }
-    fileHandle = reg.Bytes.B;
-    return true;
-}
+/* Functions Related to Callbacks Handling */
 
 
 void UpdateReceivingMessage()
 {
     if(thereisacallback) {
-		if ((contentLength)&&(blockSize)) {
+		if (indicateblockprogress) {
 			while (currentBlock>=blockSize)
 			{
 				currentBlock-=blockSize;
@@ -1065,50 +909,133 @@ void UpdateReceivingMessage()
 }
 
 
-bool WriteContentsToFile(byte* dataPointer, int size)
+/* Functions Related to Console I/O */
+
+
+bool InitializeTcpipUnapi()
 {
-    if (thereisasavecallback) {
-        SaveReceivedData(dataPointer, size);
-        return true;
-    }
-
-    reg.Bytes.B = fileHandle;
-    reg.Words.DE = (int)dataPointer;
-    reg.Words.HL = size;
-    DosCall(_WRITE, &reg, REGS_MAIN, REGS_AF);
-    if(reg.Bytes.A != 0) {
+    int i;
+    i = UnapiGetCount("TCP/IP");
+    if(i==0)
         return false;
-    } else
+    UnapiBuildCodeBlock(NULL, 1, codeBlock);
+    reg.Bytes.B = 0;
+    UnapiCall(codeBlock, TCPIP_TCP_ABORT, &reg, REGS_MAIN, REGS_MAIN);
+    TcpConnectionParameters->remotePort = HTTP_DEFAULT_PORT;
+    TcpConnectionParameters->localPort = 0xFFFF;
+    TcpConnectionParameters->userTimeout = 0;
+    TcpConnectionParameters->flags = 0;
+    return true;
+}
+
+
+bool CheckTcpipCapabilities()
+{
+    reg.Bytes.B = 1;
+    UnapiCall(codeBlock, TCPIP_GET_CAPAB, &reg, REGS_MAIN, REGS_MAIN);
+    if((reg.Bytes.L & (1 << 3)) == 0)
+        return false;
+
+#ifdef USE_TLS
+    TlsIsSupported = false;
+    safeTlsIsSupported = false;
+
+    if(tcpIpSpecificationVersionMain == 0 || (tcpIpSpecificationVersionMain == 1 && tcpIpSpecificationVersionSecondary == 0))
+        return true; //TCP/IP UNAPI <1.1 has no TLS support at all
+
+    if(reg.Bytes.D & TCPIP_CAPAB_VERIFY_CERTIFICATE)
+		safeTlsIsSupported = true;
+
+    reg.Bytes.B = 4;
+    UnapiCall(codeBlock, TCPIP_GET_CAPAB, &reg, REGS_MAIN, REGS_MAIN);
+    if(reg.Bytes.H & 1)
+        TlsIsSupported = true;
+#endif
+    return true;
+}
+
+
+/* Functions Related to Network I/O */
+
+
+int EnsureThereIsTcpDataAvailable()
+{
+    int funcret;
+    ticksWaited = 0;
+
+	sysTimerHold = *SYSTIMER;
+	while(remainingInputData == 0) {
+		if (sysTimerHold != *SYSTIMER) {
+			++ticksWaited;
+			if(ticksWaited >= TICKS_TO_WAIT)
+                return ERR_HGET_TRANSFER_TIMEOUT;
+			sysTimerHold = *SYSTIMER;
+		}
+
+		funcret = ReadAsMuchTcpDataAsPossible();
+		if (funcret!=ERR_TCPIPUNAPI_OK)
+            return funcret;
+		if(remainingInputData == 0) {
+			if (!EnsureTcpConnectionIsStillOpen())
+                return ERR_HGET_CONN_LOST;
+            LetTcpipBreathe();
+		}
+	}
+	return ERR_TCPIPUNAPI_OK;
+}
+
+
+bool EnsureTcpConnectionIsStillOpen()
+{
+    reg.Bytes.B = conn;
+    reg.Words.HL = 0;
+    UnapiCall(codeBlock, TCPIP_TCP_STATE, &reg, REGS_MAIN, REGS_MAIN);
+    if(reg.Bytes.A != 0 || reg.Bytes.B != 4)
+        return false;
+    else
         return true;
 }
 
 
-int strcmpi(const char *a1, const char *a2) {
-	char c1, c2;
-	/* Want both assignments to happen but a 0 in both to quit, so it's | not || */
-	while((c1=*a1) | (c2=*a2)) {
-		if (!c1 || !c2 || /* Unneccesary? */
-			(islower(c1) ? toupper(c1) : c1) != (islower(c2) ? toupper(c2) : c2))
-			return (c1 - c2);
-		a1++;
-		a2++;
-	}
-	return 0;
+int ReadAsMuchTcpDataAsPossible()
+{
+    if(AbortIfEscIsPressed())
+        return ERR_HGET_ESC_CANCELLED;
+    reg.Bytes.B = conn;
+    reg.Words.DE = (int)(TcpInputData);
+    reg.Words.HL = TCP_BUFFER_SIZE;
+    UnapiCall(codeBlock, TCPIP_TCP_RCV, &reg, REGS_MAIN, REGS_MAIN);
+    if(reg.Bytes.A != 0)
+        return ERR_TCPIPUNAPI_RECEIVE_ERROR;
+
+    remainingInputData = reg.UWords.BC;
+    inputDataPointer = TcpInputData;
+
+    return ERR_TCPIPUNAPI_OK;
 }
 
 
-int strncmpi(const char *a1, const char *a2, unsigned size) {
-	char c1, c2;
-	/* Want both assignments to happen but a 0 in both to quit, so it's | not || */
-	while((size > 0) && (c1=*a1) | (c2=*a2)) {
-		if (!c1 || !c2 || /* Unneccesary? */
-			(islower(c1) ? toupper(c1) : c1) != (islower(c2) ? toupper(c2) : c2))
-			return (c1 - c2);
-		a1++;
-		a2++;
-		size--;
-	}
-	return 0;
+int GetInputByte(byte *data)
+{
+    int funcret;
+    funcret = EnsureThereIsTcpDataAvailable();
+    if (funcret == ERR_TCPIPUNAPI_OK) {
+        if (data)
+            *data = *inputDataPointer;
+        inputDataPointer++;
+        remainingInputData--;
+    }
+    return funcret;
+}
+
+
+bool CheckNetworkConnection()
+{
+    UnapiCall(codeBlock, TCPIP_NET_STATE, &reg, REGS_NONE, REGS_MAIN);
+    if(reg.Bytes.B == 0 || reg.Bytes.B == 3) {
+        return false;
+    }
+    return true;
 }
 
 
@@ -1117,19 +1044,14 @@ int ResolveServerName()
     reg.Words.HL = (int)domainName;
     reg.Bytes.B = 0;
     UnapiCall(codeBlock, TCPIP_DNS_Q, &reg, REGS_MAIN, REGS_MAIN);
-    if(reg.Bytes.A == ERR_NO_NETWORK) {
-        Terminate();
+    if(reg.Bytes.A == ERR_NO_NETWORK)
         return ERR_TCPIPUNAPI_NO_CONNECTION;
-    } else if(reg.Bytes.A == ERR_NO_DNS) {
-        Terminate();
+    else if(reg.Bytes.A == ERR_NO_DNS)
         return ERR_TCPIPUNAPI_NO_DNS_CONFIGURED;
-    } else if(reg.Bytes.A == ERR_NOT_IMP) {
-        Terminate();
+    else if(reg.Bytes.A == ERR_NOT_IMP)
         return ERR_TCPIPUNAPI_NOT_DNS_CAPABLE;
-    } else if(reg.Bytes.A != (byte)ERR_OK) {
-        Terminate();
+    else if(reg.Bytes.A != (byte)ERR_OK)
         return ERR_TCPIPUNAPI_UNKNOWN_ERROR;
-    }
 
     do {
         if (AbortIfEscIsPressed())
@@ -1140,28 +1062,20 @@ int ResolveServerName()
     } while (reg.Bytes.A == 0 && reg.Bytes.B == 1);
 
     if(reg.Bytes.A != 0) {
-        if(reg.Bytes.B == 2) {
-            Terminate();
+        if(reg.Bytes.B == 2)
             return ERR_TCPIPUNAPI_DNS_FAILURE;
-        } else if(reg.Bytes.B == 3) {
-            Terminate();
+        else if(reg.Bytes.B == 3)
             return ERR_TCPIPUNAPI_DNS_UNKNWON_HOSTNAME;
-        } else if(reg.Bytes.B == 5) {
-            Terminate();
+        else if(reg.Bytes.B == 5)
             return ERR_TCPIPUNAPI_DNS_REFUSED;
-        } else if(reg.Bytes.B == 16 || reg.Bytes.B == 17) {
-            Terminate();
+        else if(reg.Bytes.B == 16 || reg.Bytes.B == 17)
             return ERR_TCPIPUNAPI_DNS_NO_RESPONSE;
-        } else if(reg.Bytes.B == 19) {
-            Terminate();
+        else if(reg.Bytes.B == 19)
             return ERR_TCPIPUNAPI_NO_CONNECTION;
-        } else if(reg.Bytes.B == 0) {
-            Terminate();
+        else if(reg.Bytes.B == 0)
             return ERR_TCPIPUNAPI_DNS_QUERY_FAILED;
-        } else {
-            Terminate();
+        else
             return ERR_TCPIPUNAPI_DNS_UNKNWON_ERROR;
-        }
     }
 
     TcpConnectionParameters->remoteIP[0] = reg.Bytes.L;
@@ -1198,48 +1112,40 @@ int OpenTcpConnection()
         UnapiCall(codeBlock, TCPIP_TCP_OPEN, &reg, REGS_MAIN, REGS_MAIN);
     }
 
-    if(reg.Bytes.A == (byte)ERR_NO_NETWORK) {
-        Terminate();
+    if(reg.Bytes.A == (byte)ERR_NO_NETWORK)
         return ERR_TCPIPUNAPI_NO_CONNECTION;
-    } else if(reg.Bytes.A != 0) {
-        Terminate();
+    else if(reg.Bytes.A != 0)
         return ERR_TCPIPUNAPI_CONNECTION_FAILED;
-    }
+
     conn = reg.Bytes.B;
 
     ticksWaited = 0;
+    sysTimerHold = *SYSTIMER;
     do {
         if (AbortIfEscIsPressed())
             return ERR_HGET_ESC_CANCELLED;
-        sysTimerHold = *SYSTIMER;
-        LetTcpipBreathe();
-        while(*SYSTIMER == sysTimerHold);
-        ticksWaited++;
-        if(ticksWaited >= TICKS_TO_WAIT) {
-            Terminate();
-            return ERR_TCPIPUNAPI_CONNECTION_TIMEOUT;
+
+        if (*SYSTIMER != sysTimerHold)
+        {
+            ticksWaited++;
+            if(ticksWaited >= TICKS_TO_WAIT)
+                return ERR_TCPIPUNAPI_CONNECTION_TIMEOUT;
+            sysTimerHold = *SYSTIMER;
         }
+
         reg.Bytes.B = conn;
         reg.Words.HL = 0;
         UnapiCall(codeBlock, TCPIP_TCP_STATE, &reg, REGS_MAIN, REGS_MAIN);
-    } while((reg.Bytes.A) == 0 && (reg.Bytes.B != 4));
+        if ((reg.Bytes.A) == 0 && (reg.Bytes.B != 4))
+            LetTcpipBreathe();
+        else
+            break;
+    } while(1);
 
-    if(reg.Bytes.A != 0) {
-        Terminate();
+    if(reg.Bytes.A != 0)
 		return ERR_TCPIPUNAPI_CONNECTION_FAILED;
-    }
 
     return ERR_TCPIPUNAPI_OK;
-}
-
-
-bool AbortIfEscIsPressed()
-{
-    if((*((byte*)0xFBEC) & 4) == 0) {
-        Terminate();
-        return true;
-    }
-    return false;
 }
 
 
@@ -1271,14 +1177,75 @@ int SendTcpData(byte* data, int dataSize)
         data += reg.Words.HL;   //Unmodified since REGS_AF was used for output
     } while(dataSize > 0 && reg.Bytes.A == 0);
 
-    if(reg.Bytes.A == ERR_NO_CONN) {
-        Terminate();
+    if(reg.Bytes.A == ERR_NO_CONN)
         return ERR_TCPIPUNAPI_NO_CONNECTION;
-    } else if(reg.Bytes.A != 0) {
-        Terminate();
+    else if(reg.Bytes.A != 0)
         return ERR_TCPIPUNAPI_SEND_ERROR;
+    else
+        return ERR_TCPIPUNAPI_OK;
+}
+
+
+/* Functions Related to File I/O */
+
+
+bool CreateLocalFile()
+{
+    long preallocseek;
+    if (thereisasavecallback)
+        return true;
+    reg.Bytes.A = 0;
+    reg.Bytes.B = 0;
+    reg.Words.DE = (int)localFileName;
+    DosCall(_CREATE, &reg, REGS_MAIN, REGS_MAIN);
+    if(reg.Bytes.A != 0)
+        return false;
+    fileHandle = reg.Bytes.B;
+
+    if (contentLength)
+    {
+        //Set file to file size - 1
+        preallocseek = contentLength - 1;
+        reg.Bytes.A = 0;
+        reg.Words.HL = (preallocseek&0xffff);
+        reg.Words.DE = (preallocseek>>16)&0xffff;
+        DosCall(_SEEK, &reg, REGS_MAIN, REGS_NONE);
+
+        //Write a single byte
+        reg.Words.DE = 0x3000;
+        reg.Words.HL = 1;
+        DosCall(_WRITE, &reg, REGS_MAIN, REGS_AF);
+        if(reg.Bytes.A != 0)
+            return false;
+
+        //Back to beginning of file
+        reg.Bytes.A = 0;
+        reg.Words.HL = 0;
+        reg.Words.DE = 0;
+        DosCall(_SEEK, &reg, REGS_MAIN, REGS_NONE);
+
+        //Ensure - flush to disk, writes should be smoother after this
+        DosCall(_ENSURE, &reg, REGS_MAIN, REGS_NONE);
     }
-    return ERR_TCPIPUNAPI_OK;
+    return true;
+}
+
+
+bool WriteContentsToFile(byte* dataPointer, int size)
+{
+    if (thereisasavecallback) {
+        SaveReceivedData(dataPointer, size);
+        return true;
+    }
+
+    reg.Bytes.B = fileHandle;
+    reg.Words.DE = (int)dataPointer;
+    reg.Words.HL = size;
+    DosCall(_WRITE, &reg, REGS_MAIN, REGS_AF);
+    if(reg.Bytes.A != 0) {
+        return false;
+    } else
+        return true;
 }
 
 
@@ -1296,10 +1263,36 @@ void CloseFile(byte fileHandle)
     if (thereisasavecallback)
         return;
     reg.Bytes.B = fileHandle;
-    DosCall(_ENSURE, &reg, REGS_MAIN, REGS_NONE);
-    reg.Bytes.B = fileHandle;
     DosCall(_CLOSE, &reg, REGS_MAIN, REGS_NONE);
 }
+
+
+/* Functions Related to Strings */
+
+
+int StringStartsWith(const char* stringToCheck, const char* startingToken)
+{
+    int len;
+    len = strlen(startingToken);
+    return strncmpi(stringToCheck, startingToken, len) == 0;
+}
+
+
+char* FindLastSlash(char* string)
+{
+    char* pointer;
+
+    pointer = string + strlen(string);
+    while(pointer >= string) {
+        if(*pointer == '/') {
+            return pointer;
+        }
+        pointer--;
+    }
+
+    return NULL;
+}
+
 
 char* ltoa(unsigned long num, char *string)
 {
@@ -1327,4 +1320,33 @@ char* ltoa(unsigned long num, char *string)
     *pointer = '\0';
 
     return string;
+}
+
+
+int strcmpi(const char *a1, const char *a2) {
+	char c1, c2;
+	/* Want both assignments to happen but a 0 in both to quit, so it's | not || */
+	while((c1=*a1) | (c2=*a2)) {
+		if (!c1 || !c2 || /* Unneccesary? */
+			(islower(c1) ? toupper(c1) : c1) != (islower(c2) ? toupper(c2) : c2))
+			return (c1 - c2);
+		a1++;
+		a2++;
+	}
+	return 0;
+}
+
+
+int strncmpi(const char *a1, const char *a2, unsigned size) {
+	char c1, c2;
+	/* Want both assignments to happen but a 0 in both to quit, so it's | not || */
+	while((size > 0) && (c1=*a1) | (c2=*a2)) {
+		if (!c1 || !c2 || /* Unneccesary? */
+			(islower(c1) ? toupper(c1) : c1) != (islower(c2) ? toupper(c2) : c2))
+			return (c1 - c2);
+		a1++;
+		a2++;
+		size--;
+	}
+	return 0;
 }

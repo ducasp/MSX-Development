@@ -41,15 +41,15 @@
 //Only edit this file on a text editor that supports CP850 or 437, otherwise strings converted to UTF8 will be looking like... meh!
 
 const char chHubGMenu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on black background
-                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.72\x1b[0;31mออออออออออป"
-                       "ฬอออออออออออออออออออออออออออออออออออออออหออออออออออออออออออออออออออออออออออออออน"
+                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.80\x1b[0;31mออออออออออป"
+                       "ฬอ\x1b[38bหอ\x1b[37bน"
 					   "บ\x1b[3;41Hบ\x1b[3;80Hบ"
-					   "ฬออออออออออออออออออออหออออออออออออออออออสออออออออออออออออออออออออออออออออออออออน"
+					   "ฬอ\x1b[19bหอ\x1b[17bสอ\x1b[37bน"
 					   "บ\x1b[1;37mi\x1b[35mN\x1b[37mfo\x1b[0;31m\x1b[5;22Hบ\x1b[5;80Hบ"
 					   "บ\x1b[6;22Hบ\x1b[6;80Hบ"
 					   "บ\x1b[7;22Hบ\x1b[7;80Hบ"
 					   "บ\x1b[8;22Hบ\x1b[8;80Hบ"
-					   "ฬออออออออออออออออออออน\x1b[9;80Hบ"
+					   "ฬอ\x1b[19bน\x1b[9;80Hบ"
 					   "บ\x1b[10;22Hบ\x1b[10;80Hบ"
 					   "บ\x1b[11;22Hบ\x1b[11;80Hบ"
 					   "บ\x1b[12;22Hบ\x1b[12;80Hบ"
@@ -60,11 +60,11 @@ const char chHubGMenu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on bl
 					   "บ\x1b[17;22Hบ\x1b[17;80Hบ"
 					   "บ\x1b[18;22Hบ\x1b[18;80Hบ"
 					   "บ\x1b[19;22Hบ\x1b[19;80Hบ"
-					   "ฬออออออออออออออออออออสอออออออออออออออออออออออออออออออออออออออออออออออออออออออออน"
+					   "ฬอ\x1b[19bสอ\x1b[56bน"
 					   "บ\x1b[21;80Hบ"
-					   "ฬอหออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน"
+					   "ฬอหอ\x1b[75bน"
 					   "บ\x1b[23;3Hบ\x1b[23;80Hบ"
-					   "ศอสออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ";
+					   "ศอสอ\x1b[75bผ";
 const char chLocalSelected[] =	"\x1b[3;13H\x1b[1;30;47mLOCAL  OPERATIONS\x1b[3;52H\x1b[40;35mR\x1b[37mEMOTE  OPERATIONS\x1b[6;2He\x1b[35mX\x1b[37m\x1b[8;2H      \x1b[6;4Hclude \x1b[7;2H\x1b[35mU\x1b[37mpgrade";
 const char chRemoteSelected[] =	"\x1b[3;13H\x1b[1;40;35mL\x1b[37mOCAL  OPERATIONS\x1b[3;52H\x1b[30;47mREMOTE  OPERATIONS\x1b[6;2H\x1b[1;40;37min\x1b[40;35mS\x1b[37mtall  \x1b[7;2H\x1b[35mU\x1b[37mpgrade";
 const char chClearInfoWindow[] = "\x1b[0;31;40m\x1b[5;23H\x1b[K\x1b[5;80Hบ\x1b[6;23H\x1b[K\x1b[6;80Hบ\x1b[7;23H\x1b[K\x1b[7;80Hบ\x1b[8;23H\x1b[K\x1b[8;80Hบ"

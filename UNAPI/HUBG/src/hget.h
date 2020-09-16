@@ -2,9 +2,9 @@
 --
 -- HGET.h
 --   Header for HGET.c
---   Revision 0.2
+--   Revision 0.4
 --
---        Oduvaldo Pavan Junior 04/2020 v0.1 - 0.2
+--        Oduvaldo Pavan Junior 09/2020 v0.1 - 0.4
 --
 --   Based on HGET Unapi Utility that is a work from:
 --        Konamiman 1/2011 v1.1
@@ -110,6 +110,7 @@ enum TcpipErrorCodes {
 #define strDefaultFilename "index.htm";
 
 /* Global Variables */
+byte continue_using_keep_alive = 0;
 byte fileHandle = 0;
 byte conn = 0;
 char* credentials;
@@ -172,6 +173,7 @@ bool thereisacallback = false;
 bool thereisasavecallback = false;
 bool thereisasizecallback = false;
 bool hasinitialized = false;
+bool indicateblockprogress = false;
 
 /* Some handy defines */
 
@@ -181,32 +183,17 @@ bool hasinitialized = false;
 #define SkipLF() GetInputByte(NULL)
 #define ToLowerCase(ch) {ch |= 32;}
 #define ResetTcpBuffer() {remainingInputData = 0; inputDataPointer = TcpInputData;}
+#define AbortIfEscIsPressed() ((*((byte*)0xFBEC) & 4) == 0)
 
 /* Internal Function prototypes */
-
-void Terminate();
-bool InitializeTcpipUnapi();
-bool CheckTcpipCapabilities();
+/* Functions Related to HTTP Handling */
+void TerminateConnection();
 int ProcessUrl(char* url, byte isRedirection);
-int StringStartsWith(const char* stringToCheck, const char* startingToken);
-bool CheckNetworkConnection();
-char* FindLastSlash(char* string);
-char* FindFirstSlash(char* string);
-char* FindFirstSemicolon(char* string);
 void ExtractPortNumberFromDomainName();
 int DoHttpWork(char *rcvbuffer, unsigned int *rcvbuffersize);
 int SendHttpRequest();
 int ReadResponseHeaders();
 int SendLineToTcp(char* string);
-int strcmpi(const char *a1, const char *a2);
-int strncmpi(const char *a1, const char *a2, unsigned size);
-int ResolveServerName();
-int OpenTcpConnection();
-bool AbortIfEscIsPressed();
-void CloseTcpConnection();
-int SendTcpData(byte* data, int dataSize);
-
-void CloseLocalFile();
 int CheckHeaderErrors();
 int DownloadHttpContents(char *rcvbuffer, unsigned int *rcvbuffersize);
 int SendCredentialsIfNecessary();
@@ -214,19 +201,35 @@ int ReadResponseStatus();
 int ProcessResponseStatus();
 int ReadNextHeader();
 int ProcessNextHeader();
-int GetInputByte(byte *data);
 void ExtractHeaderTitleAndContents();
 int HeaderTitleIs(char* string);
 int HeaderContentsIs(char* string);
-int ReadAsMuchTcpDataAsPossible();
 int DiscardBogusHttpContent();
-int ContainsProtocolSpecifier(char* url);
-bool CreateLocalFile();
-void UpdateReceivingMessage();
-bool WriteContentsToFile(byte* dataPointer, int size);
 int DoDirectDatatransfer(char *rcvbuffer, unsigned int *rcvbuffersize);
 int DoChunkedDataTransfer(char *rcvbuffer, unsigned int *rcvbuffersize);
 long GetNextChunkSize();
-void CloseFile(byte fileHandle);
+/* Functions Related to Callbacks Handling  */
+void UpdateReceivingMessage();
+/* Functions Related to Network I/O  */
+bool InitializeTcpipUnapi();
+bool CheckTcpipCapabilities();
+int EnsureThereIsTcpDataAvailable();
 bool EnsureTcpConnectionIsStillOpen();
+int ReadAsMuchTcpDataAsPossible();
+int GetInputByte(byte *data);
+bool CheckNetworkConnection();
+int OpenTcpConnection();
+int ResolveServerName();
+void CloseTcpConnection();
+int SendTcpData(byte* data, int dataSize);
+/* Functions Related to File I/O  */
+bool CreateLocalFile();
+bool WriteContentsToFile(byte* dataPointer, int size);
+void CloseFile(byte fileHandle);
+void CloseLocalFile();
+/* Functions Related to Strings  */
+int StringStartsWith(const char* stringToCheck, const char* startingToken);
+char* FindLastSlash(char* string);
+int strcmpi(const char *a1, const char *a2);
+int strncmpi(const char *a1, const char *a2, unsigned size);
 #endif

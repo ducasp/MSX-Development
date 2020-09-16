@@ -4,9 +4,32 @@
 
 This pack includes HUBG as well as its manual
 
-# HUBG v0.72
+# HUBG v0.80
 
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+# CHANGELOG v0.80
+
+	- A bit faster menus: menus were optimized to lessen characters sent to
+	  MSX2ANSI library, making then a bit faster
+	- A fix for packages that might leave some files on a folder before HUBG
+	  interprets it should delete a folder, this should fix the few packages
+	  that left a folder/directory empty after uninstallation
+	- HGET Lib updated to v0.4
+	- As a consequence of new HGET Lib, pre-allocate entire file if size is
+	  known: On a large FAT16 partition that is nearly full this can save a lot
+	  of time, this avoids Nextor having to calculate clusters every few blocks
+	  written, it will do just once... That is useful until Nestor release a
+	  new version of Nextor that uses a different cluster approach
+	- As a consequence of new HGET Lib, if keep-alive connection is available,
+	  if there is a failure when trying a new operation on a kept-alive
+	  connection, disable retry the operation re-opening the connection and
+	  also disable keep-alive connections while HUBG still is open. Some
+	  internet providers do not like how much time a MSX can take from the last
+	  packet of GET transfer until it send again a new information on the
+	  opened connection (it takes some time to get the last package, parse and
+	  save to the disk) and the ISP will close the connection, this was causing
+	  failures for some people
 
 # CHANGELOG v0.72
 
