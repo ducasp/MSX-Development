@@ -2,7 +2,7 @@
 --
 -- 16C550CZiModem.c
 --
---   Quick Access to 16C550 on 0x80 - 0x86.
+--   Quick Access to 16C550 on 0x80 - 0x87.
 --   Revision 0.10
 --
 -- Requires SDCC and Fusion-C library to compile
@@ -40,8 +40,6 @@
 #include "../../fusion-c/header/msx_fusion.h"
 #include "16C550CZiModem.h"
 
-unsigned char usingInt;
-
 //Our big internal FIFO
 #ifndef BUFFER_SIZE
 #define BUFFER_SIZE 512
@@ -50,26 +48,58 @@ unsigned char usingInt;
 // we want those variables to not stay in first page, otherwise
 // our hook won't be able to access them, look at memory map and
 // use realloc if needed
-__at 0x8510 unsigned char ucHookBackup[5];
-__at 0x8502 unsigned char ucRTSAsserted;
-__at 0x84FE unsigned char * BufferTop;
-__at 0x84FC unsigned char * Top;
-__at 0x84FA unsigned char * Bottom;
-__at 0x84F9 unsigned char uchFull;
-__at 0x84F7 unsigned int iFree;
-__at 0x82F7 unsigned char interruptRealloc[512];
-__at (0x82F7 - BUFFER_SIZE - 20) unsigned char uchrxbuffer[BUFFER_SIZE + 20];
+__at 0x8000 unsigned char uchrxbuffer[BUFFER_SIZE + 20];
+__at (0x8000+ BUFFER_SIZE + 20) unsigned char ucHookBackup[5];
+__at (0x8000+ BUFFER_SIZE + 25) unsigned char ucRTSAsserted;
+__at (0x8000+ BUFFER_SIZE + 26) unsigned char * BufferTop;
+__at (0x8000+ BUFFER_SIZE + 28) unsigned char * Top;
+__at (0x8000+ BUFFER_SIZE + 30) unsigned char * Bottom;
+__at (0x8000+ BUFFER_SIZE + 32) unsigned int iFree;
+__at (0x8000+ BUFFER_SIZE + 34) unsigned char interruptRealloc[512];
 
 
-//Global Flags
-unsigned char isInitialized;
-unsigned char isSingleConnection;
-unsigned char usingInt;
+unsigned char AFESupport;
 
+unsigned char check16C550C(void)
+{
+    unsigned char Ret = NOUART;
+    unsigned char ucTest;
+
+    AFESupport = 0;
+
+    // First check scratchpad, if it doesn't exist, done
+    ucTest = mySR;
+    ucTest += 2;
+    mySR = ucTest;
+    // If matches the new value
+    if (ucTest == mySR)
+    {
+        //Ok, we have a scratch register, now check for FIFO
+        myIIR_FCR = 0x07; // Clear FIFO, enable FIFO
+        ucTest = myIIR_FCR&0xc0; //check 7th and 8th bit
+        if (ucTest==0xc0)
+        {
+            //Hey, we have a FIFO! so this is at least a 16550
+            Ret = U16C550;
+            //Now test if AFE can be enabled
+            myMCR = 0x22;
+            ucTest = myMCR&0x20;
+            if (ucTest == 0x20)
+            {
+                Ret = U16C550C;
+                AFESupport = 1;
+            }
+        }
+    }
+
+    return Ret;
+}
 
 // Program interrupt handler to call our routine first
 void programInt(void)
 {
+    if (AFESupport)
+    {
 __asm
     ; Disable interrupts, it will not be nice if an interrupt occurs before all
     ; was properly set
@@ -84,9 +114,9 @@ __asm
     ; First copy our interrupt routine to _interruptRealloc
     LD DE,#_interruptRealloc
     ; This is the address Z80 will call everytime interrupts are triggered
-    LD HL,#_myIntHandler
+    LD HL,#_myAFEIntHandler
     ; Counter of how many bytes need to be transferred
-    LD BC,#_enterIntMode - _myIntHandler
+    LD BC,#_enterIntMode - _myAFEIntHandler
     ; Copy data
     LDIR
 
@@ -120,6 +150,60 @@ __asm
     ; Enable interrupts again
     EI
 __endasm;
+    }
+    else
+    {
+__asm
+    ; Disable interrupts, it will not be nice if an interrupt occurs before all
+    ; was properly set
+    DI
+    ; Save the registers we are going to use
+    PUSH BC
+    PUSH DE
+    PUSH HL
+    ; This is the area where we are going to save the original interrupt handler
+    ; Why? It is the beginning of the routine that is called before main is
+    ; executed and it will not be called anymore, so we put it to good use
+    ; First copy our interrupt routine to _interruptRealloc
+    LD DE,#_interruptRealloc
+    ; This is the address Z80 will call everytime interrupts are triggered
+    LD HL,#_myIntHandler
+    ; Counter of how many bytes need to be transferred
+    LD BC,#_myAFEIntHandler - _myIntHandler
+    ; Copy data
+    LDIR
+
+    LD DE,#_ucHookBackup
+    ; This is the address Z80 will call everytime interrupts are triggered
+    LD HL,#0xFD9A
+    ; Counter of how many bytes need to be transferred
+    LD BC,#0x5
+    ; Copy data
+    LDIR
+    ; HL changes after LDIR, so restore it to the interrupt handler address
+    LD HL,#0xFD9A
+    ; First we will put the JP command
+    LD B,#0xC3
+    ; Now, put that into the memory
+    LD (HL),B
+    ; Increment our memory copy address
+    INC HL
+    ; Load the memory address of our function in BC pair of registers
+    LD BC,#_interruptRealloc
+    ; Move the LSB of the address just after JP
+    LD (HL),C
+    ; Increment our memory copy address
+    INC HL
+    ; Move the MSB of the address after the LSB
+    LD (HL),B
+    ; We are done, restore registers we have used
+    POP HL
+    POP DE
+    POP BC
+    ; Enable interrupts again
+    EI
+__endasm;
+    }
 }
 
 // Restore interrupt handler so we won't be called before processing interrupt
@@ -195,7 +279,7 @@ __asm
     ; if LSB not equal, it is different and no need to check MSB
     jr NZ,00003$
     ; LSB equal, and MSB?
-    ld a,(#_uiBufferSize + 1)
+    ld a,(#_BufferTop + 1)
     cp h
     ; if MSB not equal, it is different
     jr NZ,00003$
@@ -255,6 +339,102 @@ __asm
 __endasm;
 }
 
+// This function, if called, will check if our FIFO is the reason of interrupt
+// and if it was, transfer all bytes stored in it to our memory. Once done,
+// call the original interrupt handler.
+// You might wonder what is a naked function... SDCC will not push or pull any
+// registers, it will not return, etc... As interrupt call is a jump, that is
+// just what we need, and we take care of saving whatever we change and restore
+// it before jumping back to the original interrupt handler
+//
+// You want to be off the page 0, as bios will be switched in/out of it
+void myAFEIntHandler(void) __naked
+{
+__asm
+    ;Check if it is our interrupt
+    in a,(#0x82)
+    bit 0,a
+    ;If 1st bit is set, UART did not interrupt, done
+	jp NZ,_ucHookBackup
+    ld hl,(#_Top)
+    ld de,(#_iFree)
+    jr 00007$
+00002$:
+    ; Check if there are more bytes in UART FIFO
+    in a,(#0x85)
+    bit 0,a
+    ;If 1st bit is not set, no more data in UART FIFO, so we are done
+    jr	Z,00005$
+00007$:
+    ;Ok, move data to register B
+    in a,(#0x80)
+    ; Copy the data we got to memory
+    ld (hl),a
+    ; Now deal with FIFO variables
+    ; 1st - Check if Top = top RAM position
+    ; Start with LSB
+    ld a,(#_BufferTop)
+    cp l
+    ; if LSB not equal, it is different and no need to check MSB
+    jr NZ,00003$
+    ; LSB equal, and MSB?
+    ld a,(#_BufferTop + 1)
+    cp h
+    ; if MSB not equal, it is different
+    jr NZ,00003$
+    ; Equal, so we will leap here and Top goes back to index 0
+    ld hl,#_uchrxbuffer
+    jr 00004$
+00003$:
+    ; Different, so just add 1 to current Top value, cannot add DE, so move to HL
+    inc hl
+00004$:
+    ; 2nd - Update iFree
+    dec de ;dec DE will not update flags :-(
+    ld a,e
+    or d
+    jr NZ,00002$ ; If not zero, we are good to continue
+    ; 0 bytes free? full
+    ; First save iFree (0)
+    ld (#_iFree),de
+    ; Now Save Top
+    ld (#_Top),hl
+    ; Full
+    ; Now leave with interrupts disabled
+    jr 00012$
+
+00005$:
+    ; First save iFree
+    ld (#_iFree),de
+    ; Now Save Top
+    ld (#_Top),hl
+    ; check if we have at least 10 bytes free
+    ld a,e
+    ld l,#10
+    sub l
+    ld l,a
+    ; if no carry, we have enough space
+    jr NC,00001$
+    ; carry, continue sub
+    ld h,#0
+    ld a,d
+    sbc a,h
+    ; if carry, not enough space, so exit and deactivate INT
+    jr C,00012$
+00001$:
+00006$:
+    jp _ucHookBackup
+00012$:
+    ; carry, so disable UART interrupts so application can get from the buffer
+    ld  a,#1
+    ld (_ucRTSAsserted),a
+    xor a
+    out (#0x81),a
+    jp _ucHookBackup
+__endasm;
+}
+
+
 // Just set everything for our interrupt handling routine to be called
 // and then enable ESP UART FIFO to interrupt us when there is data.
 void enterIntMode(void)
@@ -262,7 +442,6 @@ void enterIntMode(void)
     // our RAM FIFO control variables are reset
     Top = uchrxbuffer;
     Bottom = uchrxbuffer;
-    uchFull = 0;
     ucRTSAsserted = 0;
     iFree = BUFFER_SIZE;
     BufferTop = uchrxbuffer + BUFFER_SIZE - 1;
@@ -281,8 +460,12 @@ void enterIntMode(void)
     myLCR = 0x03;
     //Enable interrupt
     myIER = 0x01;
-    //De-assert RTS so other side can send
-    myMCR = myMCR | 0x02;
+    if(AFESupport)
+        //Turn on AFE
+        myMCR = myMCR | 0x22;
+    else
+        //De-assert RTS so other side can send
+        myMCR = myMCR | 0x02;
 }
 
 // Disable UART interruptions and restore original interrupt handler
@@ -348,8 +531,9 @@ __asm
 __endasm;
             //Re-enable interrupts
             myIER = 0x01;
-            //De-assert RTS so other side can send
-            myMCR = myMCR | 0x02;
+            if (!AFESupport)
+                //De-assert RTS so other side can send
+                myMCR = myMCR | 0x02;
 __asm
     ei
 __endasm;

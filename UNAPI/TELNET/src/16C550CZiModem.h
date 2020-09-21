@@ -53,6 +53,11 @@ __sfr __at 0x87 mySR;
 //every second
 __at 0xFC9E unsigned int TickCount;
 
+enum U16C550Types {
+    U16C550C = 0,
+    U16C550 = 1,
+    NOUART = 3
+};
 
 //Allow outputing some messages through Print or printf
 //#define log_verbose
@@ -201,7 +206,10 @@ void restoreInt(void);
 --
 */
 void myIntHandler(void) __naked;
+void myAFEIntHandler(void) __naked;
 
 unsigned int GetReceivedBytes(void);
+
+unsigned char check16C550C(void);
 
 #endif
