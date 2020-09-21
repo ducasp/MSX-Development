@@ -33,14 +33,19 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 */
-
+#define U16C550CDirect
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../../fusion-c/header/msx_fusion.h"
 #include "AOFossilHelper.h"
 #include "print.h"
+#ifndef U16C550CDirect
 #include "fossil_interface.h"
+#else
+#include "16C550CZiModem.h"
+#endif
+
 
 char chHelperString[128];
 unsigned char ucFossilUnsafeDataTXBuffer[128];
@@ -58,15 +63,22 @@ void Breath()
 unsigned char InitializeTCPIP ()
 {
     unsigned char uchRet = 0;
+#ifndef U16C550CDirect
     if (FossilTest()!=0)
     {
         Fossil_SetBaud(9);
         Fossil_SetProtocol(7); //8N1
         // Fossil_FastInt(0);
         Fossil_Init();
-        TxUnsafeData(0x50,modem_atz,5);
+        TxData(0x50,modem_atz,5);
         uchRet = 1;
     }
+#else
+    enterIntMode();
+    TxData(0x50,modem_atz,5);
+    uchRet = 1;
+#endif
+
     return uchRet;
 }
 
@@ -76,7 +88,7 @@ unsigned char OpenSingleConnection (unsigned char * uchHost, unsigned char * uch
     {
         sprintf(cmdline,"ATD\"%s:%s\"\r\n",uchHost,uchPort);
         //print(cmdline);
-        TxUnsafeData(0x50,cmdline,strlen(cmdline));
+        TxData(0x50,cmdline,strlen(cmdline));
     }
     *uchConn = 0x50;
     return ERR_OK;
@@ -89,14 +101,18 @@ unsigned char CloseConnection (unsigned char ucConnNumber)
 
     if (ucConnNumber == 0x50)
     {
-        TxUnsafeData(0x50,modem_cmd,3);
+        TxData(0x50,modem_cmd,3);
         do
         {
             Halt();
             ++ucCount;
         }
         while (ucCount<20);
+#ifndef U16C550CDirect
         Fossil_DeInit();
+#else
+        exitIntMode();
+#endif
     }
     else
         uchRet = ERR_INV_PARAM;
@@ -126,6 +142,7 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
 
     if (ucWaitAllDataReceived)
     {
+#ifndef U16C550CDirect
         // While bytes are available and we are recevied less bytes than requested...
         while ((Fossil_RsIn_Stat()!=0)&&(nbytes<*uiSize))
         {
@@ -135,9 +152,19 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
             nbytes++;
         }
         *uiSize=nbytes;
+#else
+        while ((UartRXData()!=0)&&(nbytes<*uiSize))
+        {
+            ucRet=1;
+            ucBuffer[nbytes]=GetUARTData();
+            ++nbytes;
+        }
+        *uiSize=nbytes;
+#endif
     }
     else
     {
+#ifndef U16C550CDirect
         if (Fossil_RsIn_Stat()!=0)
         {
             ucRet=1;
@@ -150,6 +177,19 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
         }
         else
             *uiSize=0;
+#else
+        if (UartRXData()!=0)
+        {
+            ucRet=1;
+            *uiSize=GetReceivedBytes();
+            for (int i=0; i<*uiSize; i++)
+            {
+                ucBuffer[i]=GetUARTData();
+            }
+        }
+        else
+            *uiSize=0;
+#endif
     }
     return ucRet;
 }
@@ -157,30 +197,12 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
 // This routine sends only one byte
 unsigned char TxByte (unsigned char ucConnNumber, unsigned char uchByte)
 {
-    return TxUnsafeData (ucConnNumber,&uchByte,1);
+    return TxData (ucConnNumber,&uchByte,1);
 }
 
 unsigned char TxUnsafeData (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize)
 {
-    unsigned char c;
-
-    if (ucConnNumber != 0x50)
-        return ERR_INV_PARAM;
-
-    if (uiDataSize<128)
-    {
-        memcpy (ucFossilUnsafeDataTXBuffer,lpucData,uiDataSize);
-        for (unsigned int i=0; i<uiDataSize; i++)
-        {
-            //sprintf(c," code: %x \r\n",ucFossilUnsafeDataTXBuffer[i]);
-            //print(c);
-            //while (Fossil_TXReady()!=0);
-            Fossil_RsOut(ucFossilUnsafeDataTXBuffer[i]);
-            //for (int k =0; k<500; k++);
-
-        }
-    }
-    return ERR_OK;
+    return TxData(ucConnNumber, lpucData, uiDataSize);
 }
 
 // The same as TxUnsafeData but without page 3 buffer addressing
@@ -190,8 +212,12 @@ unsigned char TxData(unsigned char ucConnNumber, unsigned char * lpucData, unsig
         return ERR_INV_PARAM;
   for (int i=0; i<uiDataSize; i++)
   {
+#ifndef U16C550CDirect
     //while (Fossil_TXReady()!=0);
     Fossil_RsOut(*lpucData);
+#else
+    U16550CTxByte(*lpucData);
+#endif
     *lpucData++;
   }
   return ERR_OK;

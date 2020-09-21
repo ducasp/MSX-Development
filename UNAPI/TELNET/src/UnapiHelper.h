@@ -73,7 +73,7 @@ enum TcpipErrorCodes {
     ERR_INV_OPER
 };
 
-__at 0x8400 unsigned char ucUnsafeDataTXBuffer[];
+__at 0x8600 unsigned char ucUnsafeDataTXBuffer[];
 
 // Breath
 //

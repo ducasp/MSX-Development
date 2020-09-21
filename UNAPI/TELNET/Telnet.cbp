@@ -59,6 +59,14 @@
 				</ExtraCommands>
 			</Target>
 		</Build>
+		<Unit filename="src/16C550CZiModem.c">
+			<Option compilerVar="CC" />
+			<Option weight="100" />
+			<Option target="Release AOFossil" />
+		</Unit>
+		<Unit filename="src/16C550CZiModem.h">
+			<Option target="Release AOFossil" />
+		</Unit>
 		<Unit filename="src/AOFossilHelper.c">
 			<Option compilerVar="CC" />
 			<Option target="Release AOFossil" />
