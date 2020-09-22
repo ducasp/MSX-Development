@@ -59,6 +59,7 @@ __at (0x8000+ BUFFER_SIZE + 34) unsigned char interruptRealloc[512];
 
 
 unsigned char AFESupport;
+unsigned char * BufferTopp;
 
 unsigned char check16C550C(void)
 {
@@ -254,11 +255,11 @@ __asm
     ;If 1st bit is set, UART did not interrupt, done
 	jp NZ,_ucHookBackup
     ; Assert RTS so other side will not send anything
-    in a,(#0x84)
-    and #0x0d
+    ld  a,#0x0d
     out (#0x84),a
     ld hl,(#_Top)
     ld de,(#_iFree)
+    ld c,#0x80
     jr 00007$
 00002$:
     ; Check if there are more bytes in UART FIFO
@@ -267,33 +268,27 @@ __asm
     ;If 1st bit is not set, no more data in UART FIFO, so we are done
     jr	Z,00005$
 00007$:
-    ;Ok, move data to register B
-    in a,(#0x80)
-    ; Copy the data we got to memory
-    ld (hl),a
+    ;Ok, move data to memory and increment HL
+    ini
     ; Now deal with FIFO variables
     ; 1st - Check if Top = top RAM position
-    ; Start with LSB
-    ld a,(#_BufferTop)
+    ; Buffer starts at 0xX000, and it is 512 bytes, so if L not 0x00, no need to worry
+    xor a
     cp l
-    ; if LSB not equal, it is different and no need to check MSB
+    ; if LSB not equal it is not at top
     jr NZ,00003$
-    ; LSB equal, and MSB?
-    ld a,(#_BufferTop + 1)
+    ; LSB equal, and MSB, if hit top, it is 0x82?
+    ld a,#0x82
     cp h
-    ; if MSB not equal, it is different
+    ; if MSB not equal, not at the top
     jr NZ,00003$
     ; Equal, so we will leap here and Top goes back to index 0
     ld hl,#_uchrxbuffer
-    jr 00004$
 00003$:
-    ; Different, so just add 1 to current Top value, cannot add DE, so move to HL
-    inc hl
-00004$:
     ; 2nd - Update iFree
     dec de ;dec DE will not update flags :-(
-    ld a,e
-    or d
+    ld a,d
+    or e
     jr NZ,00002$ ; If not zero, we are good to continue
     ; 0 bytes free? full
     ; First save iFree (0)
@@ -309,23 +304,8 @@ __asm
     ld (#_iFree),de
     ; Now Save Top
     ld (#_Top),hl
-    ; check if we have at least 10 bytes free
-    ld a,e
-    ld l,#10
-    sub l
-    ld l,a
-    ; if no carry, we have enough space
-    jr NC,00001$
-    ; carry, continue sub
-    ld h,#0
-    ld a,d
-    sbc a,h
-    ; if carry, not enough space, so exit and do not de-assert RTS
-    jr C,00012$
-00001$:
     ; De-assert RTS so other side can send stuff again
-    in a,(#0x84)
-    or #0x02
+    ld a,#0x0f
     out (#0x84),a
 00006$:
     jp _ucHookBackup
@@ -358,6 +338,7 @@ __asm
 	jp NZ,_ucHookBackup
     ld hl,(#_Top)
     ld de,(#_iFree)
+    ld c,#0x80
     jr 00007$
 00002$:
     ; Check if there are more bytes in UART FIFO
@@ -366,33 +347,27 @@ __asm
     ;If 1st bit is not set, no more data in UART FIFO, so we are done
     jr	Z,00005$
 00007$:
-    ;Ok, move data to register B
-    in a,(#0x80)
-    ; Copy the data we got to memory
-    ld (hl),a
+    ;Ok, move data to memory and increment HL
+    ini
     ; Now deal with FIFO variables
     ; 1st - Check if Top = top RAM position
-    ; Start with LSB
-    ld a,(#_BufferTop)
+    ; Buffer starts at 0xX000, and it is 512 bytes, so if L not 0x00, no need to worry
+    xor a
     cp l
-    ; if LSB not equal, it is different and no need to check MSB
+    ; if LSB not equal it is not at top
     jr NZ,00003$
-    ; LSB equal, and MSB?
-    ld a,(#_BufferTop + 1)
+    ; LSB equal, and MSB, if hit top, it is 0x82?
+    ld a,#0x82
     cp h
-    ; if MSB not equal, it is different
+    ; if MSB not equal, not at the top
     jr NZ,00003$
     ; Equal, so we will leap here and Top goes back to index 0
     ld hl,#_uchrxbuffer
-    jr 00004$
 00003$:
-    ; Different, so just add 1 to current Top value, cannot add DE, so move to HL
-    inc hl
-00004$:
     ; 2nd - Update iFree
     dec de ;dec DE will not update flags :-(
-    ld a,e
-    or d
+    ld a,d
+    or e
     jr NZ,00002$ ; If not zero, we are good to continue
     ; 0 bytes free? full
     ; First save iFree (0)
@@ -400,7 +375,7 @@ __asm
     ; Now Save Top
     ld (#_Top),hl
     ; Full
-    ; Now leave with interrupts disabled
+    ; Now leave with disabled interrupts
     jr 00012$
 
 00005$:
@@ -408,21 +383,6 @@ __asm
     ld (#_iFree),de
     ; Now Save Top
     ld (#_Top),hl
-    ; check if we have at least 10 bytes free
-    ld a,e
-    ld l,#10
-    sub l
-    ld l,a
-    ; if no carry, we have enough space
-    jr NC,00001$
-    ; carry, continue sub
-    ld h,#0
-    ld a,d
-    sbc a,h
-    ; if carry, not enough space, so exit and deactivate INT
-    jr C,00012$
-00001$:
-00006$:
     jp _ucHookBackup
 00012$:
     ; carry, so disable UART interrupts so application can get from the buffer
@@ -445,9 +405,10 @@ void enterIntMode(void)
     ucRTSAsserted = 0;
     iFree = BUFFER_SIZE;
     BufferTop = uchrxbuffer + BUFFER_SIZE - 1;
+    BufferTopp = uchrxbuffer + BUFFER_SIZE;
     //Assert RTS so other side won't send anything
-    myMCR = myMCR & 0x0d;
-    //Enable Fifo, 8 bytes fifo level trigger and Clear Uart FIFOs
+    myMCR = 0x0d;
+    //Enable Fifo, 8 byte fifo level trigger and Clear Uart FIFOs
     myIIR_FCR = 0x87;
     //Set our Interrupt Handler
     programInt();
@@ -462,10 +423,10 @@ void enterIntMode(void)
     myIER = 0x01;
     if(AFESupport)
         //Turn on AFE
-        myMCR = myMCR | 0x22;
+        myMCR = 0x2f;
     else
         //De-assert RTS so other side can send
-        myMCR = myMCR | 0x02;
+        myMCR = 0x0f;
 }
 
 // Disable UART interruptions and restore original interrupt handler
@@ -503,40 +464,101 @@ unsigned char UartRXData(void)
         return 0;
 }
 
+void GetBulkData(unsigned char * ucBuffer,unsigned int * uiSize)
+{
+    unsigned int uiBuffSize = BUFFER_SIZE - iFree;
+    unsigned int SplitCopy;
+
+    if (uiBuffSize)
+    {
+        if (uiBuffSize>*uiSize)
+            uiBuffSize=*uiSize;
+
+        if ((Bottom+uiBuffSize)>(BufferTopp))
+        {
+            // Split
+            SplitCopy = (unsigned int) (BufferTopp - Bottom);
+            memcpy(ucBuffer,Bottom,SplitCopy);
+            ucBuffer+=SplitCopy;
+            SplitCopy = uiBuffSize - SplitCopy;
+            memcpy(ucBuffer,uchrxbuffer,SplitCopy);
+            Bottom = uchrxbuffer + SplitCopy;
+        }
+        else
+        {
+            memcpy(ucBuffer,Bottom,uiBuffSize);
+            Bottom += uiBuffSize;
+            if (Bottom>BufferTop)
+                Bottom = uchrxbuffer;
+        }
+
+        *uiSize = uiBuffSize;
+__asm
+    di
+__endasm;
+        iFree+=uiBuffSize; //MUST DO IT WITH INTERRUPTIONS DISABLED, OTHERWISE INTERRUPT MIGHT INTERFERE HERE AND VICE-VERSA!
+__asm
+    ei
+__endasm;
+
+        if ((ucRTSAsserted)&&(iFree>20))
+        {
+            ucRTSAsserted = 0;
+
+            //Re-enable interrupts
+            myIER = 0x01;
+
+            if (!AFESupport)
+                //De-assert RTS so other side can send
+                myMCR = 0x0f;
+        }
+    }
+    else
+        *uiSize = 0;
+}
+
 unsigned char GetUARTData(void)
 {
     unsigned char ret = 0xff;
 
     if (iFree != BUFFER_SIZE )
     {
+        ret = *Bottom;
 __asm
     di
 __endasm;
-        ++iFree;
+        ++iFree; //MUST DO IT WITH INTERRUPTIONS DISABLED, OTHERWISE INTERRUPT MIGHT INTERFERE HERE AND VICE-VERSA!
 __asm
     ei
 __endasm;
-        ret = *Bottom;
-
         if (Bottom < BufferTop)
             ++Bottom;
         else
             Bottom = uchrxbuffer;
 
-        if ((ucRTSAsserted)&&(iFree>80))
+        if ((ucRTSAsserted)&&(iFree>20))
         {
-            ucRTSAsserted = 0;
 __asm
     di
 __endasm;
-            //Re-enable interrupts
-            myIER = 0x01;
+            while (myLSR&1)
+            {
+                *Top = myRBR_THR;
+                --iFree;
+                if (Top<BufferTop)
+                    ++Top;
+                else
+                    Top = uchrxbuffer;
+            }
+            ucRTSAsserted = 0;
             if (!AFESupport)
                 //De-assert RTS so other side can send
-                myMCR = myMCR | 0x02;
+                myMCR = 0x0f;
 __asm
     ei
 __endasm;
+            //Re-enable interrupts
+            myIER = 0x01;
         }
     }
     return ret;
@@ -589,11 +611,6 @@ unsigned char U16550CTxByte(char chTxByte)
 		}
 	}
 	while (1);
-
-#ifdef log_verbose
-	if (UartStatus)
-		Print("> UART Status- TX Stuck after 3 interrupts...\n");
-#endif
 
 	return ret;
 }

@@ -212,4 +212,6 @@ unsigned int GetReceivedBytes(void);
 
 unsigned char check16C550C(void);
 
+void GetBulkData(unsigned char * ucBuffer,unsigned int * uiSize);
+
 #endif

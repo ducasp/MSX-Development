@@ -151,6 +151,7 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
 {
     unsigned char ucRet = 0;
     unsigned int nbytes = 0;
+    unsigned int tbytes = *uiSize;
 
     if (ucConnNumber != 0x50)
         return ERR_INV_PARAM;
@@ -168,13 +169,15 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
         }
         *uiSize=nbytes;
 #else
-        while ((UartRXData()!=0)&&(nbytes<*uiSize))
+        while ((UartRXData()!=0)&&(nbytes<tbytes))
         {
-            ucRet=1;
-            ucBuffer[nbytes]=GetUARTData();
-            ++nbytes;
+            GetBulkData(&ucBuffer[nbytes],uiSize);
+            nbytes+=*uiSize;
+            *uiSize=tbytes-nbytes;
         }
         *uiSize=nbytes;
+        if (*uiSize)
+            ucRet=1;
 #endif
     }
     else
@@ -195,12 +198,9 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
 #else
         if (UartRXData()!=0)
         {
-            ucRet=1;
-            *uiSize=GetReceivedBytes();
-            for (int i=0; i<*uiSize; i++)
-            {
-                ucBuffer[i]=GetUARTData();
-            }
+            GetBulkData(ucBuffer,uiSize);
+            if (*uiSize)
+                ucRet=1;
         }
         else
             *uiSize=0;
