@@ -78,7 +78,7 @@ unsigned char InitializeTCPIP ()
 
     uchType = check16C550C();
     if (uchType==U16C550C)
-        sprintf(cmdline,"16C550C UART, AutoFlow Enabled\r\n");
+        sprintf(cmdline,"16C550C UART with AutoFlow\r\n");
     else if (uchType==U16C550)
         sprintf(cmdline,"16C550 UART, No AutoFlow\r\n");
     else

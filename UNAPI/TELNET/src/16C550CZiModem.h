@@ -59,6 +59,9 @@ enum U16C550Types {
     NOUART = 3
 };
 
+#define StopReceivingData() myMCR = 0x0d
+#define ResumeReceivingData() myMCR = 0x0f
+
 //Allow outputing some messages through Print or printf
 //#define log_verbose
 //Allow outputing debug messages through Print or printf

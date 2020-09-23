@@ -88,7 +88,7 @@ unsigned char check16C550C(void)
             if (ucTest == 0x20)
             {
                 Ret = U16C550C;
-                AFESupport = 1;
+                //AFESupport = 1;
             }
         }
     }
@@ -376,20 +376,17 @@ __asm
     ld (#_Top),hl
     ; Full
     ; Now leave with disabled interrupts
-    jr 00012$
+    ld  a,#1
+    ld (_ucRTSAsserted),a
+    xor a
+    out (#0x81),a
+    jp _ucHookBackup
 
 00005$:
     ; First save iFree
     ld (#_iFree),de
     ; Now Save Top
     ld (#_Top),hl
-    jp _ucHookBackup
-00012$:
-    ; carry, so disable UART interrupts so application can get from the buffer
-    ld  a,#1
-    ld (_ucRTSAsserted),a
-    xor a
-    out (#0x81),a
     jp _ucHookBackup
 __endasm;
 }
@@ -409,7 +406,7 @@ void enterIntMode(void)
     //Assert RTS so other side won't send anything
     myMCR = 0x0d;
     //Enable Fifo, 8 byte fifo level trigger and Clear Uart FIFOs
-    myIIR_FCR = 0x87;
+    myIIR_FCR = 0x47;
     //Set our Interrupt Handler
     programInt();
     //Enable 8N1 and also DLAB
@@ -436,7 +433,7 @@ void exitIntMode(void)
     myIER = 0x00;
     Halt();
     //Enable Fifo, 8 bytes fifo level trigger and Clear Uart
-    myIIR_FCR = 0x87;
+    myIIR_FCR = 0x47;
     restoreInt();
 }
 
@@ -538,9 +535,6 @@ __endasm;
 
         if ((ucRTSAsserted)&&(iFree>20))
         {
-__asm
-    di
-__endasm;
             while (myLSR&1)
             {
                 *Top = myRBR_THR;
@@ -551,14 +545,11 @@ __endasm;
                     Top = uchrxbuffer;
             }
             ucRTSAsserted = 0;
+            //Re-enable interrupts
+            myIER = 0x01;
             if (!AFESupport)
                 //De-assert RTS so other side can send
                 myMCR = 0x0f;
-__asm
-    ei
-__endasm;
-            //Re-enable interrupts
-            myIER = 0x01;
         }
     }
     return ret;
