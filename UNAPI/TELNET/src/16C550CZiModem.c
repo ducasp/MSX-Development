@@ -514,6 +514,39 @@ __endasm;
         *uiSize = 0;
 }
 
+void StopReceivingData(void)
+{
+    if(!AFESupport)
+    {
+__asm
+    di
+__endasm;
+        myMCR = 0x0d;
+        //Disable interrupts
+        myIER = 0x00;
+__asm
+    ei
+__endasm;
+
+    }
+}
+
+void ResumeReceivingData(void)
+{
+    if(!AFESupport)
+    {
+__asm
+    di
+__endasm;
+        myMCR = 0x0f;
+        //Re-enable interrupts
+        myIER = 0x01;
+__asm
+    ei
+__endasm;
+    }
+}
+
 unsigned char GetUARTData(void)
 {
     unsigned char ret = 0xff;

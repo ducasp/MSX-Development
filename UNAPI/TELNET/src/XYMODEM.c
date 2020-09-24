@@ -380,13 +380,8 @@ unsigned char XYModemPacketReceive (int *File, unsigned char Action, unsigned ch
                         }
 
                         strcpy (filename, &ucReadBuffer[3]);
-#ifdef AO_FOSSIL_ADAPTER
-                        StopReceivingData();
-#endif // AO_FOSSIL_ADAPTER
+
                         *File = Open (&ucReadBuffer[3],O_CREAT);
-#ifdef AO_FOSSIL_ADAPTER
-                        ResumeReceivingData();
-#endif // AO_FOSSIL_ADAPTER
                         if (*File != -1)
                         {
                             //File created, success
@@ -678,13 +673,7 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
 	{
 	    TestTransfer = 0; //in XMODEM we are not able to test packet 00 (STX or SOH, 00 and FF, if fourth byte is FF then it is doubling, otherwise not)
 		//in XMODEM filename is up to the user, we've already asked it, so create the file
-#ifdef AO_FOSSIL_ADAPTER
-        StopReceivingData();
-#endif // AO_FOSSIL_ADAPTER
 		iFile = Open (filename,O_CREAT);
-#ifdef AO_FOSSIL_ADAPTER
-        ResumeReceivingData();
-#endif // AO_FOSSIL_ADAPTER
 
 		if (iFile != -1)
 		{

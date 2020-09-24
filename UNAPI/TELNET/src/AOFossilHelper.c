@@ -172,8 +172,11 @@ unsigned char RXData (unsigned char ucConnNumber, unsigned char * ucBuffer, unsi
         while ((UartRXData()!=0)&&(nbytes<tbytes))
         {
             GetBulkData(&ucBuffer[nbytes],uiSize);
-            nbytes+=*uiSize;
-            *uiSize=tbytes-nbytes;
+            if (*uiSize)
+            {
+                nbytes+=*uiSize;
+                *uiSize=tbytes-nbytes;
+            }
         }
         *uiSize=nbytes;
         if (*uiSize)

@@ -296,11 +296,7 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 
 	//Defaults
     ucAutoDownload = 1; //Auto download On
-#ifndef AO_FOSSIL_ADAPTER
-    ucStandardDataTransfer = 1; //usually standard
-#else
     ucStandardDataTransfer = 0; //AO Fossil implementation does telnet negotiation for us
-#endif
     *ucAnsiOption = 1; //try to render ANSI if possible
 
 	if (argc)

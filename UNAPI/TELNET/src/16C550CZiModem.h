@@ -59,9 +59,6 @@ enum U16C550Types {
     NOUART = 3
 };
 
-#define StopReceivingData() myMCR = 0x0d
-#define ResumeReceivingData() myMCR = 0x0f
-
 //Allow outputing some messages through Print or printf
 //#define log_verbose
 //Allow outputing debug messages through Print or printf
@@ -216,5 +213,9 @@ unsigned int GetReceivedBytes(void);
 unsigned char check16C550C(void);
 
 void GetBulkData(unsigned char * ucBuffer,unsigned int * uiSize);
+
+void StopReceivingData(void);
+
+void ResumeReceivingData(void);
 
 #endif
