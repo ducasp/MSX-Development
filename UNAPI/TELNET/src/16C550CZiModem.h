@@ -53,6 +53,7 @@ __sfr __at 0x87 mySR;
 //every second
 __at 0xFC9E unsigned int TickCount;
 
+
 enum U16C550Types {
     U16C550C = 0,
     U16C550 = 1,
@@ -205,6 +206,7 @@ void restoreInt(void);
 --                discard data.
 --
 */
+
 void myIntHandler(void) __naked;
 void myAFEIntHandler(void) __naked;
 

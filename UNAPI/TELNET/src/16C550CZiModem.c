@@ -55,8 +55,8 @@ __at (0x8000+ BUFFER_SIZE + 26) unsigned char * BufferTop;
 __at (0x8000+ BUFFER_SIZE + 28) unsigned char * Top;
 __at (0x8000+ BUFFER_SIZE + 30) unsigned char * Bottom;
 __at (0x8000+ BUFFER_SIZE + 32) unsigned int iFree;
-__at (0x8000+ BUFFER_SIZE + 34) unsigned char interruptRealloc[512];
-
+__at (0x8000+ BUFFER_SIZE + 34) unsigned char ucScnCount;
+__at (0x8000+ BUFFER_SIZE + 35) unsigned char interruptRealloc[512];
 
 unsigned char AFESupport;
 unsigned char * BufferTopp;
@@ -88,7 +88,7 @@ unsigned char check16C550C(void)
             if (ucTest == 0x20)
             {
                 Ret = U16C550C;
-                //AFESupport = 1;
+                AFESupport = 1;
             }
         }
     }
@@ -99,8 +99,6 @@ unsigned char check16C550C(void)
 // Program interrupt handler to call our routine first
 void programInt(void)
 {
-    if (AFESupport)
-    {
 __asm
     ; Disable interrupts, it will not be nice if an interrupt occurs before all
     ; was properly set
@@ -109,68 +107,32 @@ __asm
     PUSH BC
     PUSH DE
     PUSH HL
+    PUSH AF
     ; This is the area where we are going to save the original interrupt handler
     ; Why? It is the beginning of the routine that is called before main is
     ; executed and it will not be called anymore, so we put it to good use
     ; First copy our interrupt routine to _interruptRealloc
     LD DE,#_interruptRealloc
+__endasm;
+    if (AFESupport)
+    {
+__asm
     ; This is the address Z80 will call everytime interrupts are triggered
     LD HL,#_myAFEIntHandler
     ; Counter of how many bytes need to be transferred
     LD BC,#_enterIntMode - _myAFEIntHandler
-    ; Copy data
-    LDIR
-
-    LD DE,#_ucHookBackup
-    ; This is the address Z80 will call everytime interrupts are triggered
-    LD HL,#0xFD9A
-    ; Counter of how many bytes need to be transferred
-    LD BC,#0x5
-    ; Copy data
-    LDIR
-    ; HL changes after LDIR, so restore it to the interrupt handler address
-    LD HL,#0xFD9A
-    ; First we will put the JP command
-    LD B,#0xC3
-    ; Now, put that into the memory
-    LD (HL),B
-    ; Increment our memory copy address
-    INC HL
-    ; Load the memory address of our function in BC pair of registers
-    LD BC,#_interruptRealloc
-    ; Move the LSB of the address just after JP
-    LD (HL),C
-    ; Increment our memory copy address
-    INC HL
-    ; Move the MSB of the address after the LSB
-    LD (HL),B
-    ; We are done, restore registers we have used
-    POP HL
-    POP DE
-    POP BC
-    ; Enable interrupts again
-    EI
 __endasm;
     }
     else
     {
 __asm
-    ; Disable interrupts, it will not be nice if an interrupt occurs before all
-    ; was properly set
-    DI
-    ; Save the registers we are going to use
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    ; This is the area where we are going to save the original interrupt handler
-    ; Why? It is the beginning of the routine that is called before main is
-    ; executed and it will not be called anymore, so we put it to good use
-    ; First copy our interrupt routine to _interruptRealloc
-    LD DE,#_interruptRealloc
     ; This is the address Z80 will call everytime interrupts are triggered
     LD HL,#_myIntHandler
     ; Counter of how many bytes need to be transferred
     LD BC,#_myAFEIntHandler - _myIntHandler
+__endasm;
+    }
+__asm
     ; Copy data
     LDIR
 
@@ -181,6 +143,7 @@ __asm
     LD BC,#0x5
     ; Copy data
     LDIR
+
     ; HL changes after LDIR, so restore it to the interrupt handler address
     LD HL,#0xFD9A
     ; First we will put the JP command
@@ -197,14 +160,15 @@ __asm
     INC HL
     ; Move the MSB of the address after the LSB
     LD (HL),B
+
     ; We are done, restore registers we have used
+    POP AF
     POP HL
     POP DE
     POP BC
     ; Enable interrupts again
     EI
 __endasm;
-    }
 }
 
 // Restore interrupt handler so we won't be called before processing interrupt
@@ -254,13 +218,19 @@ __asm
     bit 0,a
     ;If 1st bit is set, UART did not interrupt, done
 	jp NZ,_ucHookBackup
+	; will set Z if trigger interrupt
+	;cp #0xc4
     ; Assert RTS so other side will not send anything
     ld  a,#0x0d
     out (#0x84),a
     ld hl,(#_Top)
     ld de,(#_iFree)
     ld c,#0x80
+    ; If NZ, it is timeout, not trigger, so less than trigger bytes
+    ;jr NZ,00007$
     jr 00007$
+    ; Ok, we can get trigger bytes at once
+
 00002$:
     ; Check if there are more bytes in UART FIFO
     in a,(#0x85)
@@ -336,10 +306,25 @@ __asm
     bit 0,a
     ;If 1st bit is set, UART did not interrupt, done
 	jp NZ,_ucHookBackup
+	cp #0xc4
     ld hl,(#_Top)
     ld de,(#_iFree)
     ld c,#0x80
-    jr 00007$
+    jr nz,00007$
+    ; Ok, interrupt has 8 bytes at least, so first get 8 at once if possible
+    ld a,#0xF7
+    cp l
+    jr c,00007$
+    ; If Top has 8 bytes before arriving at 00, we can do it
+    ld b,#8
+    inir
+    ld a,e
+    ld e,#8
+    sub e
+    ld e,a
+    jr nc,00001$
+    dec d
+    jr 00001$
 00002$:
     ; Check if there are more bytes in UART FIFO
     in a,(#0x85)
@@ -366,11 +351,15 @@ __asm
 00003$:
     ; 2nd - Update iFree
     dec de ;dec DE will not update flags :-(
+00001$:
     ld a,d
-    or e
+    or a
     jr NZ,00002$ ; If not zero, we are good to continue
-    ; 0 bytes free? full
-    ; First save iFree (0)
+    ld a,#10
+    cp e
+    jr NC,00002$ ; If not carry, we are good to continue
+    ; less than 10 bytes free? full
+    ; First save iFree
     ld (#_iFree),de
     ; Now Save Top
     ld (#_Top),hl
@@ -403,10 +392,15 @@ void enterIntMode(void)
     iFree = BUFFER_SIZE;
     BufferTop = uchrxbuffer + BUFFER_SIZE - 1;
     BufferTopp = uchrxbuffer + BUFFER_SIZE;
+    ucScnCount = 3;
     //Assert RTS so other side won't send anything
     myMCR = 0x0d;
-    //Enable Fifo, 8 byte fifo level trigger and Clear Uart FIFOs
-    myIIR_FCR = 0x47;
+    if(AFESupport)
+        //Enable Fifo, 8 byte fifo level trigger and Clear Uart FIFOs
+        myIIR_FCR = 0x87;
+    else
+        //Enable Fifo, 4 byte fifo level trigger and Clear Uart FIFOs
+        myIIR_FCR = 0x47;
     //Set our Interrupt Handler
     programInt();
     //Enable 8N1 and also DLAB
@@ -432,8 +426,8 @@ void exitIntMode(void)
     //Set Interrupt Mode Off
     myIER = 0x00;
     Halt();
-    //Enable Fifo, 8 bytes fifo level trigger and Clear Uart
-    myIIR_FCR = 0x47;
+    //Enable Fifo, 1 bytes fifo level trigger and Clear Uart
+    myIIR_FCR = 0x07;
     restoreInt();
 }
 
