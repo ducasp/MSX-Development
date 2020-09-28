@@ -196,6 +196,9 @@ int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
 
                 if (chDoubleFF)
                 {
+#ifdef AO_FOSSIL_ADAPTER
+                    StopReceivingData();
+#endif // AO_FOSSIL_ADAPTER
                     for (uiI=0,uiJ=0;uiI<uiReadHelper;++uiI)
                     {
                         if (ucSkipFF) //Skip FF?
@@ -213,6 +216,9 @@ int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
                     }
                     PktStatus += uiReadHelper;
                     PktStatus -= uiJ;
+#ifdef AO_FOSSIL_ADAPTER
+                    ResumeReceivingData();
+#endif // AO_FOSSIL_ADAPTER
                 }
                 else
                 {
