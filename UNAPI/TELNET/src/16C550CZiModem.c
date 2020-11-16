@@ -88,7 +88,7 @@ unsigned char check16C550C(void)
             if (ucTest == 0x20)
             {
                 Ret = U16C550C;
-                AFESupport = 1;
+            AFESupport = 1;
             }
         }
     }

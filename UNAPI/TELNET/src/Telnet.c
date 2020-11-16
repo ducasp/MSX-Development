@@ -2,8 +2,8 @@
 --
 -- telnet.c
 --   Simple TELNET client using UNAPI for MSX.
---   Also supports Andres Ortiz ESP8266 implementation behind a FOSSIL driver
---   Revision 1.33
+--   Also supports Andres Ortiz ESP8266 BaDCaT modem
+--   Revision 1.34
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2019 - 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -287,7 +287,7 @@ void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
 // Checks Input Data received from command Line and copy to the variables
 // It is mandatory to have server as first argument
 // All other arguments are optional
-unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption)
+unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption, unsigned char *ucMSX1CustomFont)
 {
 	unsigned int iRet = 0;
 	unsigned char * ucMySeek = NULL;
@@ -298,6 +298,7 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
     ucAutoDownload = 1; //Auto download On
     ucStandardDataTransfer = 1;
     *ucAnsiOption = 1; //try to render ANSI if possible
+    *ucMSX1CustomFont = 1; //custom CP437 font
 
 	if (argc)
 	{
@@ -330,6 +331,8 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
                     ucAutoDownload = 0; //turn off auto download selection pop-up when binary transmission command received
                 else if ( (ucInput[0]=='o')||(ucInput[0]=='O') )
                     *ucAnsiOption = 0; //turn off ansi rendering
+                else if ( (ucInput[0]=='c')||(ucInput[0]=='C') )
+                    *ucMSX1CustomFont = 0; //turn off custom font for MSX1
                 else if ( (ucInput[0]=='r')||(ucInput[0]=='R') )
                     ucStandardDataTransfer = 0; //server misbehave and do not double FF on file transfers
             }
@@ -362,6 +365,7 @@ int main(char** argv, int argc)
     unsigned char ucUseCrLf = 0;
     unsigned char ucLockF2 = 0;
     unsigned char ucLockF3 = 0;
+    unsigned int uiChrDestRamAddr;
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
@@ -384,7 +388,7 @@ int main(char** argv, int argc)
 	initPrint();
 
 	// Validate command line parameters
-    if(!IsValidInput(argv, argc, ucServer, ucPort, &ucAnsi))
+    if(!IsValidInput(argv, argc, ucServer, ucPort, &ucAnsi, &ucCP437))
 	{
 		// If invalid parameters, just show some instructions
 		print(ucSWInfo);
@@ -397,30 +401,48 @@ int main(char** argv, int argc)
 	//What type of MSX?
     if(ReadMSXtype()!=0) //>MSX-1
     {
+        ucWidth40 = 0;
         // are we going to render ansi?
         if (ucAnsi)
             initAnsi((unsigned int)SendCursorPosition);
         else // if not, let's ensure 80 columns mode
             Width(80);
     }
-
-    if (!ucAnsi)
+    else
     {
+        ucAnsi = 0;
         //Ok, no ANSI, do we have 80 columns?
-        if (ucLinLen<80)
+        if (ucLinLen<41)
         {
             //Ok, it is not 80 columns capable
             //but some have 80 columns cards
             //so if LinLen is >=40, leave at that
-            if (ucLinLen<40)
+            if (ucLinLen<41)
             {
                 Screen(0);
                 Width(40);
                 ucWidth40 = 1;
             }
-            else //hopefully it will be 80
-                ucWidth40 = 0;
+
+            if (ucCP437)
+            {
+                ucCP437 = 0xff ; //Signal custom font was loaded
+                uiChrDestRamAddr = 0x0800; //Address of patterns for screen 0
+                CopyRamToVram((void *)ucCP437Font, uiChrDestRamAddr, sizeof(ucCP437Font));
+            }
         }
+        else
+        {
+            //hopefully it will be 80
+            //won't custom load fonts on a MSX1 saying more than 40 columns
+            //have no idea how the 80 columns card fonts are loaded and there are different cards
+            //don't think it is feasible to do without cards to test, so, unless someone jump-in to support it, it won't be done
+            ucWidth40 = 0;
+        }
+    }
+
+    if (!ucAnsi)
+    {
         print(ucSWInfo);
     }
     else
@@ -440,6 +462,32 @@ int main(char** argv, int argc)
     memcpy(ucFnkBackup,ucFnkStr,160);
     // Make sure those won't have any text
     memset(ucFnkStr,'\0',160);
+
+    if (ucAnsi) //Using MSX2ANSI?
+    {
+        print(ucHispaBD);
+        print("    ");
+        print(ucServer);
+        print("\r\n  Hit any other key to continue...\r\n");
+        uiJiffy = 0;
+
+        do
+        {
+            ucTxData = Inkey ();
+            // A key has been hit?
+            if (ucTxData)
+            {
+                if ((ucTxData=='h')||(ucTxData=='H'))
+                {
+                    strcpy(ucServer,"bbs.hispamsx.org");
+                    strcpy(ucPort,"23");
+                }
+                break;
+            }
+        }
+        while (uiJiffy<600);
+    }
+
 #ifdef AO_FOSSIL_ADAPTER
     if (serialmode)
     {
@@ -563,6 +611,12 @@ int main(char** argv, int argc)
 
         if (ucAnsi) //using msx2ansi?
             endAnsi(); //terminate its screen mode
+        else if (ucCP437==0xff) //using custom fonts?
+        {
+            //re-initialize screen fonts by re-initializing screen mode
+            Screen(0);
+            Width(40);
+        }
 
         if (ucF5Exit) //F5 pressed?
             print("Closing connection...\r\n"); //Yes, so we are closing
