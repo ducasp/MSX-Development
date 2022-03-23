@@ -1,6 +1,7 @@
 # HUBG v0.80
 
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
 # CHANGELOG v0.80
 
