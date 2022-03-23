@@ -1,5 +1,7 @@
 # TERMSXSM
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 Simple Terminal for MSX-SM
 Copyright (c) 2019 Oduvaldo Pavan Junior ( ducasp@ gmail.com )
 All rights reserved.
