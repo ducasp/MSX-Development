@@ -1,3 +1,5 @@
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 # WAITWIFI v0.14
 
 Minor change to the waiting animation, so it is the same on all machines, not
