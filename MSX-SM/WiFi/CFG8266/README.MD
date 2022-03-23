@@ -1,5 +1,7 @@
 # CFG8266 v1.30
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 Simple Tool to Scan Networks / Configure Parameters / Update Firmware of ESP
 in your MSX-SM / SM-X
 
