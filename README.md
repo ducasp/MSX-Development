@@ -5,3 +5,5 @@ All source code and binaries:
 (c)2019 Oduvaldo Pavan Junior - ducasp@gmail.com
 
 All code can be re-used, re-written, derivative work can be sold, as long as the source code of changes is made public as well.
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
