@@ -1,5 +1,7 @@
 # WiFi
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 # IMPORTANT!!! THIS IS OUTDATED AND NO LONGER USED
 
 # MSX-SM NOW HAVE ESP8266 RUNNING UNAPI IN ITS FIRMWARE AND THOSE UTILITIES WON'T WORK!
