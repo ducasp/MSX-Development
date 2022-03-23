@@ -1,5 +1,7 @@
 # SNTPSM
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 Simple SNTP Client for MSX-SM
 
 Based on SNTP client for UNAPI By Konamiman - konamiman@konamiman.com
