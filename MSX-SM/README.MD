@@ -1,5 +1,7 @@
 # MSX-SM
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 MSX-SM is a MSX system implemented in FPGA.
 
 It is derived from OCM/Zemmix Neo adding extra features (newer FPGA that has 
