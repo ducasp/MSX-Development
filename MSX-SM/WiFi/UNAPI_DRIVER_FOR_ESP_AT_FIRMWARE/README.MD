@@ -1,5 +1,7 @@
 # WiFi Driver for ESP8266 w/ standard AT Firmware
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 This driver is a work that no longer is in progress. When starting to get 
 MSX-SM on the Internet, the idea was to take advantage of ESP8266 built-in AT
 firmware. Development went all the way until I've figured out that relying
