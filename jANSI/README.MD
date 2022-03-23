@@ -19,3 +19,5 @@ understand changes
 
 **This is useful for the MSX-SM Telnet Client. I have no participation in MEMMAN
 and jANSI development, I've just included it here in distributable format.**
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
