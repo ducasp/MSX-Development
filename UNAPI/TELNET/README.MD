@@ -2,6 +2,9 @@
 
 (c)2019-2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 # CHANGELOG v1.34
     - HispaMSX BBS is celebrating its 15th anniversary! So do we, this version
       is dedicated to Hispa! Thanks Karloch and everyone else involved for all
