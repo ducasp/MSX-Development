@@ -2,6 +2,8 @@
 
 SNTP v1.1 is based on SNTP v1.0 by Nestor Soriano / Konamiman.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 This is a small fix...
 
 If the count of seconds elapsed received by SNTP Server is a multiple of 60,
