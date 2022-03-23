@@ -2,6 +2,8 @@
 
 TFTP v1.1 is based on TFTP v1.0 by Nestor Soriano / Konamiman.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 This version removes the wait for a whole tick after TCPIP_WAIT calls
 for at least a whole tick (1/50s or 1/60s) that were not needed. This 
 saves some time that can be spent transferring data . 
