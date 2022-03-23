@@ -2,6 +2,8 @@
 
 HUB v1.3 is based on HUB v1.2 by fr3nd / Carles Amigó.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 How HUB v1.3 is any different than the original?
 
 HUB v1.3 (unofficial) intends to speed-up download speeds. A lot!
