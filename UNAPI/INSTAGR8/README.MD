@@ -3,6 +3,7 @@
 (c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
 (c)2020 Thomas F. Glufke - https://github.com/glufke/instagr8
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 # CHANGELOG v0.20
 
 	- First release of INSTAGR8, an Instagram Viewer that is a client of the
