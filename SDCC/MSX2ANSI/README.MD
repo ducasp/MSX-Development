@@ -1,5 +1,7 @@
 # MSX2ANSI
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 MSX2ANSI is based on ANSI-DRV.BIN, an amazing piece of software by Tobias Keizer!
 
 It is a very, very, very fast ANSI COLOR Text Rendering engine for MSX2 and beyond.
