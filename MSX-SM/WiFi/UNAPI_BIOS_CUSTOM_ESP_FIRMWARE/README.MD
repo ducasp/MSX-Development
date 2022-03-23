@@ -1,5 +1,7 @@
 # Wi-Fi BIOS for ESP8266 w/ Custom Firmware
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 This BIOS will offer the SM-X users the following TCP-IP UNAPI functionality:
 
 	- Up to four consecutive connections (except when using TLS/SSL)
