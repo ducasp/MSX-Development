@@ -1,5 +1,7 @@
 # WiFi Driver for ESP8266 w/ Custom Firmware
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
 This driver is a simple tunnel for a Custom ESP8266 firmware that implements
 UNAPI internally. This results on a high performance as Z80 processing time
 is not wasted buffering data or converting parameters/responses.
