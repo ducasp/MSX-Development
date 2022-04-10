@@ -61,7 +61,7 @@
 #define BUFFER_SIZE 1024
 #define MAX_LOCAL_PACKAGES 100
 #define MAX_REMOTE_GROUPS 25
-#define MAX_REMOTE_PACKAGES 70
+#define MAX_REMOTE_PACKAGES 140
 
 //Define how many can be displayed at once
 #define MAX_REMOTE_PACK_LIST_ITENS 10
@@ -107,7 +107,7 @@ typedef struct {
 typedef struct {
   unsigned char ucPackages;
   char ucPackageName[MAX_REMOTE_PACKAGES][9];
-  char ucPackageDetail[MAX_REMOTE_PACKAGES][77];
+  char *ucPackageDetail[MAX_REMOTE_PACKAGES]; //[77]
 } groups_package;
 
 //Title when installing the first time
@@ -140,6 +140,7 @@ groups_package hubGroupPackages; //Hold the currently available packages on the 
 
 //General temp variables mostly used in menu building routines, be careful not nesting the usage of those
 unsigned char ucRet;
+unsigned char ucSearch;
 char chCol,chRow;
 unsigned char ucTmp1,ucTmp2,ucTmp3,ucTmp4;
 

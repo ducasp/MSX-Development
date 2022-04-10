@@ -809,23 +809,28 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
             case STATE_LOOKING_PACKET_INFO:
                 if (rcv_buffer[n] > ' ')
                 {
-                    hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][0] = rcv_buffer[n];
+                    if (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] != (char*)-1) {
+                        hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][0] = rcv_buffer[n];
+                    }
                     m = 1;
                     GGLLState = STATE_GETTING_PACKET_INFO;
                 }
                 break;
             case STATE_GETTING_PACKET_INFO:
-                if ((rcv_buffer[n] != '\r')&&(rcv_buffer[n] != '\n'))
-                {
-                    if (m<76)
-                    {
-                        hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][m] = rcv_buffer[n];
-                        ++m;
+                if ((rcv_buffer[n] != '\r') && (rcv_buffer[n] != '\n')) {
+                    if (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] != (char*)-1) {
+                        if (m<76)
+                        {
+                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][m] = rcv_buffer[n];
+                            ++m;
+                        }
                     }
                 }
                 else if (rcv_buffer[n] == '\n')
                 {
-                    hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][m] = 0;
+                    if (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] != (char*)-1) {
+                        hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages][m] = 0;
+                    }
                     ++hubGroupPackages.ucPackages;
                     if (hubGroupPackages.ucPackages==MAX_REMOTE_PACKAGES)
                         break;
@@ -863,6 +868,97 @@ void GetGroupList(char *GroupName)
             ucRemotePages = (hubGroupPackages.ucPackages - 1) / MAX_REMOTE_PACK_LIST_ITENS;
         else
             ucRemotePages = 0;
+    }
+}
+
+void SearchListRcvCallBack(char *rcv_buffer, int bytes_read)
+{
+    static int m;
+    int n;
+
+    static char *packageName;
+    static char currentPackage[9];
+    static int found;
+
+    if(GGLLState == STATE_GGL_STARTUP)
+    {
+        m = 0;
+        packageName = hubInstalledPackages.chPackageName[ucSearch];
+        found = 0;
+        GGLLState = STATE_LOOKING_PACKET_NAME;
+    }
+    
+    for (n=0; n<bytes_read; ++n)
+    {
+        switch (GGLLState)
+        {
+            case STATE_LOOKING_PACKET_NAME:
+                if (rcv_buffer[n] > ' ')
+                {
+                    currentPackage[0] = rcv_buffer[n];
+                    m = 1;
+                    GGLLState = STATE_GETTING_PACKET_NAME;
+                }
+                break;
+            case STATE_GETTING_PACKET_NAME:
+                if (rcv_buffer[n] != ' ')
+                {
+                    currentPackage[m] = rcv_buffer[n];
+                    ++m;
+                }
+                else
+                {
+                    currentPackage[m] = 0;
+                    found = strcmp(packageName, currentPackage);
+                    GGLLState = STATE_LOOKING_PACKET_INFO;
+                }
+                break;
+            case STATE_LOOKING_PACKET_INFO:
+                if (found && rcv_buffer[n] > ' ')
+                {
+                    hubGroupPackages.ucPackageDetail[ucSearch] = MMalloc(77 * sizeof(char));
+                    hubGroupPackages.ucPackageDetail[ucSearch][0] = rcv_buffer[n];
+                    m = 1;
+                    GGLLState = STATE_GETTING_PACKET_INFO;
+                }
+                break;
+            case STATE_GETTING_PACKET_INFO:
+                if (found) {
+                    if ((rcv_buffer[n] != '\r')&&(rcv_buffer[n] != '\n'))
+                    {
+                        if (m<76)
+                        {
+                            hubGroupPackages.ucPackageDetail[ucSearch][m] = rcv_buffer[n];
+                            ++m;
+                        }
+                    }
+                    else if (rcv_buffer[n] == '\n')
+                    {
+                        hubGroupPackages.ucPackageDetail[ucSearch][m] = 0;
+                        found = 0;
+                        return;
+                    }
+                }
+                break;
+        }
+    }
+}
+
+void GetPackageDetail()
+{
+    if (hubGroupPackages.ucPackageDetail[ucSearch] == (char*)-1) {
+        strcpy(chTextLine,baseurl);
+        strcat(chTextLine,"search/");
+        strcat(chTextLine, hubGroupPackages.ucPackageName[ucSearch]);
+        GGLLState = STATE_GGL_STARTUP;
+        if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)SearchListRcvCallBack,0,false)!=ERR_TCPIPUNAPI_OK)
+        {
+            if (hubGroupPackages.ucPackageDetail[ucSearch] != NULL) {
+                free(hubGroupPackages.ucPackageDetail[ucSearch]);
+            }
+            hubGroupPackages.ucPackageDetail[ucSearch] = (char*) malloc(1 * sizeof(char));
+            hubGroupPackages.ucPackageDetail[ucSearch][0] = 0;
+        }
     }
 }
 
@@ -932,6 +1028,8 @@ void RefreshRemoteList(unsigned char ucPage, unsigned char ucSelectedItem)
             ucTmp3 += 'A';
             if (ucTmp3 == ucHelper)
             {
+                ucSearch = ucRet;
+                GetPackageDetail();
                 sprintf(chTextLine,"\x1b[21;3H\x1b[1;33;40m%s\x1b[0;31;40m\x1b[K\x1b[21;80H\xba",hubGroupPackages.ucPackageDetail[ucRet]);
                 AnsiPrint(chTextLine);
                 sprintf(chTextLine,"\x1b[%u;%uH\x1b[1;30;47m%c - %s",chRow,chCol,ucTmp3,hubGroupPackages.ucPackageName[ucRet]);
@@ -1014,6 +1112,8 @@ void SelectListMenu(unsigned char ucPage, unsigned char ucItem)
         chRow = 7 + ucItem;
         sprintf(chTextLine,"\x1b[%u;%uH\x1b[1;30;47m%c - %s\x1b[0;31;40m\x1b[K\x1b[%u;80H\xba",chRow,chCol,ucItem+'A',hubGroupPackages.ucPackageName[ucTmp1 + ucItem],chRow);
         AnsiPrint(chTextLine);
+        ucSearch = ucTmp1 + ucItem;
+        GetPackageDetail();
         sprintf(chTextLine,"\x1b[21;3H\x1b[1;33;40m%s\x1b[0;31;40m\x1b[K\x1b[21;80H\xba",hubGroupPackages.ucPackageDetail[ucTmp1 + ucItem]);
         AnsiPrint(chTextLine);
     }
