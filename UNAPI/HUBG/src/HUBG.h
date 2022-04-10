@@ -63,10 +63,15 @@
 #define MAX_REMOTE_GROUPS 25
 #define MAX_REMOTE_PACKAGES 140
 
+#define NULL_POINTER (char*)-1 //The default initialization value of a pointer depends on the compiler.
+
 //Define how many can be displayed at once
 #define MAX_REMOTE_PACK_LIST_ITENS 10
 #define MAX_LOCAL_PACK_LIST_ITENS 10
 #define MAX_REMOTE_GROUP_ITENS 9
+
+//Define the maximum length of a package detail
+#define MAX_PACK_DETAIL_LENGTH 77
 
 //Where we will allocate memory for hget and other processes
 #define HI_MEMBLOCK_START 0xC000
