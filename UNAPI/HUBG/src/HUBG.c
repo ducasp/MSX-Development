@@ -41,6 +41,38 @@
 #include "msx2ansi.h"
 #include "dos.h"
 
+void reset_details();
+
+// dynamic memory allocation
+// used only for storing package details
+unsigned char dynamic_mem[DYNAMIC_MEM_SIZE];
+unsigned char *_heap_top = dynamic_mem; 
+
+void *Malloc(unsigned int size)
+{
+    if (_heap_top+size-dynamic_mem > DYNAMIC_MEM_SIZE) {
+        //Dynamic memory size has been reached. Releases all previously allocated memory
+        _heap_top = dynamic_mem;
+        reset_details(); //Calls Malloc function recursively 
+    }
+    unsigned char *ret = _heap_top;
+    _heap_top += size;
+    return (void *) ret;
+}
+// end of dynamic memory allocation
+
+void reset_details()
+{
+    //Reset all pointers
+    for(unsigned char i=0; i<MAX_REMOTE_PACKAGES; i++) {
+        hubGroupPackages.ucPackageDetail[i] = NULL_POINTER;
+    }
+    //The detail of the first package of each page is pre-initialized to speed up pagination
+    //for (unsigned char n=0; n<MAX_REMOTE_PACKAGES; n+=10) {
+    //    hubGroupPackages.ucPackageDetail[n] = Malloc(MAX_PACK_DETAIL_LENGTH);
+    //}
+}
+
 void die(const char *s)
 {
     AnsiPrint(s);
@@ -774,10 +806,10 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
     static int m;
     static char *p_name;
     static char *p_detail;
-    static char has_detail;
+    static char v_detail[77];
+    static char fill_detail;
     int n;
     char rcv_char;
-    char *p_buffer = rcv_buffer;
 
     if(GGLLState == STATE_GGL_STARTUP)
     {
@@ -787,23 +819,14 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
 
     for (n=0; (n<bytes_read) && (hubGroupPackages.ucPackages<MAX_REMOTE_PACKAGES); ++n)
     {
-        rcv_char = *p_buffer++;
+        rcv_char = rcv_buffer[n]; //Do not use rcv_buffer as a pointer!!!
         switch (GGLLState)
         {
 
             case STATE_LOOKING_PACKET_NAME:
                 if (rcv_char > ' ')
                 {
-                    //The detail of the first item of each page is filled here to speed up pagination
-                    if (hubGroupPackages.ucPackages % MAX_REMOTE_PACK_LIST_ITENS == 0 && 
-                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] == NULL_POINTER) {
-                        hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = MMalloc(MAX_PACK_DETAIL_LENGTH);
-                    }
-
                     p_name = hubGroupPackages.ucPackageName[hubGroupPackages.ucPackages];
-                    p_detail = hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages];
-
-                    has_detail = (p_detail != NULL_POINTER);
                     
                     *p_name++ = rcv_char;
                     GGLLState = STATE_GETTING_PACKET_NAME;
@@ -823,7 +846,11 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
             case STATE_LOOKING_PACKET_INFO:
                 if (rcv_char > ' ')
                 {
-                    if (has_detail) {
+                    fill_detail = (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] != NULL_POINTER ||
+                                   hubGroupPackages.ucPackages%MAX_REMOTE_PACK_LIST_ITENS==0); // Fast paging optimization
+
+                    if (fill_detail) {
+                        p_detail = v_detail;
                         *p_detail++ = rcv_char;
                         m = 1;
                     }
@@ -831,8 +858,8 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
                 }
                 break;
             case STATE_GETTING_PACKET_INFO:
-                if ((rcv_char != '\r') && (rcv_char != '\n')) {
-                    if (has_detail) {
+                if (rcv_char != '\r' && rcv_char != '\n') {
+                    if (fill_detail) {
                         if (m < 76)
                         {
                             *p_detail++ = rcv_char;
@@ -842,10 +869,14 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
                 }
                 else if (rcv_char == '\n')
                 {
-                    if (has_detail) {
+                    if (fill_detail) {
                         *p_detail = 0;
+                        if (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] == NULL_POINTER) {
+                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = Malloc(m+1); //Allocates exactly the memory required
+                        }
+                        strcpy(hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages], v_detail);
                     }
-                    ++hubGroupPackages.ucPackages;
+                    ++hubGroupPackages.ucPackages; 
                     if (hubGroupPackages.ucPackages==MAX_REMOTE_PACKAGES)
                         break;
                     GGLLState = STATE_LOOKING_PACKET_NAME;
@@ -864,9 +895,13 @@ void GetGroupList(char *GroupName)
     AnsiPrint(" packages\x1b[K\x1b[21;80H\x1b[0;31m\xba");
     AnsiPrint(chTextLine);
 
+    //Reset details cache
+    reset_details();
+
     strcpy(chTextLine,baseurl);
     strcat(chTextLine,"list?category=");
     strcat(chTextLine, GroupName);
+
     GGLLState = STATE_GGL_STARTUP;
     if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)GroupListRcvCallBack,0,false)!=ERR_TCPIPUNAPI_OK)
     {
@@ -888,33 +923,29 @@ void GetGroupList(char *GroupName)
 void SearchListRcvCallBack(char *rcv_buffer, int bytes_read)
 {
     static int m;
-    int n;
-    char rcv_char;
-    char *p_buffer = rcv_buffer;
-
-    static char *target_name;
     static char *p_name;
     static char *p_detail;
     static char v_name[9];
+    static char v_detail[77];
     static int found;
+    int n;
+    char rcv_char;
 
     if(GGLLState == STATE_GGL_STARTUP)
     {
-        m = 0;
         found = 0;
-        target_name = hubInstalledPackages.chPackageName[ucSearch];
-        p_name = v_name;
         GGLLState = STATE_LOOKING_PACKET_NAME;
     }
     
-    for (n=0; n<bytes_read; ++n)
+    for (n=0; n<bytes_read && found<2; ++n)
     {
-        rcv_char = *p_buffer++;
+        rcv_char = rcv_buffer[n]; //Do not use rcv_buffer as a pointer!!!
         switch (GGLLState)
         {
             case STATE_LOOKING_PACKET_NAME:
                 if (rcv_char > ' ')
                 {
+                    p_name = v_name;
                     *p_name++ = rcv_char;
                     GGLLState = STATE_GETTING_PACKET_NAME;
                 }
@@ -923,44 +954,44 @@ void SearchListRcvCallBack(char *rcv_buffer, int bytes_read)
                 if (rcv_char != ' ')
                 {
                     *p_name++ = rcv_char;
-                    m++;
                 }
                 else
                 {
                     *p_name = 0;
-                    found = strcmp(target_name, v_name);
+                    found = (strcmp(v_name, hubGroupPackages.ucPackageName[ucSearch]) == 0);
                     GGLLState = STATE_LOOKING_PACKET_INFO;
                 }
                 break;
             case STATE_LOOKING_PACKET_INFO:
-                if (found && rcv_char > ' ')
+                if (rcv_char > ' ')
                 {
-                    //This "if" statement is not necessary, but I'll leave it for safety (see GetPackageDetail() first "if")
-                    if (hubGroupPackages.ucPackageDetail[ucSearch] == NULL_POINTER) {
-                        hubGroupPackages.ucPackageDetail[ucSearch] = MMalloc(MAX_PACK_DETAIL_LENGTH);
+                    if (found) {
+                        p_detail = v_detail;
+                        *p_detail++ = rcv_char;
+                        m = 1;
                     }
-                    p_detail = hubGroupPackages.ucPackageDetail[ucSearch];
-                    *p_detail++ = rcv_char;
-                    m = 1;
                     GGLLState = STATE_GETTING_PACKET_INFO;
                 }
                 break;
             case STATE_GETTING_PACKET_INFO:
-                if (found) {
-                    if ((rcv_char != '\r')&&(rcv_char != '\n'))
+                if (found && rcv_char != '\r' && rcv_char != '\n')
+                {
+                    if (m < 76)
                     {
-                        if (m < 76)
-                        {
-                            *p_detail++ = rcv_char;
-                            m++;
-                        }
+                        *p_detail++ = rcv_char;
+                        m++;
                     }
-                    else if (rcv_char == '\n')
-                    {
+                }
+                else if (rcv_char == '\n')
+                {
+                    if (found) {
                         *p_detail = 0;
-                        found = 0;
+                        hubGroupPackages.ucPackageDetail[ucSearch] = Malloc(m+1); //Allocates exactly the memory required
+                        strcpy(hubGroupPackages.ucPackageDetail[ucSearch], v_detail);
+                        found = 2;
                         return;
                     }
+                    GGLLState = STATE_LOOKING_PACKET_NAME;
                 }
                 break;
         }
@@ -972,14 +1003,17 @@ void GetPackageDetail()
     if (hubGroupPackages.ucPackageDetail[ucSearch] == NULL_POINTER) {
         strcpy(chTextLine,baseurl);
         strcat(chTextLine,"search/");
-        strcat(chTextLine, hubGroupPackages.ucPackageName[ucSearch]);
+        strcat(chTextLine, hubGroupPackages.ucPackageName[ucSearch]); //Ideally, there should be a search function for the exact term
+        
         GGLLState = STATE_GGL_STARTUP;
         if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)SearchListRcvCallBack,0,false)!=ERR_TCPIPUNAPI_OK)
         {
-            if (hubGroupPackages.ucPackageDetail[ucSearch] == NULL_POINTER) {
-                hubGroupPackages.ucPackageDetail[ucSearch] = MMalloc(MAX_PACK_DETAIL_LENGTH);
+            AnsiPrint("\x1b[21;3H\x1b[1;37mFailure trying to get the detail of package ");
+            AnsiPrint(hubGroupPackages.ucPackageName[ucSearch]);
+            AnsiPrint("\x1b[K\x1b[21;80H\x1b[0;31m\xba");
+            if (hubGroupPackages.ucPackageDetail[ucSearch] != NULL_POINTER) {
+                *hubGroupPackages.ucPackageDetail[ucSearch] = 0; // Will only try to query again when updating the remote list
             }
-            strcpy(hubGroupPackages.ucPackageDetail[ucSearch], "Error querying the short package description");
         }
     }
 }
@@ -1211,7 +1245,7 @@ void HTTPStatusUpdate (bool isChunked)
 }
 
 // That is where our program goes
-int main(char** argv, int argc)
+int main()
 {
 	char ucKeybData = 0; //where our key inputs go
     unsigned char ucPage = 0;
@@ -1260,6 +1294,9 @@ int main(char** argv, int argc)
         ucCursorDisplayed = ucCursorSave;
         return 0;
     }
+
+    reset_details();
+
     AnsiInit();
     AnsiPrint(ucSWInfoANSI);
 

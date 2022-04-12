@@ -61,9 +61,11 @@
 #define BUFFER_SIZE 1024
 #define MAX_LOCAL_PACKAGES 100
 #define MAX_REMOTE_GROUPS 25
-#define MAX_REMOTE_PACKAGES 140
+#define MAX_REMOTE_PACKAGES 200 //This value must match the type of the groups_package.ucPackages variable
 
-#define NULL_POINTER (char*)-1 //The default initialization value of a pointer depends on the compiler.
+#define NULL_POINTER (char*)-1 //The default initialization value of a pointer depends on the compiler
+
+#define DYNAMIC_MEM_SIZE 2048 //Dynamic memory length (see Malloc function)
 
 //Define how many can be displayed at once
 #define MAX_REMOTE_PACK_LIST_ITENS 10
