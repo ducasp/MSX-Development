@@ -1,0 +1,16 @@
+Fitter Status : Successful - Tue Apr 12 17:45:04 2022
+Quartus Prime Version : 17.1.0 Build 590 10/25/2017 SJ Lite Edition
+Revision Name : ocm_sm
+Top-level Entity Name : top
+Family : Cyclone IV E
+Device : EP4CE22F17C8
+Timing Models : Final
+Total logic elements : 15,304 / 22,320 ( 69 % )
+    Total combinational functions : 13,890 / 22,320 ( 62 % )
+    Dedicated logic registers : 6,553 / 22,320 ( 29 % )
+Total registers : 6602
+Total pins : 152 / 154 ( 99 % )
+Total virtual pins : 0
+Total memory bits : 82,386 / 608,256 ( 14 % )
+Embedded Multiplier 9-bit elements : 10 / 132 ( 8 % )
+Total PLLs : 1 / 4 ( 25 % )

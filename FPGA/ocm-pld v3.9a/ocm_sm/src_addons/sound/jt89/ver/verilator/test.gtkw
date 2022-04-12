@@ -1,0 +1,62 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Thu Dec  6 20:39:42 2018
+[*]
+[dumpfile] "/home/jtejada/github/fpgagen/jt89/ver/verilator/test.fst"
+[dumpfile_mtime] "Thu Dec  6 20:38:52 2018"
+[dumpfile_size] 126838
+[savefile] "/home/jtejada/github/fpgagen/jt89/ver/verilator/test.gtkw"
+[timestart] 33
+[size] 1920 1026
+[pos] -1 -1
+*-27.146193 58600000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] TOP.
+[treeopen] TOP.jt89.
+[sst_width] 196
+[signals_width] 186
+[sst_expanded] 1
+[sst_vpaned_height] 307
+@28
+TOP.wr_n
+@22
+TOP.din[7:0]
+@8024
+TOP.sound[10:0]
+@20000
+-
+-
+@28
+TOP.jt89.regn[2:0]
+@200
+-tone0
+@8022
+TOP.jt89.u_tone0.vol[3:0]
+@22
+TOP.jt89.u_tone0.tone[9:0]
+@28
+TOP.jt89.u_tone0.out
+@200
+-tone1
+@22
+TOP.jt89.u_tone1.vol[3:0]
+TOP.jt89.u_tone1.tone[9:0]
+@28
+TOP.jt89.u_tone1.out
+@200
+-tone2
+@22
+TOP.jt89.u_tone2.vol[3:0]
+TOP.jt89.u_tone2.tone[9:0]
+@24
+TOP.jt89.u_tone2.out
+@200
+-Noise
+@22
+TOP.jt89.u_noise.vol[3:0]
+@28
+TOP.jt89.u_noise.overflow
+TOP.jt89.u_noise.update
+@22
+TOP.jt89.u_noise.shift[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

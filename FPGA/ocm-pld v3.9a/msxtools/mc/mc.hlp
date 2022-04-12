@@ -1,0 +1,118 @@
+===============================================================
+                      THE MSX COMMANDER
+                 version 1.1.00 - April 2012
+===============================================================
+            A GNU Midnight Commander clone for MSX2
+          ...or a Norton Commander one if you wish ;)
+
+---------------------------------------------------------------
+                          WARNING:
+---------------------------------------------------------------
+This program is freeware and is distributed AS IS.
+
+The developer assumes no responsability for file losses or
+hardware damages you might have using this software.
+
+---------------------------------------------------------------
+                       DEVELOPED BY:
+---------------------------------------------------------------
+Luis Felipe Antoniosi (retrocanada76@gmail.com)
+
+Developed using tniASM 1.0 beta
+
+---------------------------------------------------------------
+                      SPECIAL THANKS:
+---------------------------------------------------------------
+- MSXBR-L for all support and beta testing
+- #msxdev@rizon.net for all the support
+- MSX Assembly Page (http://map.grauw.nl) 
+
+---------------------------------------------------------------
+                       BETA TESTERS:
+---------------------------------------------------------------
+- Luciano Sturaro
+- Daniel Jorge Caetano
+- Edson Pereira Sucochip
+- Antonio S. Parra
+
+---------------------------------------------------------------
+                       REQUIREMENTS:
+---------------------------------------------------------------
+- MSX2/MSX2+ or Turbo R
+- 256 Memory Mapper with at least 64 KB of available RAM
+- MSX-DOS 2.20 or higher
+- Mouse (optional)
+
+---------------------------------------------------------------
+                       INSTALLATION:
+---------------------------------------------------------------
+MC can be run from diskette or it can be copied on any system
+folder. Copy all three files:
+
+MC.COM
+MC.MNU
+MC.HLP
+
+You need to make sure the SHELL environment is set. If
+not, add the following in your AUTOEXEC.BAT:
+
+set SHELL=%1\COMMAND2.COM
+
+---------------------------------------------------------------
+                       INSTRUCTIONS:
+---------------------------------------------------------------
+You can use the mouse to point and click over files, buttons, 
+menus and dialogs. Also the following keys are available:
+
+UP/DOWN       : Move view selection up/down
+CTRL UP/DOWN  : Page view up/down
+TAB           : Change to left/right view
+ENTER         : Enter a directory / execute item
+CTRL+ENTER    : Enter a directory on opposite view
+CTRL+BACKSPACE: Go to parent directory
+SELECT        : Select a file
++             : Select all files
+-             : Unselect all files
+*             : Invert all files selection
+CTRL-A        : Change recursively file attributes
+CTRL-D        : Change current drive
+CTRL-F        : Filter view (wild cards)
+CTRL-I        : Show drive information
+CTRL-P        : Swap panels left/right
+CTRL-R        : Rescan view (refresh)
+CTRL-S        : Sort view alphabetically
+F1            : Show this help
+F2            : Open user's menu (see user's menu)
+F3            : View a text file. Pressing any key pages down 
+                the file. You can edit the file pressing F4
+F4            : Edit a file (see configuration)
+F5            : Copy a file/folder recursively
+F6            : Move or rename file. To rename left and right 
+                path must be the same
+F7            : Make a new directory
+F8            : Delete file/folder recursively
+F9            : Open pull-down menu
+F10           : Exit program
+
+---------------------------------------------------------------
+                             ALIAS:
+---------------------------------------------------------------
+For MSX-DOS 2.44 you can set ALIAS for each extension, like:
+
+ALIAS .BAS = "BASIC "
+ALIAS .ROM = "ROMLOAD "
+
+This will automatize the loading of those files by just 
+selecting then and pressing ENTER.
+
+Configure them in your AUTOEXEC.BAT
+
+---------------------------------------------------------------
+                  USER'S MENU / CONFIGURATIONS:
+---------------------------------------------------------------
+MC has a configurable menu for user commands. You can specify
+up to 255 commands to accessed through user dialog (F2). See 
+MC.MNU file for more details, or go to Option -> Configurations.
+
+Also, the default editor (F4) is set there.
+

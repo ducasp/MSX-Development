@@ -1,0 +1,87 @@
+# THE MSX COMMANDER
+# 2012 retrocanada76@gmail.com
+#
+# USER'S MENU:
+#
+# You can set a command for each key from 0-9 and A-Z. 
+# To use in MC just press F2, select the item or press the key
+# and then press ENTER or double click.
+#
+# SYNTAX:
+#
+# <KEY>:<LABEL>
+# <COMMAND>
+#
+# where:
+#
+# <KEY> 	is a key between 0-9 and A-Z.
+# <LABEL>	the description displayed in MC menu.
+# <COMMAND> the MSXDOS2 command. Only one line is allowed.
+#
+# If more than one line is needed for the command you can make a .BAT file
+# and call it using the same parameters.
+#
+# The following environment variables are set according to the context:
+#
+# %SDRV% : Source drive letter: the current active pane. 
+# %TDRV% : Target drive letter: the current opposite pane.
+# %SPTH% : Source path. Includes drive letter and trailing backslash.
+# %TPTH% : Target path. Includes drive letter and trainling backslash.
+# %SFIL% : Source filename: the selected item in source pane.
+# %TFIL% : Target filename: the selected item in target pane.
+#
+# EXAMPLES:
+#
+# 0:BOOT PARTITION
+# IDEPAR %SDRV%=0
+#
+# X:XCOPY 
+# XCOPY %SPTH%*.* %TPTH% /S
+#
+# E:EDIT
+# TED %SPTH%%SFIL%
+#
+
+0:BOOT PARTITION
+IDEPAR %SDRV% = 0
+
+X:XCOPY 
+XCOPY %SPTH%*.* %TPTH% /S
+
+E:EDIT
+XTOR %SPTH%%SFIL%
+
+S:SHOW ENVIRONMENT ITEMS
+SET|MORE
+
+M:MEGAFLASH
+OPFX.COM %SFIL%
+
+#
+# CONFIGURATION
+# SET DEFAULT EDITOR USED WITH F4 KEY:
+#
+
+EDIT:TED.COM
+
+# 
+# COLOR CONFIG
+#
+# COLOR0:RGB/RGB
+# COLOR1:RGB/RGB
+#
+# DEFINE FG AND BG COLOR
+# FOR THE 2 COLOR SETS
+# R,G AND B FROM 0 TO 7
+# AS 077 FOR CYAN AND 000 FOR BLACK
+
+COLOR0:456/001
+COLOR1:777/004
+
+# OLD MC COLOR
+#COLOR0:077/000
+#COLOR1:777/007
+
+# BRAZILIAN FLAG
+#COLOR0:777/010
+#COLOR1:571/004

@@ -1,0 +1,22 @@
+#!/bin/bash
+TOP=jt89_tb
+SIMLIMIT=
+
+while [ $# -gt 0 ]; do
+    if [ "$1" == "-t" ]; then
+        # time in us
+        shift
+        SIMLIMIT="-DSIMLIMIT=$1"
+        shift
+        echo "Simulation will finish at $SIMLIMIT us."
+        continue
+    fi
+    echo Unknown argument "$1"
+    exit 1
+done
+
+if ! g++ inputs.cc -o inputs; then
+	exit 1
+fi
+inputs > inputs.vh
+iverilog -f gather.f -DSIMULATION -s $TOP $SIMLIMIT -o sim -I../../hdl && sim -lxt 
