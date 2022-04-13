@@ -61,11 +61,13 @@
 #define BUFFER_SIZE 1024
 #define MAX_LOCAL_PACKAGES 100
 #define MAX_REMOTE_GROUPS 25
-#define MAX_REMOTE_PACKAGES 200 //This value must match the type of the groups_package.ucPackages variable
+#define MAX_REMOTE_PACKAGES 210 //This value must match the type of the groups_package.ucPackages variable
 
-#define NULL_POINTER (char*)-1 //The default initialization value of a pointer depends on the compiler
+//The default initialization value of a pointer depends on the compiler
+#define NULL_POINTER (char*)-1
 
-#define DYNAMIC_MEM_SIZE 2048 //Dynamic memory length (see Malloc function)
+//Dynamic memory length (see Malloc function)
+#define DYNAMIC_MEM_SIZE 2048
 
 //Define how many can be displayed at once
 #define MAX_REMOTE_PACK_LIST_ITENS 10
@@ -74,6 +76,9 @@
 
 //Define the maximum length of a package detail
 #define MAX_PACK_DETAIL_LENGTH 77
+
+//Number of package details loaded immediately for fast paging
+#define FAST_PAGING_LIST_ITENS 50
 
 //Where we will allocate memory for hget and other processes
 #define HI_MEMBLOCK_START 0xC000

@@ -41,33 +41,34 @@
 #include "msx2ansi.h"
 #include "dos.h"
 
-void reset_details();
-
 // dynamic memory allocation
 // used only for storing package details
+void Free();
+
 unsigned char dynamic_mem[DYNAMIC_MEM_SIZE];
 unsigned char *_heap_top = dynamic_mem; 
 
 void *Malloc(unsigned int size)
 {
     if (_heap_top+size-dynamic_mem > DYNAMIC_MEM_SIZE) {
-        //Dynamic memory size has been reached. Releases all previously allocated memory
-        _heap_top = dynamic_mem;
-        reset_details(); //Calls Malloc function recursively 
+        //Dynamic memory size has been reached. Releases all previously allocated memory.
+        Free();
     }
     unsigned char *ret = _heap_top;
     _heap_top += size;
     return (void *) ret;
 }
-// end of dynamic memory allocation
 
-void reset_details()
+void Free()
 {
+    //The next lines are equivalent to calling the "free" function on all ucPackageDetail pointers.
+    _heap_top = dynamic_mem;
     //Reset all pointers
     for(unsigned char i=0; i<MAX_REMOTE_PACKAGES; i++) {
         hubGroupPackages.ucPackageDetail[i] = NULL_POINTER;
     }
 }
+// end of dynamic memory allocation
 
 void die(const char *s)
 {
@@ -804,34 +805,33 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
     static char *p_detail;
     static char v_detail[77];
     static char fill_detail;
-    int n;
-    char rcv_char;
-
+    
     if(GGLLState == STATE_GGL_STARTUP)
     {
         hubGroupPackages.ucPackages = 0;
         GGLLState = STATE_LOOKING_PACKET_NAME;
     }
 
-    for (n=0; (n<bytes_read) && (hubGroupPackages.ucPackages<MAX_REMOTE_PACKAGES); ++n)
+    rcv_buffer[bytes_read] = 0;
+    while (*rcv_buffer)
     {
-        rcv_char = rcv_buffer[n]; //Do not use rcv_buffer as a pointer!!!
+        if (hubGroupPackages.ucPackages==MAX_REMOTE_PACKAGES) break;
+
         switch (GGLLState)
         {
-
             case STATE_LOOKING_PACKET_NAME:
-                if (rcv_char > ' ')
+                if (*rcv_buffer > ' ')
                 {
                     p_name = hubGroupPackages.ucPackageName[hubGroupPackages.ucPackages];
                     
-                    *p_name++ = rcv_char;
+                    *p_name++ = *rcv_buffer;
                     GGLLState = STATE_GETTING_PACKET_NAME;
                 }
                 break;
             case STATE_GETTING_PACKET_NAME:
-                if (rcv_char != ' ')
+                if (*rcv_buffer != ' ')
                 {
-                    *p_name++ = rcv_char;
+                    *p_name++ = *rcv_buffer;
                 }
                 else
                 {
@@ -840,36 +840,35 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
                 }
                 break;
             case STATE_LOOKING_PACKET_INFO:
-                if (rcv_char > ' ')
+                if (*rcv_buffer > ' ')
                 {
-                    fill_detail = (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] != NULL_POINTER ||
-                                   hubGroupPackages.ucPackages%MAX_REMOTE_PACK_LIST_ITENS==0); // Fast paging optimization
+                    // Fast paging optimization
+                    fill_detail = (hubGroupPackages.ucPackages < FAST_PAGING_LIST_ITENS || 
+                                   hubGroupPackages.ucPackages % MAX_REMOTE_PACK_LIST_ITENS==0);
 
                     if (fill_detail) {
                         p_detail = v_detail;
-                        *p_detail++ = rcv_char;
+                        *p_detail++ = *rcv_buffer;
                         m = 1;
                     }
                     GGLLState = STATE_GETTING_PACKET_INFO;
                 }
                 break;
             case STATE_GETTING_PACKET_INFO:
-                if (rcv_char != '\r' && rcv_char != '\n') {
-                    if (fill_detail) {
-                        if (m < 76)
-                        {
-                            *p_detail++ = rcv_char;
-                            m++;
-                        }
+                if (fill_detail && *rcv_buffer != '\r' && *rcv_buffer != '\n')
+                {
+                    if (m < 76)
+                    {
+                        *p_detail++ = *rcv_buffer;
+                        m++;
                     }
                 }
-                else if (rcv_char == '\n')
+                else if (*rcv_buffer == '\n')
                 {
                     if (fill_detail) {
                         *p_detail = 0;
-                        if (hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] == NULL_POINTER) {
-                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = Malloc(m+1); //Allocates exactly the memory required
-                        }
+                        // Allocates exactly the memory required
+                        hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = Malloc(m+1);
                         strcpy(hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages], v_detail);
                     }
                     ++hubGroupPackages.ucPackages; 
@@ -879,6 +878,8 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
                 }
                 break;
         }
+
+        rcv_buffer++;
     }
 }
 
@@ -892,7 +893,7 @@ void GetGroupList(char *GroupName)
     AnsiPrint(chTextLine);
 
     //Reset details cache
-    reset_details();
+    Free();
 
     strcpy(chTextLine,baseurl);
     strcat(chTextLine,"list?category=");
@@ -924,72 +925,76 @@ void SearchListRcvCallBack(char *rcv_buffer, int bytes_read)
     static char v_name[9];
     static char v_detail[77];
     static int found;
-    int n;
-    char rcv_char;
-
+    
     if(GGLLState == STATE_GGL_STARTUP)
     {
         found = 0;
         GGLLState = STATE_LOOKING_PACKET_NAME;
     }
     
-    for (n=0; n<bytes_read && found<2; ++n)
+    if (found < 2)
     {
-        rcv_char = rcv_buffer[n]; //Do not use rcv_buffer as a pointer!!!
-        switch (GGLLState)
+        rcv_buffer[bytes_read] = 0;
+        while (*rcv_buffer)
         {
-            case STATE_LOOKING_PACKET_NAME:
-                if (rcv_char > ' ')
-                {
-                    p_name = v_name;
-                    *p_name++ = rcv_char;
-                    GGLLState = STATE_GETTING_PACKET_NAME;
-                }
-                break;
-            case STATE_GETTING_PACKET_NAME:
-                if (rcv_char != ' ')
-                {
-                    *p_name++ = rcv_char;
-                }
-                else
-                {
-                    *p_name = 0;
-                    found = (strcmp(v_name, hubGroupPackages.ucPackageName[ucSearch]) == 0);
-                    GGLLState = STATE_LOOKING_PACKET_INFO;
-                }
-                break;
-            case STATE_LOOKING_PACKET_INFO:
-                if (rcv_char > ' ')
-                {
-                    if (found) {
-                        p_detail = v_detail;
-                        *p_detail++ = rcv_char;
-                        m = 1;
-                    }
-                    GGLLState = STATE_GETTING_PACKET_INFO;
-                }
-                break;
-            case STATE_GETTING_PACKET_INFO:
-                if (found && rcv_char != '\r' && rcv_char != '\n')
-                {
-                    if (m < 76)
+            switch (GGLLState)
+            {
+                case STATE_LOOKING_PACKET_NAME:
+                    if (*rcv_buffer > ' ')
                     {
-                        *p_detail++ = rcv_char;
-                        m++;
+                        p_name = v_name;
+                        *p_name++ = *rcv_buffer;
+                        GGLLState = STATE_GETTING_PACKET_NAME;
                     }
-                }
-                else if (rcv_char == '\n')
-                {
-                    if (found) {
-                        *p_detail = 0;
-                        hubGroupPackages.ucPackageDetail[ucSearch] = Malloc(m+1); //Allocates exactly the memory required
-                        strcpy(hubGroupPackages.ucPackageDetail[ucSearch], v_detail);
-                        found = 2;
-                        return;
+                    break;
+                case STATE_GETTING_PACKET_NAME:
+                    if (*rcv_buffer != ' ')
+                    {
+                        *p_name++ = *rcv_buffer;
                     }
-                    GGLLState = STATE_LOOKING_PACKET_NAME;
-                }
-                break;
+                    else
+                    {
+                        *p_name = 0;
+                        found = (strcmp(v_name, hubGroupPackages.ucPackageName[ucSearch]) == 0);
+                        GGLLState = STATE_LOOKING_PACKET_INFO;
+                    }
+                    break;
+                case STATE_LOOKING_PACKET_INFO:
+                    if (*rcv_buffer > ' ')
+                    {
+                        if (found) {
+                            p_detail = v_detail;
+                            *p_detail++ = *rcv_buffer;
+                            m = 1;
+                        }
+                        GGLLState = STATE_GETTING_PACKET_INFO;
+                    }
+                    break;
+                case STATE_GETTING_PACKET_INFO:
+                    if (found && *rcv_buffer != '\r' && *rcv_buffer != '\n')
+                    {
+                        if (m < 76)
+                        {
+                            *p_detail++ = *rcv_buffer;
+                            m++;
+                        }
+                    }
+                    else if (*rcv_buffer == '\n')
+                    {
+                        if (found) {
+                            *p_detail = 0;
+                            // Allocates exactly the memory required
+                            hubGroupPackages.ucPackageDetail[ucSearch] = Malloc(m+1);
+                            strcpy(hubGroupPackages.ucPackageDetail[ucSearch], v_detail);
+                            found = 2;
+                            return;
+                        }
+                        GGLLState = STATE_LOOKING_PACKET_NAME;
+                    }
+                    break;
+            }
+
+            rcv_buffer++;
         }
     }
 }
@@ -999,7 +1004,7 @@ void GetPackageDetail()
     if (hubGroupPackages.ucPackageDetail[ucSearch] == NULL_POINTER) {
         strcpy(chTextLine,baseurl);
         strcat(chTextLine,"search/");
-        strcat(chTextLine, hubGroupPackages.ucPackageName[ucSearch]); //Ideally, there should be a search function for the exact term
+        strcat(chTextLine, hubGroupPackages.ucPackageName[ucSearch]); // Ideally, there should be a search function for the exact term
         
         GGLLState = STATE_GGL_STARTUP;
         if(hget(chTextLine,NULL,NULL,(int)HTTPStatusUpdate,NULL,NULL,(int)SearchListRcvCallBack,0,false)!=ERR_TCPIPUNAPI_OK)
@@ -1290,8 +1295,6 @@ int main()
         ucCursorDisplayed = ucCursorSave;
         return 0;
     }
-
-    reset_details();
 
     AnsiInit();
     AnsiPrint(ucSWInfoANSI);
