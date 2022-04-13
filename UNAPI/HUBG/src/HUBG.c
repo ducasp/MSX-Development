@@ -67,10 +67,6 @@ void reset_details()
     for(unsigned char i=0; i<MAX_REMOTE_PACKAGES; i++) {
         hubGroupPackages.ucPackageDetail[i] = NULL_POINTER;
     }
-    //The detail of the first package of each page is pre-initialized to speed up pagination
-    //for (unsigned char n=0; n<MAX_REMOTE_PACKAGES; n+=10) {
-    //    hubGroupPackages.ucPackageDetail[n] = Malloc(MAX_PACK_DETAIL_LENGTH);
-    //}
 }
 
 void die(const char *s)
