@@ -1,8 +1,0 @@
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) dpram.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_background.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_cram.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_main.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_sms.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_sprite_shifter.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) vdp_sprites.vhd ]
-set_global_assignment -name VHDL_FILE    [file join $::quartus(qip_path) video.vhd ]

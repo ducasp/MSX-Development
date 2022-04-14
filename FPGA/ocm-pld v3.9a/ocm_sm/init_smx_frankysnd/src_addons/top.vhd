@@ -1,7 +1,7 @@
 --
 -- top.vhd
 -- SM-X (regular) / SM-X Mini TOP by Victor Trucco - Modified by KdL
--- SMX-HB - Modified by Ducasp
+-- SM-X (regular) / SM-X Mini w/ Franky by Ducasp
 --
 -- All rights reserved
 --
@@ -46,7 +46,7 @@ entity top is
 
         -- Buttons
         btn_n_i             : in    std_logic_vector(  2 downto 1 );
-        dip_i               : in    std_logic_vector( 12 downto 1 );
+        dip_i               : in    std_logic_vector(  8 downto 1 );
 
         -- SDRAM (H57V256)
         sdram_ad_o          : out   std_logic_vector( 12 downto 0 );
@@ -111,7 +111,6 @@ entity top is
         slot_D_io           : inout std_logic_vector(  7 downto 0 ) := (others => 'Z');
         slot_CS1_o          : inout std_logic := 'Z';
         slot_CS2_o          : inout std_logic := 'Z';
-        slot_CS12_o         : inout std_logic := 'Z';
         slot_CLOCK_o        : inout std_logic := 'Z';
         slot_M1_o           : inout std_logic := 'Z';
         slot_MREQ_o         : inout std_logic := 'Z';
@@ -130,13 +129,27 @@ entity top is
         slot_DATA_OE_o      : out   std_logic := 'Z';
         slot_DATA_DIR_o     : out   std_logic := 'Z';
 
+        -- HDMI video
+        hdmi_pclk           : out   std_logic := 'Z';
+        hdmi_de             : out   std_logic := 'Z';
+        hdmi_int            : in    std_logic := 'Z';
+        hdmi_rst            : out   std_logic := '1';
+
+        -- HDMI audio
+        aud_sck             : out   std_logic := 'Z';
+        aud_ws              : out   std_logic := 'Z';
+        aud_i2s             : out   std_logic := 'Z';
+
+        -- HDMI programming
+        hdmi_sda            : inout std_logic := 'Z';
+        hdmi_scl            : inout std_logic := 'Z';
+
         -- ESP
         esp_rx_o            : out   std_logic := 'Z';
         esp_tx_i            : in    std_logic := 'Z';
 
         -- LED
-        led_o               : out   std_logic := '0';
-        caps_led_o          : out   std_logic := '0'
+        led_o               : out   std_logic := '0'
     );
 end entity;
 
@@ -164,12 +177,47 @@ architecture Behavior of top is
     );
     end component;
 
+    component hdmi_config is
+    port(
+        -- Host Side
+        iCLK                : in    std_logic;
+        iRST_N              : in    std_logic;
+
+        dvi_mode            : in    std_logic;
+        audio_96k           : in    std_logic;
+
+        -- I2C Side
+        I2C_SCL             : out   std_logic;
+        I2C_SDA             : inout std_logic
+    );
+    end component;
+
+    component i2s is
+--  generic(
+--      CLK_RATE            <= 50000000,
+--      AUDIO_DW            <= 16,
+--      AUDIO_RATE          <= 96000
+--  )
+    port(
+        reset               : in    std_logic;
+        clk_sys             : in    std_logic;
+        half_rate           : in    std_logic;
+
+        sclk                : out   std_logic;
+        lrclk               : out   std_logic;
+        sdata               : out   std_logic;
+
+        left_chan           : in    std_logic_vector( 15 downto 0 );
+        right_chan          : in    std_logic_vector( 15 downto 0 )
+    );
+    end component;
+
     -- clocks
+    signal clk_hdmi         : std_logic;
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
 
     -- reset signal
-    signal btn_rst_s        : std_logic;                                            -- Hotbit Case Reset Button
     signal reset_s          : std_logic;                                            -- global reset
     signal power_on_reset_s : std_logic := '0';
     signal slow_s           : std_logic_vector( 20 downto 0 ) := (others => '1');
@@ -186,6 +234,9 @@ architecture Behavior of top is
     signal vga_vsync_n_s    : std_logic := '1';
     signal blank_s          : std_logic;
 
+    --audio
+    signal hdmi_snd_s       : std_logic_vector( 15 downto 0 ) := (others => '0');
+
     -- slot
     signal cpu_ioreq_s      : std_logic;
     signal cpu_mreq_s       : std_logic;
@@ -193,7 +244,6 @@ architecture Behavior of top is
     signal slot_SLOT1_s     : std_logic;
     signal slot_SLOT2_s     : std_logic;
     signal BusDir_s         : std_logic;
-    signal clk_cpu_s        : std_logic;
 
     -- MIDI
     signal midi_o_s         : std_logic := 'Z';
@@ -225,28 +275,28 @@ architecture Behavior of top is
     type   mouse_states  is ( MOUSE_WAIT, MOUSE_START, MOUSE_HIGHX, MOUSE_LOWX, MOUSE_HIGHY, MOUSE_LOWY );
     signal mouse_state      : mouse_states := MOUSE_WAIT;
 
-    -- Joysticks
-    signal joy1_s           : std_logic_vector(  5 downto 0 );
-    signal joy2_s           : std_logic_vector(  5 downto 0 );
-
-    -- Debounced Joysticks
-    signal joy1_d_s         : std_logic_vector(  5 downto 0 );
-    signal joy2_d_s         : std_logic_vector(  5 downto 0 );
-
     -- misc
     signal blink_s          : std_logic;
-    signal joy_deb          : std_logic;
 
     begin
+
+--  U00 : work.pll
+--  port map(
+--      inclk0   => clock_50_i,
+--      c0       => clk21m,                                     -- 21.48MHz internal
+--      c1       => memclk,                                     -- 85.92MHz = 21.48MHz x 4
+--      c2       => pMemClk,                                    -- 85.92MHz external
+--      c3       => clk_hdmi                                    -- 107.40MHz = 21.48MHz x 5
+--  );
 
     ocm: work.emsx_top
     generic map
     (
         use_wifi_g              => true,
         use_midi_g              => true,
-        use_opl3_g              => false,
+        use_opl3_g              => true,
         use_franky_vdp_g        => false,
-        use_franky_psg_g        => false
+        use_franky_psg_g        => true
     )
     port map(
         -- Clock, Reset ports
@@ -274,11 +324,23 @@ architecture Behavior of top is
         pPs2Dat                 => ps2_data_io,
 
         -- Joystick ports (Port_A, Port_B)
+--      pJoyA_in(5)             => joy1_p7_io,
+--      pJoyA_in(4)             => joy1_p6_io,
+--      pJoyA_in(3)             => joy1_right_io,
+--      pJoyA_in(2)             => joy1_left_io,
+--      pJoyA_in(1)             => joy1_down_io,
+--      pJoyA_in(0)             => joy1_up_io,
+
         pJoyA_in                => joymouse_s,
         pJoyA_out(1)            => joy1_p7_io,
         pJoyA_out(0)            => joy1_p6_io,
 
-        pJoyB_in                => joy2_s,
+        pJoyB_in(5)             => joy2_p7_io,
+        pJoyB_in(4)             => joy2_p6_io,
+        pJoyB_in(3)             => joy2_right_io,
+        pJoyB_in(2)             => joy2_left_io,
+        pJoyB_in(1)             => joy2_down_io,
+        pJoyB_in(0)             => joy2_up_s,
         pJoyB_out               => open,
 
         pStrA                   => strA_s,                      -- joy1_p8_io,
@@ -293,7 +355,7 @@ architecture Behavior of top is
         pSd_Dt(0)               => sd_miso_i,                   -- pin 7 Dataout
 
         -- DIP switch, Lamp ports
-        pDip                    => dip_i(8 downto 1),
+        pDip                    => dip_i,
         pLed(0)                 => blink_s,
 
         -- Video, Audio ports
@@ -308,8 +370,8 @@ architecture Behavior of top is
         pVideoVS_n              => vga_vsync_n_s,
 
         -- MSX cartridge slot ports
-        pCpuClk                 => clk_cpu_s,
-        pSltRst_n               => btn_rst_s,
+        pCpuClk                 => slot_CLOCK_o,
+        pSltRst_n               => btn_n_i(1),
 
         pSltAdr                 => slot_A_o,
         pSltDat                 => slot_D_io,
@@ -329,7 +391,7 @@ architecture Behavior of top is
         pSltSlts2_n             => slot_SLOT2_s,
         pSltCs1_n               => slot_CS1_o,
         pSltCs2_n               => slot_CS2_o,
-        pSltCs12_n              => slot_CS12_o,
+
         BusDir_o                => BusDir_s,
 
         -- Reserved ports
@@ -345,8 +407,10 @@ architecture Behavior of top is
 
         -- SM-X, Multicore 2 and SX-2 ports
         clk21m_out              => clk21m,
+        clk_hdmi                => clk_hdmi,
         esp_rx_o                => esp_rx_o,
         esp_tx_i                => esp_tx_i,
+        pcm_o                   => hdmi_snd_s,
         blank_o                 => blank_s,
         ear_i                   => ear_i,
         mic_o                   => mic_o,
@@ -354,14 +418,8 @@ architecture Behavior of top is
         midi_active_o           => midi_active_s,
         vga_status              => vga_status,
         vga_scanlines           => vga_scanlines,
-        btn_scan                => btn_scan_s,
-        caps_led_o              => caps_led_o,
-        joy_deb                 => joy_deb,
-        DisBiDir                => dip_i(9),
-        EnAltMap                => dip_i(9)
+        btn_scan                => btn_scan_s
     );
-
-    slot_CLOCK_o    <= clk_cpu_s;
 
     joy1_p8_io      <= strA_s;
 
@@ -391,12 +449,6 @@ architecture Behavior of top is
 
     sdram_clk_o     <= clk_sdram;
 
-    joy1_s          <= joy1_d_s when( joy_deb = '1' )else
-                       ( joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io );
-
-    joy2_s          <= joy2_d_s when( joy_deb = '1' )else
-                       ( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
-
     -- slow reset
     process( clk21m, reset_s )
     begin
@@ -418,6 +470,38 @@ architecture Behavior of top is
     vga_b_o         <= vga_b_out_s;
     vga_hsync_n_o   <= vga_hsync_n_s;
     vga_vsync_n_o   <= vga_vsync_n_s;
+
+    hdmi_pclk       <= clk21m;
+    hdmi_de         <= not blank_s;
+    hdmi_rst        <= power_on_reset_s;                        -- reset when '0'
+
+    -- HDMI configuration
+    hdmi_config1 : hdmi_config
+    port map(
+        iCLK        => clk21m,
+        iRST_N      => '1',
+
+        dvi_mode    => '0',
+        audio_96k   => '0',
+
+        I2C_SCL     => hdmi_scl,
+        I2C_SDA     => hdmi_sda
+    );
+
+    i2s1 : i2s
+    port map(
+        clk_sys     => clk21m,
+        reset       => not power_on_reset_s,                    -- reset when '1'
+
+        half_rate   => '0',
+
+        sclk        => aud_sck,
+        lrclk       => aud_ws,
+        sdata       => aud_i2s,
+
+        left_chan   => hdmi_snd_s,
+        right_chan  => hdmi_snd_s
+    );
 
     -- LED assignment
     led_o       <= not blink_s;
@@ -456,7 +540,8 @@ architecture Behavior of top is
         mouse_data_out  => mouse_data_out                       -- mouse has data top present
     );
 
-    joymouse_s  <= mouse_bts_s(  1 downto 0 ) & mouse_dat_s     when( mouse_present = '1' )else joy1_s;
+    joymouse_s  <= mouse_bts_s(  1 downto 0 ) & mouse_dat_s     when( mouse_present = '1' )else
+                   joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io;
 
     process( clk_sdram )
     begin
@@ -504,27 +589,13 @@ architecture Behavior of top is
                     mouse_state <= MOUSE_WAIT;
             end case;
 
-            if( joy1_s(5) = '0' or joy1_s(4) = '0' or joy1_s(3) = '0' or joy1_s(2) = '0' or joy1_s(1) = '0' or joy1_s(0) = '0' )then
+            if( joy1_p7_io = '0' or joy1_p6_io = '0' or joy1_right_io = '0' or joy1_left_io = '0' or joy1_down_io = '0' or joy1_up_io = '0' )then
                 mouse_present <= '0';
             end if;
 
         end if;
 
     end process;
-
-    ---------------------------------
-    -- Hotbit Case Reset
-    ---------------------------------
-
-    btnrst: entity work.debounce
-    generic map (
-        counter_size_g  => 16
-    )
-    port map (
-        clk_i               => clk21m,
-        button_i            => btn_n_i(1),
-        result_o            => btn_rst_s
-    );
 
     ---------------------------------
     -- scanlines
@@ -588,19 +659,5 @@ architecture Behavior of top is
             odd_line_s <= not odd_line_s;
         end if;
     end process;
-
-    debounce_joy1 : entity work.debounce_joy
-    port map(
-            clk_i       => clk_cpu_s,
-            joy_i       => joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io,
-            joy_o       => joy1_d_s
-    );
-
-    debounce_joy2 : entity work.debounce_joy
-    port map(
-            clk_i       => clk_cpu_s,
-            joy_i       => joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io,
-            joy_o       => joy2_d_s
-    );
 
 end architecture;

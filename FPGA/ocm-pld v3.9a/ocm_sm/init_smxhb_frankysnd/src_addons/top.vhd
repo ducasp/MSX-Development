@@ -246,7 +246,7 @@ architecture Behavior of top is
         use_midi_g              => true,
         use_opl3_g              => false,
         use_franky_vdp_g        => false,
-        use_franky_psg_g        => false
+        use_franky_psg_g        => true
     )
     port map(
         -- Clock, Reset ports

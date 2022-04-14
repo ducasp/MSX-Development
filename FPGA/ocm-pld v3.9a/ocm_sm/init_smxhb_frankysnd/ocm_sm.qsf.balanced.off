@@ -77,6 +77,7 @@ set_global_assignment -name VHDL_FILE src_addons/top.vhd
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/autofire.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/ps2_mouse.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/sm_rtc.v
+set_global_assignment -name QIP_FILE src_addons/sound/jt89/hdl/jt89.qip
 set_global_assignment -name VERILOG_FILE ../esemsx3/src/sound/tr_pcm/tr_pcm.v
 set_global_assignment -name QIP_FILE src_addons/sys/pll.qip
 set_global_assignment -name VHDL_FILE src_addons/debounce_joy.vhd
@@ -244,7 +245,7 @@ set_global_assignment -name TOP_LEVEL_ENTITY top
 set_global_assignment -name FORCE_SYNCH_CLEAR OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE BALANCED
-set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "NORMAL COMPILATION"
+set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS OFF
 
 # Fitter Assignments
 # ==================

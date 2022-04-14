@@ -94,9 +94,15 @@ jt89_mixer mix(
 );
 
 // configuration registers
-reg [9:0] tone0, tone1, tone2;
-reg [3:0] vol0, vol1, vol2, vol3;
-reg [2:0] ctrl3;
+reg [9:0] tone0 = 8'b00000000;
+reg [9:0] tone1 = 8'b00000000;
+reg [9:0] tone2 = 8'b00000000;
+
+reg [3:0] vol0 = 4'b1111;
+reg [3:0] vol1 = 4'b1111;
+reg [3:0] vol2 = 4'b1111;
+reg [3:0] vol3 = 4'b1111;
+reg [2:0] ctrl3 = 3'b100;
 reg [2:0] regn;
 
 reg [3:0] clk_div;

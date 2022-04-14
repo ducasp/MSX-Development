@@ -59,7 +59,7 @@ assign dout = !addr ? io_readdata : 8'hFF;
 
 //------------------------------------------------------------------------------
 
-reg [12:0] period_80us = 12'b0101000000000;
+reg [12:0] period_80us = 12'b0011010110110; // Ducasp - changed period for the proper one for our clock
 
 reg old_write;
 always @(posedge clk) old_write <= we;

@@ -1085,13 +1085,14 @@ architecture RTL of emsx_top is
     signal  opl3_sound_s    : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  opl3_ce         : std_logic := '0';
     signal  opl3_enabled    : std_logic := '0';
+    signal  opl3_Int_n      : std_logic := '1';
 
     -- SN76489/Franky signals
-    signal sn76489_sound_s  : std_logic_vector( 15 downto 0 ) := (others => '0');
-    signal sn76489Req       : std_logic := '0';
-    signal sn76489NoIO      : std_logic := '1';
-    signal pFrankyVdpInt_n  : std_logic := '1';
-    signal franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '1');
+    signal  sn76489_sound_s  : std_logic_vector( 15 downto 0 ) := (others => '0');
+    signal  sn76489Req       : std_logic := '0';
+    signal  sn76489NoIO      : std_logic := '1';
+    signal  pFrankyVdpInt_n  : std_logic := '1';
+    signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '1');
 
     -- MIDI signals
 --  signal  midi_o          : std_logic;
@@ -1582,7 +1583,8 @@ begin
     pSltM1_n    <=  CpuM1_n;
     pSltRfsh_n  <=  CpuRfsh_n;
 
-    pSltInt_n   <=  '0' when( pVdpInt_n = '0' ) or ( pFrankyVdpInt_n = '0' and use_franky_vdp_g )else
+    pSltInt_n   <=  '0' when( pVdpInt_n = '0' ) or ( pFrankyVdpInt_n = '0' and use_franky_vdp_g )
+                          or( opl3_Int_n = '0' and use_opl3_g and opl3_enabled = '1' )else
                     'Z';
 
     pSltSltsl_n <=  '1' when( Scc1Type /= "00" )else
@@ -2106,13 +2108,13 @@ begin
     ----------------------------------------------------------------
     -- SN76489 silent until first I/O takes place
     -- Also, simulates a value for reading on address 48/49 so
-    -- sofarun detects a Franky when just SN76489 is available
+    -- vgmplay detects a Franky when just SN76489 is available
     ----------------------------------------------------------------
     process( cpuclk )
-        variable R_temp : std_logic_vector( 7 downto 0 );
+        variable R_temp : std_logic_vector(  7 downto 0 );
     begin
-        if( cpuclk'event and cpuclk = '1' )then
-            if ( sn76489Req = '1' )then
+          if( cpuclk'event and cpuclk = '1' )then
+            if ( sn76489Req = '1' and pSltWr_n = '0' )then
                 sn76489NoIO <= '0';
             end if;
             R_temp := R_temp + '1';
@@ -2993,29 +2995,6 @@ begin
             );
     end generate;
 
---    franky_vdp_u : if use_franky_vdp_g generate
---        franky_video : vdp_sms
---        port map(
---            clk_sys             => clk21m,
---            ce_vdp              => clk21m,
---            ce_pix              => clk21m,
---            ce_sp               => clk21m,
---            gg                  => '0',
---            sp64                => '1',
---            HL                  => '0',
---            RD_n                => pSltRd_n,
---            WR_n                => pSltWr_n,
---            IRQ_n               => pFrankyVdpInt_n,
---            A                   => adr(  7 downto 0 ),
---            D_in                => dbo,
---            D_out               => franky_dout_s,
---            x                   => adr(  8 downto 0 ),
---            y                   => adr(  8 downto 0 ),
---            reset_n             => (not reset),
---            color               => open
---        );
---    end generate;
-
     franky_psg_u : if use_franky_psg_g generate
         sn76489_l : jt89
         port map(
@@ -3023,7 +3002,7 @@ begin
             clk                 => cpuclk,
             clk_en              => '1',
             din                 => dbo,
-            wr_n                => (not sn76489Req),
+            wr_n                => (not sn76489Req) or pSltWr_n,
             sound               => sn76489_sound_s (15 downto 5)
         );
     end generate;
@@ -3037,7 +3016,7 @@ begin
             clk                 => clk21m,
             clk_opl             => memclk,              -- 86MHz
             rst_n               => (not reset),
-            irq_n               => open,
+            irq_n               => opl3_Int_n,
 
             addr                => adr(1 downto 0),     -- OPL and OPL2 uses adr(0) only
             dout                => opl3_dout_s,

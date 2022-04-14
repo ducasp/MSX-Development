@@ -1,5 +1,5 @@
 @echo off
-rem --- '!!-cleanup.cmd' v2.8 by KdL (2022.04.11)
+rem --- '!!-cleanup.cmd' v2.8 by KdL (2022.04.14)
 
 set PROJECT1=emsx_top
 set PROJECT2=ocm_sm
@@ -30,6 +30,7 @@ set OUTPUT=output_files\
 rd /S /Q %OUTPUT% >nul 2>nul
 del src_addons\peripheral\sm_swioports.vhd* >nul 2>nul
 del src_addons\sys\pll.vhd >nul 2>nul
+del src_addons\sys\pll_franky.* >nul 2>nul
 del src_addons\top.vhd >nul 2>nul
 del src_addons\debounce_joy.vhd >nul 2>nul
 del "__*__" >nul 2>nul
