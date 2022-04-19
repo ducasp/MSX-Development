@@ -56,6 +56,12 @@
 --               that is needed for SMX-HB when using internal keyboard, and
 --               internal keymap selection, that is need for SMX-HB when using
 --               internal keyboard that requires a very specific layout
+-- Apr 18 2022 - Version for SM-X now handles the FKEYS different when using
+--               the second layout, as the internal Hotbit keyboard doesn't
+--               have PAGE UP and PAGE DOWN as it is a MSX Keyboard :)
+-- Apr 19 2022 - SMX-HB internal keyboard conversion to PS/2 keyboard doesn't
+--               use the usual scan code for F8 / Select, adjusted the
+--               alternative map to enable select, it uses 0xF8 instead
 --------------------------------------------------------------------------------
 --
 
@@ -77,8 +83,9 @@ entity eseps2smx is
     Scro     : inout std_logic;
     Reso     : inout std_logic;
 
-    -- | b7  | b6   | b5   | b4   | b3  | b2  | b1  | b0  |
-    -- | SHI | CTRL | PgUp | PgDn | F9  | F10 | F11 | F12 |
+    -- | b7  | b6   | b5     | b4     | b3  | b2  | b1  | b0  |
+    -- | SHI | CTRL | PgUp   | PgDn   | F9  | F10 | F11 | F12 | on regular map
+    -- | SHI | CTRL | SEL+Up | SEL+Dn | F9  | F10 | F11 | F12 | on EnAltMap
     Fkeys    : buffer std_logic_vector(7 downto 0);
 
     pPs2Clk  : inout std_logic;
@@ -158,6 +165,7 @@ begin
     variable Ps2Shif : std_logic;       -- real shift status
     variable Ps2Vshi : std_logic;       -- virtual shift status
     variable Ps2Ctrl : std_logic;       -- real control status
+    variable Ps2F8   : std_logic;       -- real F8 status for internal SMX-HB Keyboard or PS/2 Keyboard
     variable oFkeys  : std_logic_vector(7 downto 0);
 
     variable KeyId   : std_logic_vector(8 downto 0);
@@ -183,6 +191,7 @@ begin
       Ps2Led  := (others => '1');
       Ps2Vshi := '0';
       Ps2Skp  := "000";
+      Ps2F8   := '0';
 
       Ps2Caps := '1';
       Ps2Kana := '1';
@@ -377,6 +386,16 @@ begin
                 oFkeys(4) := not oFkeys(4);
               end if;
               Ps2Chg := '1';
+            elsif( Ps2Dat = X"75" and Ps2xE0 = '1' and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgUp make internal HB Keyboard (Select+Up)
+              if Ps2brk = '0' then
+                oFkeys(5) := not oFkeys(5);
+              end if;
+              Ps2Chg := '1';
+            elsif( Ps2Dat = X"72" and Ps2xE0 = '1' and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgDn make internal HB Keyboard (Select+Down)
+              if Ps2brk = '0' then
+                oFkeys(4) := not oFkeys(4);
+              end if;
+              Ps2Chg := '1';
             elsif( Ps2Dat = X"01" and Ps2xE0 = '0' and Ps2xE1 = '0' )then -- F9 make
               if Ps2brk = '0' then
                 oFkeys(3) := not oFkeys(3);
@@ -412,6 +431,9 @@ begin
             elsif( Ps2Dat = X"14" and Ps2xE1 = '0' )then -- control make, Added by t.hara, 2021/Aug/6th
               Ps2Ctrl:= not Ps2brk;
               oFkeys(6) := Ps2Ctrl;
+              Ps2Chg := '1';
+            elsif( ( Ps2Dat = X"F8" or Ps2Dat = X"0A" ) and Ps2xE1 = '0' )then -- SELECT on PS/2 or SMX-HB Internal Keyboard, Added by Ducasp, 2022/Apr/19th
+              Ps2F8:= not Ps2brk;
               Ps2Chg := '1';
             elsif( Ps2Dat = X"F0" )then -- break code
               Ps2brk := '1';

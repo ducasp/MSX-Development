@@ -95,12 +95,22 @@
 __________________________________
 v3.x KdL/HRA's Unofficial Release \________________________________________________________________________________
 
-v3.9a [2022.04.XX] [Ducasp Updates!]
+v3.9a [2022.04.19] [Ducasp Updates!]
 
 - New machine added: SMX-HB, using EPC15 and a few differences due to it being a motherboard to be used inside a
   SHARP Hotbit case / Keyboard.
-- New variants for SM-X (tested by me) and it's derivatives with EPC22, it has Franky support but it loses OPL3
-  support.
+- New variants for SM-X (tested by me) and it's second gen counterparts, it has Franky sound support.
+- OPL3 fix #1: Interrupt was not connected, so timers weren't generating interrupt, this caused really slow
+  playback using VGMPLAY 1.3 or newer since it uses OPL3 timer for more accurate timing.
+- OPL3 fix #2: Timers timing were meant for 50MHz OPL3 clock and we are clocking it quite a bit higher, fixed the
+  timer scaler so timers are accurate
+- OPL3 fix #3: only left channel sound was being captured. We do not have space on FPGA to render left and right
+  channels sequencing, so right channel is disconnected and less cells are used, but some VGMs play really bad as
+  they have sounds that play only on right channel (i.e.: Doom soundtrack third vgm). Used a clever hack to make
+  those sounds play on left channel without needing to render the right channel sequencing (any command configuring
+  a channel to be only on Left or Right output is changed on the fly to render on both channels when the new "mono"
+  pin on OPL3 is high)
+- SMX-HB Internal Keyboard doesn't have Page Up or Page Down, so SELECT + UP and SELECT + DOWN acts as those keys
 
 
 v3.9 [2021.08.23] [KdL's Updates!]

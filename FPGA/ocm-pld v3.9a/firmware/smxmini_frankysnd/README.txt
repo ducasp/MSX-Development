@@ -66,6 +66,12 @@ brings to the table on this frankysnd version:
       interrupt, not having IRQ and not having the proper scaler for timer
       caused its timing to be slow, darn slow...
 
+    - Fix: I've fixed OPL3 sound rendering as it was discarding all information
+      that is on right output channel only, unfortunately we do not have enough
+      FPGA resources to run the sequencer for two channels, but a clever trick
+      allow all songs content to be properly played in MONO glory :P Try as an
+      example Doom soundtrack track 3 before updating and after updating it. :)
+
 - Planned for the future SM-X, SM-X mini and SX-2 will have a franky build:
 
     - Missing: FPGA in those devices can't fit OPL3 along with Franky VDP and

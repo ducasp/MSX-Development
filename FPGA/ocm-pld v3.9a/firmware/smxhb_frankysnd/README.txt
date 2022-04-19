@@ -46,10 +46,13 @@ brings to the table:
       as the internal keyboard of Hotbit is not standard and its map is very
       peculiar, while PS/2 keyboards have a different mapping. DIP switch 9 set
       to OFF is the default, using the internal mapping, if set to ON it will
-      use the mapping the firmware was built-in (my releases are usually for
-      Brazilian Keyboards, let me know if you need for a different layout that
-      is covered by KdL regular releases), that is handy when you want to use
-      an external keyboard.
+      use the mapping the firmware was built-in, that is handy when you want to
+      use an external keyboard.
+
+    - Fix: Select key was not working on original 3.7.1 based release, it works
+      now. Also, SELECT + UP and SELECT + DOWN replaces Page Up and Page Down,
+      so it is possible to activate the autofire module using only SMX-HB
+      internal keyboard.
 
     - Missing: SMX-HB FPGA has less cells than other SM-X devices as it uses
       a FPGA with about 70% of the capacity of the other devices, so it doesn't

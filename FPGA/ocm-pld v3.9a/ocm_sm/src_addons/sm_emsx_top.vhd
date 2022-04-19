@@ -675,6 +675,7 @@ architecture RTL of emsx_top is
             dout            : out   std_logic_vector(  7 downto 0 );
             din             : in    std_logic_vector(  7 downto 0 );
             we              : in    std_logic;
+            mono            : in    std_logic;
 
             sample_l        : out   std_logic_vector( 15 downto 0 );
             sample_r        : out   std_logic_vector( 15 downto 0 )
@@ -3022,6 +3023,7 @@ begin
             dout                => opl3_dout_s,
             din                 => dbo,
             we                  => opl3_ce,
+            mono                => '1',
 
             sample_l            => opl3_sound_s,
             sample_r            => open
@@ -3045,8 +3047,9 @@ begin
         af_speed            => open
     );
 
-    -- | b7  | b6   | b5   | b4   | b3  | b2  | b1  | b0  |
-    -- | SHI | CTRL | PgUp | PgDn | F9  | F10 | F11 | F12 |
+    -- | b7  | b6   | b5     | b4     | b3  | b2  | b1  | b0  |
+    -- | SHI | CTRL | PgUp   | PgDn   | F9  | F10 | F11 | F12 | Regular PS/2 Keyboard
+    -- | SHI | CTRL | SEL+Up | SEL+Dn | F9  | F10 | F11 | F12 | on EnAltMap / Internal SMX-HB Keyboard
     af_on_off_toggle <=      vFkeys(7)  and vFkeys(6) and ( (vFkeys(4) xor Fkeys(4)) or (vFkeys(5) xor Fkeys(5)) );
     af_increment     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(5) xor Fkeys(5));
     af_decrement     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(4) xor Fkeys(4));

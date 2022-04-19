@@ -22,6 +22,12 @@ brings to the table:
       interrupt, not having IRQ and not having the proper scaler for timer
       caused its timing to be slow, darn slow...
 
+    - Fix: I've fixed OPL3 sound rendering as it was discarding all information
+      that is on right output channel only, unfortunately we do not have enough
+      FPGA resources to run the sequencer for two channels, but a clever trick
+      allow all songs content to be properly played in MONO glory :P Try as an
+      example Doom soundtrack track 3 before updating and after updating it. :)
+
 - Adds support to SMX-HB (as it has only initial support for OCM 3.7.1)
 
     - Extra: I've allowed Joystick port debounce to be disabled, this perhaps
@@ -33,10 +39,13 @@ brings to the table:
       as the internal keyboard of Hotbit is not standard and its map is very
       peculiar, while PS/2 keyboards have a different mapping. DIP switch 9 set
       to OFF is the default, using the internal mapping, if set to ON it will
-      use the mapping the firmware was built-in (my releases are usually for
-      Brazilian Keyboards, let me know if you need for a different layout that
-      is covered by KdL regular releases), that is handy when you want to use
-      an external keyboard.
+      use the mapping the firmware was built-in, that is handy when you want to
+      use an external keyboard.
+
+    - Fix: Select key was not working on original 3.7.1 based release, it works
+      now. Also, SELECT + UP and SELECT + DOWN replaces Page Up and Page Down,
+      so it is possible to activate the autofire module using only SMX-HB
+      internal keyboard.
 
     - Missing: SMX-HB FPGA has less cells than other SM-X devices as it uses
       a FPGA with about 70% of the capacity of the other devices, so it doesn't

@@ -45,6 +45,10 @@
 -- 2022.04.12 modified by Ducasp
 -- Turned it into an alt/additional map
 --
+-- 2022.04.18 modified by Ducasp
+-- Fixed the select mapping to allow 0xF8 as well, as SMX-HB conversion
+-- converts SELECT to 0xF8 instead of the usual scan code for F8 Key
+--
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -171,7 +175,7 @@ constant rom101 : rom_101 := (
         X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", -- E0..E7
         X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", -- E8..EF
         X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", -- F0..F7
-        X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", -- F8..FF
+        X"67", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", X"7F", -- F8..FF
 
 -----------------------------------------------
 -- 108 Keys Brazilian keyboard: E0 + Scan Code --
@@ -294,7 +298,7 @@ constant rom101 : rom_101 := (
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- E0..E7
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- E8..EF
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F0..F7
-        X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F8..FF
+        X"E7", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F8..FF
 
 -------------------------------------------------------
 -- 108 Keys Brazilian keyboard: E0 + Scan Code + Shift --
@@ -396,7 +400,7 @@ constant rom106 : rom_106 := (
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- E0
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- E8
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F0
-        X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F8
+        X"67", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- F8
 
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- 00
         X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", X"FF", -- 08

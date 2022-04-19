@@ -1,13 +1,13 @@
-OCM-PLD Pack v3.9
-=================
+OCM-PLD Pack v3.9a
+==================
 
-Author:  KdL
-Update:  2021.08.23
+Author:  KdL (3.9) Ducasp (3.9a)
+Update:  2022.04.19
 
 This package includes a set of custom firmware to update the following machines.
 
 1st Gen  =>  1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 and SX-1 Mini/Mini+.
-2nd Gen  =>  SM-X , SM-X Mini and SX-2.
+2nd Gen  =>  SM-X , SMX-HB, SM-X Mini and SX-2.
 
 All firmware are unofficial, as they are not offered by their respective manufacturers.
 Any content of this package is NOT intended for a commercial purpose and is for personal use only.
