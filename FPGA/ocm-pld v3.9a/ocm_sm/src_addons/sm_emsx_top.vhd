@@ -33,8 +33,10 @@
 -- OCM-PLD Pack v3.9 by KdL (2021.08.23)
 -- MSX2+ Stable Release for SM-X (regular), SM-X Mini and SX-2 / MSXtR Experimental
 -- Special thanks to t.hara, caro, mygodess & all MRC users (http://www.msx.org)
--- OCM-PLD Pack v3.9a by Ducasp (2022.04.10)
+-- OCM-PLD Pack v3.9a by Ducasp (2022.04.21)
 -- Version that allows removal of OPL3, adding Franky VDP and Franky PSG
+-- Added Victor Trucco Improvements to SDR Controller so it works w/ different
+-- types of SRAM (some SM-X mini and SMX-HB won't work with the previous code)
 ------------------------------------------------------------------------------------
 -- Setup for XTAL 50.00000MHz
 ------------------------------------------------------------------------------------
@@ -993,11 +995,10 @@ architecture RTL of emsx_top is
     -- SD-RAM control signals
     signal  SdrSta          : std_logic_vector(  2 downto 0 );
     signal  SdrCmd          : std_logic_vector(  3 downto 0 );
-    signal  SdrBa0          : std_logic;
-    signal  SdrBa1          : std_logic;
+    signal  SdrBa           : std_logic_vector(  1 downto 0 );
     signal  SdrUdq          : std_logic;
     signal  SdrLdq          : std_logic;
-    signal  SdrAdr          : std_logic_vector( 12 downto 0 );
+    signal  SdrAdr          : std_logic_vector( 11 downto 0 );
     signal  SdrDat          : std_logic_vector( 15 downto 0 );
 
     constant SdrCmd_de      : std_logic_vector(  3 downto 0 ) := "1111";            -- deselect
@@ -1093,7 +1094,9 @@ architecture RTL of emsx_top is
     signal  sn76489Req       : std_logic := '0';
     signal  sn76489NoIO      : std_logic := '1';
     signal  pFrankyVdpInt_n  : std_logic := '1';
-    signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '1');
+    signal  pFrankyReadCnt   : std_logic := '0';
+    signal  OldFrankyReadCnt : std_logic := '0';
+    signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '0');
 
     -- MIDI signals
 --  signal  midi_o          : std_logic;
@@ -1718,6 +1721,7 @@ begin
                 iack <= '1';
             end if;
 
+            pFrankyReadCnt <= '0';
             -- input assignments for internal devices
             if( mem = '1' and ExpDec = '1' )then
                 dlydbi <= ExpDbi;
@@ -1771,6 +1775,7 @@ begin
             elsif( mem = '0' and adr(  7 downto 1 ) = "0100100" and use_franky_psg_g
                    and ( io40_n = "11111111" or swioFranky = '1' ) )then                        -- Franky ports 48-49
                 dlydbi <= franky_dout_s;
+                pFrankyReadCnt <= '1';
             else
                 dlydbi <= (others => '1');
             end if;
@@ -2111,17 +2116,19 @@ begin
     -- Also, simulates a value for reading on address 48/49 so
     -- vgmplay detects a Franky when just SN76489 is available
     ----------------------------------------------------------------
-    process( cpuclk )
-        variable R_temp : std_logic_vector(  7 downto 0 );
+    process( clk21m )
+        variable R_temp : std_logic_vector(  7 downto 0 ) := "00000000";
     begin
-          if( cpuclk'event and cpuclk = '1' )then
+        if( clk21m'event and clk21m = '1' )then
             if ( sn76489Req = '1' and pSltWr_n = '0' )then
                 sn76489NoIO <= '0';
             end if;
-            R_temp := R_temp + '1';
-            if( use_franky_psg_g and ( not use_franky_vdp_g ) )then
+
+            if( use_franky_psg_g and ( not use_franky_vdp_g ) and ( pFrankyReadCnt = '1' and OldFrankyReadCnt = '0' ) )then
+                R_temp := R_temp + '1';
                 franky_dout_s <= R_temp;
             end if;
+            OldFrankyReadCnt <= pFrankyReadCnt;
         end if;
     end process;
 
@@ -2185,9 +2192,9 @@ begin
     ----------------------------------------------------------------
     -- Sound output
     ----------------------------------------------------------------
-
-    -- | b7  | b6   | b5   | b4   | b3  | b2  | b1  | b0  |
-    -- | SHI | CTRL | PgUp | PgDn | F9  | F10 | F11 | F12 |       Added the CTRL status by t.hara, 2021/Aug/6th
+    -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
+    -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map Added the CTRL status by t.hara, 2021/Aug/6th
+    -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap / Internal SMX-HB Keyboard by Ducasp 2022/Apr/21st
     process( clk21m )
     begin
         if( clk21m'event and clk21m = '1' )then
@@ -2548,36 +2555,42 @@ begin
         if( memclk'event and memclk = '1' )then
             case ff_sdr_seq is
                 when "000" =>
-                    if( SdrSta(2) = '0' )then
+                    if( SdrSta(2) = '0' )then                   -- set command mode
                         --  single  CL=2 WT=0(seq) BL=1
-                        SdrAdr <= "00010" & "0" & "010" & "0" & "000";
-                    else
-                        if( RstSeq(4 downto 3) /= "11" )then
-                            SdrAdr <= ClrAdr(12 downto 0);      -- clear memory (VRAM, MainRAM)
+                        SdrAdr <= "00100" & "010" & "0" & "000";
+                        SdrBa  <= "00";
+                    else                                        -- set row address
+                        SdrBa <= "11";
+                        if( RstSeq(4 downto 2) = "010" )then
+                            SdrAdr <= ClrAdr(11 downto 0);      -- clear VRAM
+                        elsif( RstSeq(4 downto 2) = "011" )then
+                            SdrAdr <= ClrAdr(11 downto 0);      -- clear ERAM
+                            SdrBa  <= "10";
+                        elsif( RstSeq(4 downto 3) = "10" )then
+                            SdrAdr <= ClrAdr(11 downto 0);      -- clear Main RAM
                         elsif( VideoDLClk = '0' )then
-                            SdrAdr <= CpuAdr(13 downto 1);      -- cpu read/write
+                            SdrAdr <= CpuAdr(12 downto 1);      -- cpu read/write
+                            SdrBa  <= CpuAdr(22 downto 21);
                         else
-                            SdrAdr <= VdpAdr(12 downto 0);      -- vdp read/write
+                            SdrAdr <= VdpAdr(11 downto 0);      -- vdp read/write
                         end if;
                     end if;
-                when "010" =>
-                    SdrAdr(12 downto 9) <= "0010";                                          -- A10=1 => enable auto precharge
+                when "010" =>                                   -- set column address
+                    SdrAdr(11 downto 8) <= "0100";                                          -- A10=1 => enable auto precharge
+                    SdrBa <= "11";
+                    -- clear memory
                     if( RstSeq(4 downto 2) = "010" )then
-                        SdrAdr(8 downto 0) <= "111" & "000" & "0" & ClrAdr(14 downto 13);   -- clear VRAM     (16 kB * 4)   =>  start adr 700000h
-                    elsif( RstSeq(4 downto 1) = "0110" )then
-                        SdrAdr(8 downto 0) <= "110" & "000" & "00" & ClrAdr(13);            -- clear ERAM     (16 kB * 2)   =>  start adr 600000h
-                    elsif( RstSeq(4 downto 0) = "01110" )then
-                        SdrAdr(8 downto 0) <= "101" & "000" & "000";                        -- clear ESE-SCC1 (16 kB * 1)   =>  start adr 500000h
-                    elsif( RstSeq(4 downto 0) = "01111" )then
-                        SdrAdr(8 downto 0) <= "100" & "000" & "000";                        -- clear ESE-SCC2 (16 kB * 1)   =>  start adr 400000h
+                        SdrAdr(7 downto 0) <= "1000" & ClrAdr(15 downto 12);                -- clear VRAM
+                    elsif( RstSeq(4 downto 2) = "011" )then
+                        SdrAdr(7 downto 0) <= "0000" & ClrAdr(15 downto 12);                -- clear ERAM
+                        SdrBa <= "10";
                     elsif( RstSeq(4 downto 3) = "10" )then
-                        SdrAdr(8 downto 0) <= "000" & "000" & ClrAdr(15 downto 13);         -- clear MainRAM  (16 kB * 8)   =>  start adr 000000h
+                        SdrAdr(7 downto 0) <= "0000" & ClrAdr(15 downto 12);                -- clear MainRAM
                     elsif( VideoDLClk = '0' )then
-                        SdrAdr(8 downto 0) <= CpuAdr(22 downto 14);
-                    elsif( VdpAdr(15) = '0' )then
-                        SdrAdr(8 downto 0) <= "111" & vram_page(3 downto 0) & VdpAdr(14 downto 13);
+                        SdrAdr(7 downto 0) <= CpuAdr(20 downto 13);                         -- cpu r/w
+                        SdrBa <= CpuAdr(22 downto 21);
                     else
-                        SdrAdr(8 downto 0) <= "111" & vram_page(7 downto 4) & VdpAdr(14 downto 13);
+                        SdrAdr(7 downto 0) <= "1000" & VdpAdr(15 downto 12);
                     end if;
                 when others =>
                     null;
@@ -2693,10 +2706,10 @@ begin
 
     pMemUdq     <= SdrUdq;
     pMemLdq     <= SdrLdq;
-    pMemBa1     <= '0';
-    pMemBa0     <= '0';
+    pMemBa1     <= SdrBa(1);
+    pMemBa0     <= SdrBa(0);
 
-    pMemAdr     <= SdrAdr;
+    pMemAdr     <= '0' & SdrAdr;
     pMemDat     <= SdrDat;
 
     ----------------------------------------------------------------
@@ -3047,9 +3060,9 @@ begin
         af_speed            => open
     );
 
-    -- | b7  | b6   | b5     | b4     | b3  | b2  | b1  | b0  |
-    -- | SHI | CTRL | PgUp   | PgDn   | F9  | F10 | F11 | F12 | Regular PS/2 Keyboard
-    -- | SHI | CTRL | SEL+Up | SEL+Dn | F9  | F10 | F11 | F12 | on EnAltMap / Internal SMX-HB Keyboard
+    -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
+    -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map Added the CTRL status by t.hara, 2021/Aug/6th
+    -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap / Internal SMX-HB Keyboard by Ducasp 2022/Apr/21st
     af_on_off_toggle <=      vFkeys(7)  and vFkeys(6) and ( (vFkeys(4) xor Fkeys(4)) or (vFkeys(5) xor Fkeys(5)) );
     af_increment     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(5) xor Fkeys(5));
     af_decrement     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(4) xor Fkeys(4));

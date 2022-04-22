@@ -79,8 +79,11 @@ brings to the table on this frankysnd version:
 
     - Extra: this is a WIP, please wait, but it will have Franky VDP :P
 
-All source code and binaries:
+All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+All source code from OCM 3.9 originally is a work of many people, including
+KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.

@@ -15,8 +15,11 @@ myself and KdL incorporated many of those into his official builds.
 In this repository you will find source code of builds based on KdL OCM
 firmware.
 
-All source code and binaries:
+All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+All source code from OCM 3.9 originally is a work of many people, including
+KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.

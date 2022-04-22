@@ -1,5 +1,5 @@
 @echo off
-rem --- '1_sm_mega-build_and_collect.cmd' v2.7 by Ducasp (2022.04.18)
+rem --- '1_sm_mega-build_and_collect.cmd' v2.7 by Ducasp (2022.04.21)
 
 set TIMEOUT=1
 set PROJECT=ocm_sm
@@ -21,7 +21,7 @@ if "%1"=="--no-wait" color 1f&title Task "%~dp0%PROJECT%.qpf"%DEVSTR%
 if not exist "%QUARTUS_ROOTDIR%\common\devinfo\cycloneive" goto err_quartus
 if not exist src_addons\ goto err_msg
 if exist %SEEDENV% set /P CURSEED=<%SEEDENV%
-if "%1"=="" echo.&echo Press any key to start building %DEVICE%...&pause >nul 2>nul
+if "%1"=="" echo.&echo Building %DEVICE%...&echo. >nul 2>nul
 echo.&echo Please wait...&echo.&if "%1"=="" echo Output path: "%~dp0output_files\"&echo.
 rem ---------------cleanup----------------
 call 2_sm_finalize.cmd --no-wait

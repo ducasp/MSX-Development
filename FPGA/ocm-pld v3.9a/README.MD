@@ -28,6 +28,10 @@ brings to the table:
       allow all songs content to be properly played in MONO glory :P Try as an
       example Doom soundtrack track 3 before updating and after updating it. :)
 
+    - Improved: Victor Trucco made improvements on the SDRAM controller so it
+      is able to work with different chips. Some SM-X mini and SMX-HB use chips
+      that need this to work.
+
 - Adds support to SMX-HB (as it has only initial support for OCM 3.7.1)
 
     - Extra: I've allowed Joystick port debounce to be disabled, this perhaps
@@ -79,8 +83,11 @@ brings to the table:
 
     - Extra: this is a WIP, please wait, but it will have Franky VDP :P
 
-All source code and binaries:
+All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+All source code from OCM 3.9 originally is a work of many people, including
+KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.

@@ -56,12 +56,16 @@
 --               that is needed for SMX-HB when using internal keyboard, and
 --               internal keymap selection, that is need for SMX-HB when using
 --               internal keyboard that requires a very specific layout
--- Apr 18 2022 - Version for SM-X now handles the FKEYS different when using
+-- Apr 18 2022 - Version for SMX-HB now handles the FKEYS different when using
 --               the second layout, as the internal Hotbit keyboard doesn't
 --               have PAGE UP and PAGE DOWN as it is a MSX Keyboard :)
 -- Apr 19 2022 - SMX-HB internal keyboard conversion to PS/2 keyboard doesn't
 --               use the usual scan code for F8 / Select, adjusted the
 --               alternative map to enable select, it uses 0xF8 instead
+-- Apr 24 2022 - SMX-HB FKEYS replacement final version:
+--                  Page-Up     : SELECT + =/+
+--                  Page-Down   : SELECT + -/_
+--                  F9-F12      : SELECT + F1-F4
 --------------------------------------------------------------------------------
 --
 
@@ -83,9 +87,9 @@ entity eseps2smx is
     Scro     : inout std_logic;
     Reso     : inout std_logic;
 
-    -- | b7  | b6   | b5     | b4     | b3  | b2  | b1  | b0  |
-    -- | SHI | CTRL | PgUp   | PgDn   | F9  | F10 | F11 | F12 | on regular map
-    -- | SHI | CTRL | SEL+Up | SEL+Dn | F9  | F10 | F11 | F12 | on EnAltMap
+    -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
+    -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map
+    -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap
     Fkeys    : buffer std_logic_vector(7 downto 0);
 
     pPs2Clk  : inout std_logic;
@@ -386,14 +390,34 @@ begin
                 oFkeys(4) := not oFkeys(4);
               end if;
               Ps2Chg := '1';
-            elsif( Ps2Dat = X"75" and Ps2xE0 = '1' and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgUp make internal HB Keyboard (Select+Up)
+            elsif( ( Ps2Dat = X"55" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgUp make internal HB Keyboard (Select + =/+)
               if Ps2brk = '0' then
                 oFkeys(5) := not oFkeys(5);
               end if;
               Ps2Chg := '1';
-            elsif( Ps2Dat = X"72" and Ps2xE0 = '1' and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgDn make internal HB Keyboard (Select+Down)
+            elsif( ( Ps2Dat = X"4E" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- PgDn make internal HB Keyboard (Select + -/_)
               if Ps2brk = '0' then
                 oFkeys(4) := not oFkeys(4);
+              end if;
+              Ps2Chg := '1';
+            elsif( ( Ps2Dat = X"05" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- F9 make internal HB Keyboard (Select + F1)
+              if Ps2brk = '0' then
+                oFkeys(3) := not oFkeys(3);
+              end if;
+              Ps2Chg := '1';
+            elsif( ( Ps2Dat = X"06" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- F10 make internal HB Keyboard (Select + F2)
+              if Ps2brk = '0' then
+                oFkeys(2) := not oFkeys(2);
+              end if;
+              Ps2Chg := '1';
+            elsif( ( Ps2Dat = X"04" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- F11 make internal HB Keyboard (Select + F3)
+              if Ps2brk = '0' then
+                oFkeys(1) := not oFkeys(1);
+              end if;
+              Ps2Chg := '1';
+            elsif( ( Ps2Dat = X"0C" and Ps2xE0 = '0' ) and Ps2xE1 = '0' and EnAltMap = '1' and Ps2F8 = '1' )then -- F12 make internal HB Keyboard (Select + F4)
+              if Ps2brk = '0' then
+                oFkeys(0) := not oFkeys(0);
               end if;
               Ps2Chg := '1';
             elsif( Ps2Dat = X"01" and Ps2xE0 = '0' and Ps2xE1 = '0' )then -- F9 make

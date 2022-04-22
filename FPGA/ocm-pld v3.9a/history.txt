@@ -110,8 +110,10 @@ v3.9a [2022.04.19] [Ducasp Updates!]
   those sounds play on left channel without needing to render the right channel sequencing (any command configuring
   a channel to be only on Left or Right output is changed on the fly to render on both channels when the new "mono"
   pin on OPL3 is high)
-- SMX-HB Internal Keyboard doesn't have Page Up or Page Down, so SELECT + UP and SELECT + DOWN acts as those keys
-
+- SMX-HB Internal Keyboard doesn't have Page Up, Page Down or F9 to F12, so SELECT + +/=, SELECT + -/_, SELECT + F1
+to SELECT + F4 acts as those keys
+- Victor Trucco made improvements on the SDRAM controller so it is able to work with different chips. Some SM-X mini
+  and SMX-HB use chips that need this to work.
 
 v3.9 [2021.08.23] [KdL's Updates!]
 

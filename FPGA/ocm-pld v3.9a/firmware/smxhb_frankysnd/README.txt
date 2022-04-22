@@ -50,9 +50,9 @@ brings to the table:
       use an external keyboard.
 
     - Fix: Select key was not working on original 3.7.1 based release, it works
-      now. Also, SELECT + UP and SELECT + DOWN replaces Page Up and Page Down,
-      so it is possible to activate the autofire module using only SMX-HB
-      internal keyboard.
+      now. Also, SELECT + +/=, SELECT + -/_, SELECT + F1 to F4 replaces Page Up
+      , Page Down, F9 to F12, so it is possible to activate the autofire module
+      and most of the OCM Hotkey shortcuts using only SMX-HB internal keyboard.
 
     - Missing: SMX-HB FPGA has less cells than other SM-X devices as it uses
       a FPGA with about 70% of the capacity of the other devices, so it doesn't
@@ -79,8 +79,11 @@ brings to the table:
         any program relying on reading OCM information on those ports won't
         get it.
 
-All source code and binaries:
+All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+All source code from OCM 3.9 originally is a work of many people, including
+KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.
