@@ -1,0 +1,15 @@
+lsb 0,f
+msb 2
+vol 0,0
+wait 1000
+lsb 1,f
+msb 2
+vol 1,0
+wait 1000
+lsb 2,f
+msb 2
+vol 2,0
+wait 1000
+vol 3,0
+wait 1000
+wait 5000

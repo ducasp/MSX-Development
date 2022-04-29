@@ -1,0 +1,75 @@
+;
+; rtcpatch.gen
+;   OCM-PLD Pack / OCM-SDBIOS Pack v1.3 or later / Third-party SDBIOS
+;
+; Copyright (c) 2008 NYYRIKKI / 2017-2020 KdL
+; All rights reserved.
+;
+; Redistribution and use of this source code or any derivative works, are
+; permitted provided that the following conditions are met:
+;
+; 1. Redistributions of source code must retain the above copyright notice,
+;    this list of conditions and the following disclaimer.
+; 2. Redistributions in binary form must reproduce the above copyright
+;    notice, this list of conditions and the following disclaimer in the
+;    documentation and/or other materials provided with the distribution.
+; 3. Redistributions may not be sold, nor may they be used in a commercial
+;    product or activity without specific prior written permission.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+; TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+; PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+; PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+; OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+; ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+;
+; ----------------------------------------------
+;  Prog:  RTC patch 2.1 for SUB-ROM
+;  Modifications By: NYYRIKKI 2008/KdL 2017-2020
+; ----------------------------------------------
+;
+
+; ------------------------------
+;           ORG     #3F9C       ; turboR PCM enabler (MSX2+ only)
+            ORG     #3FA0
+; ------------------------------
+
+WRTC:       EQU     #01FA       ; 1D10=MSX2, 1C9E=MSX2+, 1C9C=MSXtR, 01FA=ANY
+
+; ------------------------------
+;           LD      A,3         ; suggested by HRA!
+;           OUT     (#A5),A     ; turboR PCM is ON
+; ------------------------------
+            LD      HL,FREE
+            LD      C,%010000
+wLOOP:
+            LD      A,(HL)
+            INC     HL
+            PUSH    AF
+            CALL    WRTC
+            POP     AF
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            INC     C
+            CALL    WRTC
+            INC     C
+            LD      A,C
+            AND     15
+            CP      #E
+            JR      NZ,wLOOP
+            INC     C
+            INC     C
+
+            LD      A,%1000000
+            CP      C
+            JR      NZ,wLOOP
+            JP      #512
+
+FREE:       DB      0,0,0,0,0,1,#90,#A,0,#50,#F,0,0,#A0,#F0,#34,#D4,4,0,0,#B0

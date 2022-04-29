@@ -1,0 +1,27 @@
+no 1,2
+
+vol 0,0
+vol 1,8
+vol 2,3
+lsb 0,f
+msb 18
+lsb 1,2
+msb 8
+lsb 2,3
+msb 3
+wait 2000
+vol 0,1
+wait 2000
+vol 0,2
+
+wait 2000
+no 0,2
+
+vol 0,3
+wait 2000
+vol 0,4
+wait 2000
+vol 0,5
+wait 2000
+vol 0,6
+wait 2000

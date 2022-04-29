@@ -1,0 +1,109 @@
+Games that boot, needs players to test :)
+
+I don't have all diskimages so I cannot test all games there are around.
+
+123
+Adventure Of Randar 3
+Aleste 2
+Aleste Gaiden
+Alice
+Angelus
+Arcus
+Arcus 2
+Big Strategy                            (needs patch for Turbo-R)
+Burai 1
+Cosmo Club
+Crimson 2                               (/R parameter supported can run in R800 mode)
+Crimson 3                               (/R parameter supported can run in R800 mode)
+Cybernetic Hi-School Part 1
+Cybernetic Hi-School Part 2
+Dante 2
+Stories for the day 2
+D.C. Connection
+Dead of the Brain
+Dragon City
+Dragon Quiz
+Dragon Slayer 6
+F1 Douchuuki
+F1 Spirit 3D Special
+Famicle Parodic 2                       (needs patch / adapt))
+Fantasm Soldier 2
+Feedback
+Final Fantasy                           (Keep CTRL pressed when you see the NEARDARK logo, and keep it pressed until it says OK)
+Firehawk (Thexder 2)                    (Few corrupted gfx, needs debugging)
+Fray in Magical Adventure
+Fray in Magical Adventure Turbo-R version
+Green Crystal
+Gandhara
+Gladius                                 (/R parameter supported can run in R800 mode)
+Golvellius 2
+Goody                                   (needs patch / adapt)
+Gorby's Pipeline
+Greatest Driver
+Green Crystal
+Gun Cannon                              (needs patch / adapt)
+Heroic Fantasy
+Herzog
+Hydefos
+Illusion City                           (original version)
+Jack Nicklaus Golf
+Jesus staff
+Kohakui
+Konami Gamecollection 1
+Konami Gamecollection 4
+Konami The Complete Game Collection
+Lubeck
+Madoo Monogatari
+Mahjogg Shikaku
+Maison Ikkoku
+Mattix
+Masters History
+M.U.L.E.
+Murder Club
+Niko 2
+Nyancle                                 (needs patch / adapt)
+Nyan Puzzle
+Palace
+Peach Up 1
+Peach Up 2
+Peach Up 3
+Peach Up 4
+Peach Up 5
+Peach Up 6
+Peach Up 7
+Peach Up 8
+Peach Up Special
+Peach Up Special 2
+Puyo Puyo                               (/M supported, can use MSX-AUDIO)
+Princess Maker                          (needs patch for Turbo-R)
+Psy O Blade
+Quinple                                 (needs patch / adapt)
+Runemaster 1
+Runemaster 2
+Runemaster 3
+Rune Worth
+Record of Lodoss War
+Ralba
+SD Snatcher                             (/R parameter supported can run in R800 mode)
+Sorcerian
+Seilane
+Soldier of Fisla
+Superb                                  (Game from Nihon Create dont know full name)
+Super Cooks
+Super Laydock 2
+Tetris
+Testament
+Tower of Cabin
+Undeadline
+Warau Salesman
+War Of The Dead 2
+What's Michael
+Xak - The Art of Visual Stage
+Xak II - Rising of The Redmoon
+Xak Tower of Gazzel                     (needs patch for Turbo-R)
+Xna system for MSX
+XZR 1
+XZR 2
+Ys 1                                    (/R parameter supported can run in R800 mode)
+Ys 2                                    (/R parameter supported can run in R800 mode)
+Ys 3                                    (/R parameter supported can run in R800 mode)

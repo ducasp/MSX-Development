@@ -1,0 +1,247 @@
+;
+; rtcsave.*
+;   OCM-PLD Pack / OCM-SDBIOS Pack v1.3 or later / Third-party SDBIOS
+;
+; Copyright (c) 2008 NYYRIKKI
+; All rights reserved.
+;
+; Redistribution and use of this source code or any derivative works, are
+; permitted provided that the following conditions are met:
+;
+; 1. Redistributions of source code must retain the above copyright notice,
+;    this list of conditions and the following disclaimer.
+; 2. Redistributions in binary form must reproduce the above copyright
+;    notice, this list of conditions and the following disclaimer in the
+;    documentation and/or other materials provided with the distribution.
+; 3. Redistributions may not be sold, nor may they be used in a commercial
+;    product or activity without specific prior written permission.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+; "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+; TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+; PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+; CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+; PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+; WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+; OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+; ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+;
+; --------------------------------------
+;  Prog:  RTC save 1.0 for One Chip MSX
+;  Modifications By: NYYRIKKKI 2008
+; --------------------------------------
+;
+
+;           DEFB    #FE
+;           DEFW    PRGS,PRGE,PRGS
+
+            ORG     #100
+
+WRTC:       EQU     #1D10
+;RRTC:      EQU     #1F5
+FREE:       EQU     #D000
+
+DATA:       EQU     #3FC6
+
+PRGS:
+
+            LD      DE,STARTXT
+            CALL    PRINT
+
+            LD      HL,#3E00
+            LD      DE,0            ;544
+            LD      BC,#1F0         ;?
+            XOR     A
+            SCF
+            CCF
+            RST     #30
+            DEFB    %10001011       ;3-2
+            DEFW    #4010
+
+FINDROMFILE:
+            LD      IX,03E00H
+            LD      L,(IX+0EH)      ; Reserved sectors
+            LD      H,(IX+0FH)
+;           LD      A,C
+;           ADD     HL,DE
+;           ADC     A,00H
+;           LD      C,A
+            LD      E,(IX+11H)      ; Root entries
+            LD      D,(IX+12H)
+            LD      A,E
+            AND     0FH
+            LD      B,04H
+XF1C2:      SRL     D
+            RR      E
+            DJNZ    XF1C2
+            OR      A
+            JR      Z,XF1CC
+            INC     DE
+XF1CC:      PUSH    DE
+            LD      B,(IX+10H)      ; Number of FATs
+            LD      E,(IX+16H)      ; Sectors / FAT
+            LD      D,(IX+17H)
+;           LD      A,C
+XF1D7:      ADD     HL,DE
+;           ADC     A,00H
+            DJNZ    XF1D7
+            POP     DE
+            ADD     HL,DE
+
+            PUSH    HL
+
+;           PUSH    HL
+;           PUSH    DE
+;           LD      DE,NOBIOS
+;           CALL    Num2Dec
+;           POP     DE
+;           POP     HL
+
+            LD      DE,223          ;OFFSET TO CORRECT PLACE
+            ADD     HL,DE
+            LD      (RTCSECTOR),HL
+
+            POP     DE
+
+            LD      HL,#3E00
+;           LD      DE,767
+            LD      BC,#1F0         ;?
+            XOR     A
+            SCF
+            CCF
+            RST     #30
+            DEFB    %10001011       ;3-2
+            DEFW    #4010
+
+            LD      DE,ERROR
+            JP      C,PRINT
+
+            LD      HL,(03E00H)
+            LD      DE,4241H        ; ROM header
+            OR      A
+            SBC     HL,DE
+
+            LD      DE,NOBIOS
+            JP      NZ,PRINT
+
+            LD      HL,#3E00
+            LD      DE,(RTCSECTOR)
+            LD      BC,#1F0         ;?
+            XOR     A
+            SCF
+            CCF
+            RST     #30
+            DEFB    %10001011       ;3-2
+            DEFW    #4010
+            LD      DE,ERROR
+            JP      C,PRINT
+
+            LD      HL,#3FE0
+            LD      DE,IDTXT
+IDLOOP:
+            LD      A,(DE)
+            AND     A
+            JR      Z,IDFOUND
+            CP      (HL)
+            JP      NZ,NOID
+            INC     HL
+            INC     DE
+            JR      IDLOOP
+
+IDFOUND:
+            LD      HL,DATA
+            LD      C,%010000
+rLOOP:
+            CALL    RRTC
+            AND     #F
+            PUSH    AF
+            INC     C
+            CALL    RRTC
+            INC     C
+            AND     #F
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            LD      B,A
+            POP     AF
+            OR      B
+            LD      (HL),A
+            INC     HL
+            LD      A,C
+            AND     15
+            CP      #E
+            JR      NZ,rLOOP
+            INC     C
+            INC     C
+
+            LD      A,%1000000
+            CP      C
+            JR      NZ,rLOOP
+
+            LD      HL,#3E00
+            LD      DE,(RTCSECTOR)
+            LD      BC,#1F0         ;?
+            XOR     A
+            SCF
+            RST     #30
+            DEFB    %10001011       ;3-2
+            DEFW    #4010
+            LD      DE,WERROR
+            JP      C,PRINT
+            LD      DE,OK
+;           JP      PRINT
+;           RET
+
+PRINT:
+            LD      C,9
+            JP      5
+
+NOID:
+            LD      DE,NOIDTXT
+            JP      PRINT
+                                    ;GENERAL SAVE HERE
+            RET
+
+RRTC:
+            RST     #30
+            DEFB    %10000111       ;3-1
+            DEFW    #1F5
+            RET
+
+
+STARTXT:    DEFB    "RTC save 1.0 for One Chip MSX",10,13
+            DEFB    "Made By: NYYRIKKI 2008",10,10,13,"$"
+IDTXT:      DEFB    "RTC CODE",0
+ERROR:      DEFB    "UNEXPECTED ERROR! (This program is for OCM only)",#D,#A,"$"
+WERROR:     DEFB    "WRITE ERROR!",#D,#A,"$"
+OK:         DEFB    "RTC saved",#D,#A,"$"
+NOBIOS:     DEFB    "MSX-BIOS not found from MMC/SD, please install BIOS first",#D,#A,"$"
+NOIDTXT:    DEFB    "No custom BIOS found!",10,13,"$"
+RTCSECTOR:  DEFW    0
+
+
+;Num2Dec    ld      bc,-10000
+;           call    Num1
+;           ld      bc,-1000
+;           call    Num1
+;           ld      bc,-100
+;           call    Num1
+;           ld      c,-10
+;           call    Num1
+;           ld      c,-1
+
+;Num1       ld      a,'0'-1
+;Num2       inc     a
+;           add     hl,bc
+;           jr      c,Num2
+;           sbc     hl,bc
+
+;           ld      (de),a
+;           inc     de
+;           ret
+
+
+PRGE:

@@ -1,0 +1,14 @@
+Useful Web links
+================
+https://<< KdL Index! >>/msxdos2           MSX-DOS v2.4X Full Package
+https://<< KdL Index! >>/ocm/sdbios        OCM-SDBIOS Pack (latest version)
+
+http://www.tni.nl/products/command2.html   COMMAND2.COM version 2.4 by TNI
+http://www.tni.nl/products/romload.html    ROMLOAD - ROM image loading tool by TNI
+http://bifi.msxnet.org/paledit             Palette Editor by BiFi
+http://www.neardark.nl                     Runit by SMD NEARDARK
+http://www.louthrax.net/mgr                Louthrax's MSX game room (SofaRun)
+
+
+______________
+KdL 2021.08.23

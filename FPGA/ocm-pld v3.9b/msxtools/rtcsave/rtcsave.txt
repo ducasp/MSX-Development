@@ -1,0 +1,47 @@
+RTC save 3.0 for One Chip MSX
+Made By: NYYRIKKI 2008/KdL 2017-2019
+
+In case someone is interested, there is a bit improved BIOS for One Chip MSX.
+You can save RTC settings on SD card by executing 'RTCSAVE.COM'.
+
+
+Installation:
+- Convert an appropriate BIOS from hex-file in binary, OCM-SDBIOS Pack is suggested.
+- Format your SD card into FAT16 and copy 'OCM-BIOS.DAT' as first file in it.
+- Copy 'RTCSAVE.COM' to somewhere and run it to save the RTC settings.
+
+
+Syntax: rtcsave [{/|-}option]
+
+MAIN-ROM COLOR
+--------------
+Default settings without no parameter:
+ if SCREEN 0  set COLOR foregr,backgr,backgr from RTC
+ if SCREEN 1  set COLOR foregr,backgr,border from RTC
+
+Custom settings through options:
+ a  COLOR foregr,border,border from RTC
+ b  COLOR white,black,black (15,0,0)
+ c  COLOR from System Variables in RAM
+ x  exclude MAIN-ROM from saving
+
+SUB-ROM RTC CODE
+----------------
+Perform SET SCREEN from BASIC before saving the RTC code
+
+
+Revision 3.0 (KdL 2019.05.20)
+- Added MAIN-ROM color options.
+- Text corrections and some additions.
+- Fully revised source code.
+
+Revision 2.2 (KdL 2017.09.18)
+- Auto-scanning for RTC patch on any "custom BIOS" up to 1024 kB.
+- Changed the string UNEXPECTED ERROR! into UNSUPPORTED KERNEL FOUND!
+
+Revision 1.0 (NYYRIKKI)
+- First public release.
+
+
+______
+Enjoy!
