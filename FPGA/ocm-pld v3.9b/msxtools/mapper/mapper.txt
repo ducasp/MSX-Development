@@ -1,1 +1,0 @@
-'MAPPER.COM' is a freeware tool that disables the MSX-DOS2 memory mapper routines to permit running the old MSX-DOS1 software.

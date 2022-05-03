@@ -1,0 +1,11 @@
+Refer to dip-sw user manual v3.9-type2.pdf for DIP switches 1 to 8.
+
+Currently, of all extra 4 DIP switches available on SMX-HB, only position 9 is
+being used.
+
+    - DIP Position 9: default position should be OFF, meaning you are using a
+      Hotbit keyboard translated with the Arduino board. Moving it to ON will
+      change internally to use a communication protocol and keyboard map that
+      is proper for PS/2 external keyboards, using a Hotbit keyboard when it
+      is on ON will cause Hotbit keyboard to not work properly. Using a PS/2
+      keyboard when it is OFF will cause PS/2 keyboard to not work properly.
