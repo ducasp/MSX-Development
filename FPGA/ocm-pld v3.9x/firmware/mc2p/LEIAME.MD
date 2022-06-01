@@ -35,6 +35,21 @@ Multicore 2+ tem duas possibilidades:
     o arquivo IMG e responda YES quando perguntado se o arquivo deve ser usado
     automaticamente da próxima vez.
 
+    NOTA: coloquei um arquivo de imagem de disco baseado na imagem que o Focosi
+    liberou, provavelmente é ok liberar ela como não tem software pago já que
+    o Nishi permitiu a todos usarem o MSX-DOS2 e o Nextor a ser criado e
+    distribuido gratuitamente. Se houver algum problema com essa imagem eu irei
+    remover a mesma assim que for notificado. Essa imagem é um bom ponto de
+    partida desde que você tenha a expansão SM-X (ou a ZX Next e o ESP de MSX)
+    e ela esteja conectada, visto que nela é utilizada uma SD-BIOS com a BIOS
+    do Wi-Fi. Se não tiver essa extensão ou ela não estiver conectada, o boot
+    irá demorar mais devido a BIOS esperar o ESP responder. Se tiver a extensão
+    , pressione o botão vermelho no MC2+ enquanto mantém F1 pressionado, solte
+    o botão vermelho e mantenha F1 pressionado até aparecer o menu da BIOS
+    Wi-Fi. Configure sua rede e também configure o Wi-Fi para atualizar data e
+    hora automaticamente no boot, é bem mais rápido que carregar o driver
+    ESP8266.COM e usar SNTP.COM para atualizar a data e hora. :)
+
 NOTA: Você precisa pelo menos da versão 1.07 do Menu Multicore e versão 2.00
 do Firmware STM. Não está no escopo dessa documentação esse tipo de atualização
 , procure ajuda no Git Lab do Victor Trucco ou em um dos grupos dedicados sobre

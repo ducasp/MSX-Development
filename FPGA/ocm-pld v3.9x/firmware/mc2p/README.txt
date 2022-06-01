@@ -35,6 +35,19 @@ Multicore 2+ has two possibilities:
     the IMG file and answer YES when asked if you want to automatically load
     that image next time.
 
+    NOTE: I've added a disk image based on Focosi released disk image, it
+    probably is ok as it doesn't have any copyrighted software after Nishi
+    allowed everyone to use MSX-DOS2 and Nextor to be created and distributed
+    freely. If there are any issues with that image, let me know and I will
+    take it down. That disk image is good as long as you have SM-X extension
+    connected, as it has a SD-BIOS using Wi-Fi bios. If you don't have that
+    extension or it is not connected, boot will take longer due to the BIOS
+    waiting for the ESP to respond. If you have the extension, hit the red
+    button while keeping F1 pressed, then release the red button, you will
+    be greeted with Wi-Fi setup. Setup your network and also set it up to
+    update automatically MSX date and time on boot, it is way faster than
+    having to load ESP8266.COM and SNTP.COM to do that :)
+
 NOTE: You need at least version 1.07 of Multicore Menu core and version 2.00 of
 STM Firmware. It is not in the scope of this to document this update procedure,
 please seek help through Victor Trucco git lab or Facebook dedicate Multicore
