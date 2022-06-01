@@ -163,16 +163,12 @@ architecture Behavior of top is
         ps2mdat             : inout std_logic;                          -- mouse PS/2 data
         ps2mclk             : inout std_logic;                          -- mouse PS/2 clk
 
-        mou_emu             : in    std_logic_vector(  5 downto 0 );    -- mouse with joystick input
-        sof                 : in    std_logic;                          -- mouse joystick emulation enable bit
         zcount              : out   std_logic_vector(  7 downto 0 );    -- mouse Z counter
         ycount              : out   std_logic_vector(  7 downto 0 );    -- mouse Y counter
         xcount              : out   std_logic_vector(  7 downto 0 );    -- mouse X counter
         mleft               : out   std_logic;                          -- left mouse button output
         mthird              : out   std_logic;                          -- third (middle) mouse button output
         mright              : out   std_logic;                          -- right mouse button output
-        test_load           : in    std_logic;                          -- load test value to mouse counter
-        test_data           : in    std_logic_vector( 15 downto 0 );    -- mouse counter test value
         mouse_data_out      : out   std_logic                           -- mouse has data to present
     );
     end component;
@@ -221,7 +217,6 @@ architecture Behavior of top is
     signal reset_s          : std_logic;                                            -- global reset
     signal power_on_reset_s : std_logic := '0';
     signal slow_s           : std_logic_vector( 20 downto 0 ) := (others => '1');
-    signal slow_reset_s     : std_logic := '1';
 
     -- DIPs
     signal dip_s            : std_logic_vector(  7 downto 0 ) := "00100001";        -- caution! inverted bits (0 = enabled)
@@ -274,17 +269,23 @@ architecture Behavior of top is
     signal pad_emu_s        : std_logic := '0';
     signal pad_mode_s       : std_logic := '0';
     signal pad_data         : std_logic := '0';
+    signal joya_en          : std_logic := '1';
+    signal mouse_present_old: std_logic := '0';
+    signal pad_emu_old      : std_logic := '0';
+    signal clock_div_5      : std_logic := '0';
+    signal mouse_state      : std_logic_vector(  1 downto 0 ) := (others =>'0');
+    signal mouse_x_latch    : std_logic_vector(  7 downto 0 ) := (others =>'0');
+    signal mouse_y_latch    : std_logic_vector(  7 downto 0 ) := (others =>'0');
+    signal mouse_timeout    : std_logic_vector( 17 downto 0 ) := (others =>'0');
+    signal mouse_data_old   : std_logic := '0';
+    signal mouse_stra_old   : std_logic := '0';
 
-    type   mouse_states  is ( MOUSE_WAIT, MOUSE_START, MOUSE_HIGHX, MOUSE_LOWX, MOUSE_HIGHY, MOUSE_LOWY );
-    signal mouse_state      : mouse_states := MOUSE_WAIT;
-
+    -- paddle emulation using PS/2 mouse
     type   paddle_states is ( STARTUP, PAD_WRK, PAD_MSX_SND_DATA1, PAD_MSX_SND_DATA2 );
     signal paddle_state     : paddle_states := STARTUP;
     signal oldstrA_s        : std_logic;
     signal oldjoy1_p6_io    : std_logic;
     signal oldmousedata     : std_logic := '0';
-    signal oldthirdbutton   : std_logic := '0';
-    signal pad_sensitivity  : std_logic_vector(  1 downto 0 ) := "10";
 
     -- misc
     signal blink_s          : std_logic;
@@ -463,22 +464,6 @@ architecture Behavior of top is
 
     sdram_clk_o     <= clk_sdram;
 
-    -- slow reset
-    process( clk21m, reset_s )
-    begin
-        if reset_s = '1' then
-            slow_s <= (others => '1');
-        elsif rising_edge( clk21m ) then
-            if slow_s /= x"00" then
-                slow_s <= slow_s - 1;
-                slow_reset_s <= '1';
-            else
-                slow_reset_s <= '0';
-            end if;
-
-        end if;
-    end process;
-
     vga_r_o         <= vga_r_out_s;
     vga_g_o         <= vga_g_out_s;
     vga_b_o         <= vga_b_out_s;
@@ -525,16 +510,33 @@ architecture Behavior of top is
     ---------------------------------
 
     process( clk21m )
+        variable port_a_disc_time  : std_logic_vector( 20 downto 0 ) := "000000000000000000000";
     begin
         if rising_edge( clk21m )then
             clock_div_q <= clock_div_q + 1;
+            if ( ( mouse_present_old /= mouse_present ) or ( pad_emu_old /= pad_emu_s) ) then
+                port_a_disc_time := "011000011010100000000"; -- about 1s disconnected
+                joya_en <= '0';
+            end if;
+
+            if ( clock_div_q(5) /= clock_div_5 ) then
+                if ( port_a_disc_time /= 0 ) then
+                    port_a_disc_time := port_a_disc_time - 1;
+                else
+                    joya_en <= '1';
+                end if;
+            end if;
+
+            mouse_present_old   <= mouse_present;
+            pad_emu_old         <= pad_emu_s;
+            clock_div_5         <= clock_div_q(5);
         end if;
     end process;
 
     mousectrl: ps2mouse
     port map(
         clk             => clock_div_q(5),                      -- need a slower clock to avoid loosing data
-        reset           => slow_reset_s,                        -- slow reset
+        reset           => reset_s,                             -- reset
 
         ps2mdat         => ps2_mouse_data_io,                   -- mouse PS/2 data
         ps2mclk         => ps2_mouse_clk_io,                    -- mouse PS/2 clk
@@ -545,68 +547,60 @@ architecture Behavior of top is
         mleft           => mouse_bts_s(0),                      -- left mouse button output
         mright          => mouse_bts_s(1),                      -- right mouse button output
         mthird          => mouse_bts_s(2),                      -- third(middle) mouse button output
-
-        sof             => '0',                                 -- mouse joystick emulation enable bit
-        mou_emu         => (others => '0'),                     -- mouse with joystick input
-
-        test_load       => '0',                                 -- load test value to mouse counter
-        test_data       => (others => '0'),                     -- mouse counter test value
         mouse_data_out  => mouse_data_out                       -- mouse has data top present
     );
 
-    joymouse_s  <= mouse_bts_s(  1 downto 0 ) & mouse_dat_s                                                 when( mouse_present = '1' and pad_emu_s = '0' )else
-                   joy1_p7_io & joy1_p6_io & '1' & '1' & ( mouse_bts_s(0) and mouse_bts_s(1) ) & pad_data   when( pad_emu_s = '1' and pad_mode_s = '0')else
-                   mouse_bts_s(  1 downto 0 ) & '1' & '1' & '1' & pad_data                                  when( pad_emu_s = '1' and pad_mode_s = '1')else
-                   joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io;
+    joymouse_s  <= mouse_bts_s(  1 downto 0 ) & mouse_dat_s                                                 when( mouse_present = '1' and pad_emu_s = '0' and joya_en = '1' )else
+                   joy2_p7_io & joy2_p6_io & '1' & '1' & ( mouse_bts_s(0) and mouse_bts_s(1) ) & pad_data   when( pad_emu_s = '1' and pad_mode_s = '0' and joya_en = '1' )else
+                   mouse_bts_s(  1 downto 0 ) & '1' & '1' & '1' & pad_data                                  when( pad_emu_s = '1' and pad_mode_s = '1' and joya_en = '1' )else
+                   joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io       when( joya_en = '1' )else
+                   "111111";
 
-    process( clk_sdram )
+    process( clk21m, reset_s )
     begin
+        if ( reset_s = '1' )then
+            mouse_state <= "00";
+            mouse_present <= '0';
+            mouse_timeout <= "001100001101010000";
+            mouse_dat_s <= "0000";
+        elsif rising_edge( clk21m )then
+            mouse_data_old <= mouse_data_out;
+            mouse_stra_old <= strA_s;
 
-        if rising_edge( clk_sdram )then
-
-            case mouse_state is
-                when MOUSE_WAIT =>
-                    mouse_dat_s <= "0000";
-                    if mouse_data_out = '1' then
-                        mouse_state <= MOUSE_START;
-                    end if;
-
-                when MOUSE_START =>
-                    mouse_present <= '1';
-                    if strA_s = '1' then
-                        mouse_state <= MOUSE_HIGHX;
-                    end if;
-
-                when MOUSE_HIGHX =>
-                    mouse_dat_s <= mouse_x_s(  7 downto 4 );
-                    if strA_s = '0' then
-                        mouse_state <= MOUSE_LOWX;
-                    end if;
-
-                when MOUSE_LOWX =>
-                    mouse_dat_s <= mouse_x_s(  3 downto 0 );
-                    if strA_s = '1' then
-                        mouse_state <= MOUSE_HIGHY;
-                    end if;
-
-                when MOUSE_HIGHY =>
-                    mouse_dat_s <= mouse_y_s(  7 downto 4 );
-                    if strA_s = '0' then
-                        mouse_state <= MOUSE_LOWY;
-                    end if;
-
-                when MOUSE_LOWY =>
-                    mouse_dat_s <= mouse_y_s(  3 downto 0 );
-                    if strA_s = '1' then
-                        mouse_state <= MOUSE_WAIT;
-                    end if;
-
-                when others =>
-                    mouse_state <= MOUSE_WAIT;
-            end case;
-
-            if( joy2_p7_io = '0' or joy2_p6_io = '0' or joy2_right_io = '0' or joy2_left_io = '0' or joy2_down_io = '0' or joy2_up_io = '0' ) and ( pad_emu_s = '0' )then
+            if ( mouse_data_out = '1' )then
+                mouse_present <= '1';
+            elsif ( joy2_p7_io = '0' or joy2_p6_io = '0' )then
                 mouse_present <= '0';
+            end if;
+
+            if ( mouse_data_old = '0' and mouse_data_out = '1' )then
+                mouse_x_latch <= mouse_x_s;
+                mouse_y_latch <= mouse_y_s;
+            end if;
+
+            if ( mouse_present = '1' ) then
+                if ( mouse_timeout /= "000000000000000000" )then
+                    if ( mouse_timeout = "000000000000000001") then mouse_state <= "00"; end if;
+                    mouse_timeout <= mouse_timeout - 1;
+                end if;
+
+                if ( mouse_stra_old /= strA_s ) then
+                    mouse_timeout <= "001100001101010000";
+                    mouse_state <= mouse_state + 1;
+
+                    case mouse_state is
+                        when "00" =>
+                            mouse_dat_s <= mouse_x_latch(  7 downto 4 );
+                        when "01" =>
+                            mouse_dat_s <= mouse_x_latch(  3 downto 0 );
+                        when "10" =>
+                            mouse_dat_s <= mouse_y_latch(  7 downto 4 );
+                        when "11" =>
+                            mouse_dat_s <= mouse_y_latch(  3 downto 0 );
+                            mouse_x_latch <= "00000000";
+                            mouse_y_latch <= "00000000";
+                    end case;
+                end if;
             end if;
 
         end if;
@@ -628,39 +622,14 @@ architecture Behavior of top is
     begin
 
         if rising_edge( clk_sdram )then
-
-            -- Sensitivity Change when third button is clicked
-            if oldthirdbutton = '1' and mouse_bts_s(2) = '0' then
-                case pad_sensitivity is
-                    when "00" =>
-                        pad_sensitivity <= "01"; -- sensitivity = divide mouse count by two
-                    when "01" =>
-                        pad_sensitivity <= "10"; -- sensitivity = divide mouse count by four
-                    when "10" =>
-                        pad_sensitivity <= "11"; -- sensitivity = divide mouse count by eight
-                    when "11" =>
-                        pad_sensitivity <= "00"; -- sensitivity = full mouse count
-                end case;
-            end if;
-
             -- We are here mostly to read X axis deltas
             if mouse_data_out = '1' and oldmousedata = '0' then
                 -- so what matters to us is if X changed, otherwise no check to do
                 if mouse_x_s /= "00000000" then
                     -- positive? move to the left, decrease position value
                     if mouse_x_s(7) = '0' then
-                        case pad_sensitivity is
-                            -- positive value, just divide it or not according to sensitivity setting
-                            when "00" =>
-                                Temp_Mouse_X := unsigned( "00"      & mouse_x_s( 6 downto 0 ) );
-                            when "01" =>
-                                Temp_Mouse_X := unsigned( "000"     & mouse_x_s( 6 downto 1 ) );
-                            when "10" =>
-                                Temp_Mouse_X := unsigned( "0000"    & mouse_x_s( 6 downto 2 ) );
-                            when "11" =>
-                                Temp_Mouse_X := unsigned( "00000"   & mouse_x_s( 6 downto 3 ) );
-                        end case;
-
+                        Temp_Mouse_X := unsigned( "00"      & mouse_x_s( 6 downto 0 ) );
+     
                         -- Update VAUS position
                         Paddle_Pos := unsigned( V_Paddle_Read );
                         if Paddle_Pos < Temp_Mouse_X then
@@ -684,17 +653,7 @@ architecture Behavior of top is
 
                     -- negative? move to the right, increase position value
                     else
-                        case pad_sensitivity is
-                            -- negative value, just divide it or not according to sensitivity settings, invert it
-                            when "00" =>
-                                Temp_Mouse_X := unsigned( "00"      & not( mouse_x_s( 6 downto 0 ) ) );
-                            when "01" =>
-                                Temp_Mouse_X := unsigned( "000"     & not( mouse_x_s( 6 downto 1 ) ) );
-                            when "10" =>
-                                Temp_Mouse_X := unsigned( "0000"    & not( mouse_x_s( 6 downto 2 ) ) );
-                            when "11" =>
-                                Temp_Mouse_X := unsigned( "00000"   & not( mouse_x_s( 6 downto 3 ) ) );
-                        end case;
+                        Temp_Mouse_X := unsigned( "00"      & not( mouse_x_s( 6 downto 0 ) ) );
                         -- negative value, after inverting it, add 1
                         Temp_Mouse_X := Temp_Mouse_X + 1;
 
@@ -734,23 +693,24 @@ architecture Behavior of top is
                     if pad_mode_s = '0' then
                         -- VAUS Mode, data has bit to be presented
                         pad_data <= Shift_Register(8);
+                        -- Pin 8 from low to high, copy value to shift register in VAUS mode
+                        if strA_s = '1' and oldstrA_s = '0' then
+                            Shift_Register := V_Paddle_Read;
+                        -- Pin 6 from low to high, shift the shift register in VAUS mode
+                        elsif oldjoy1_p6_io = '0' and joy2_p6_io = '1' then
+                            Shift_Register := Shift_Register ( 7 downto 0 ) & '0';
+                        end if;
                     else
                         -- MSX Paddle mode, inactive until data is requested
                         pad_data <= '0';
-                    end if;
-                    -- Pin 8 from low to high, copy value to shift register in VAUS mode
-                    if strA_s = '1' and oldstrA_s = '0' and pad_mode_s = '0' then
-                        Shift_Register := V_Paddle_Read;
-                    -- Pin 8 from low to high, need to time encode the paddle read in MSX mode
-                    elsif strA_s = '1' and oldstrA_s = '0' and pad_mode_s = '1' then
-                        MSXPaddleCount := unsigned ( M_Paddle_Read );
-                        paddle_state <= PAD_MSX_SND_DATA1;
-                        pad_data <= '1';
-                        -- Adjust our scaler value, 1032 clk_sdram give us a little bit over 12us
-                        Scaler12us := 1032;
-                    -- Pin 6 from low to high, shift the shift register in VAUS mode
-                    elsif oldjoy1_p6_io = '0' and joy1_p6_io = '1' and pad_mode_s = '0' then
-                        Shift_Register := Shift_Register ( 7 downto 0 ) & '0';
+                        -- Pin 8 from low to high, need to time encode the paddle read in MSX mode
+                        if strA_s = '1' and oldstrA_s = '0' then
+                            MSXPaddleCount := unsigned ( M_Paddle_Read );
+                            paddle_state <= PAD_MSX_SND_DATA1;
+                            pad_data <= '1';
+                            -- Adjust our scaler value, 1032 clk_sdram give us a little bit over 12us
+                            Scaler12us := 1032;
+                        end if;
                     end if;
 
                 -- MSX Paddle Mode: start PWM encoding
@@ -780,12 +740,13 @@ architecture Behavior of top is
                 when others =>
                     paddle_state <= STARTUP;
             end case;
-
-        oldstrA_s <= strA_s;
-        oldjoy1_p6_io <= joy1_p6_io;
-        oldmousedata <= mouse_data_out;
-        oldthirdbutton <= mouse_bts_s(2);
-
+            -- Update edge detection
+            oldstrA_s <= strA_s;
+            oldjoy1_p6_io <= joy2_p6_io;
+            oldmousedata <= mouse_data_out;
+            if joya_en /= '1' then
+                paddle_state <= STARTUP; -- Reset paddle to wait state while disconnecting
+            end if;
         end if;
 
     end process;

@@ -40,7 +40,7 @@
 --                1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 (regular) and [SX-1 Mini/Mini+].
 --
 -- Dedicated firmware for the following 2nd Gen machines based on Altera Cyclone IV-E:
---                SM-X (regular), [SM-X Mini], [SMX-HB] and [SX-2].
+--                SM-X (regular), [SM-X Mini], [SMX-HB], [SX-2] and MC2+.
 --
 -- [!] ATTENTION: the machines in square brackets have not been tested directly by me as I do not own them.
 -------------------------------------------------------------------------------------------------------------------
@@ -94,6 +94,19 @@
 
 __________________________________
 v3.x KdL/HRA's Unofficial Release \________________________________________________________________________________
+
+v3.9c [2022.05.27] [Ducasp Updates!]
+- Fixes for MSX Mouse emulation w/ PS/2 mouse and new sensibility option using third mouse button
+    - Mouse can now move a single pixel on X Axis
+    - Sensibility change through third button click
+    - Mouse will work fine even if Joymega / Mega Drive joystick is connected
+    - Port disconnection/reconnection simulation when moving from joystick -> mouse and vice versa
+- Incorporated Multicore 2+ to the build, single build that has everything.
+    - Multicore 2+ supports stereo OPL3
+    - Multicore 2+ uses OSD on F12 key, so turbo speed change only through OSD or applications
+    - Multicore 2+ uses OSD instead of DIP Switches
+    - Multicore 2+ paddle emulation is set only on the OSD
+    - Multicore 2+ supports emulation of SD Card using a disk image file
 
 v3.9b [2022.04.29] [Ducasp Updates!]
 - Frankysnd builds now also have a second PSG!

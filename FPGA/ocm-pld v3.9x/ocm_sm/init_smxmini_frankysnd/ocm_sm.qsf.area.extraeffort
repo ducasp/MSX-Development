@@ -70,7 +70,7 @@ set_global_assignment -name VHDL_FILE src_addons/cpu/T800_Pack.vhd
 set_global_assignment -name VHDL_FILE src_addons/cpu/T800_Reg.vhd
 set_global_assignment -name VHDL_FILE src_addons/cpu/T800a.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/fifo.vhd
-set_global_assignment -name VHDL_FILE src_addons/peripheral/sm_wifi.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/sm_wifi_lite.vhd
 set_global_assignment -name VHDL_FILE src_addons/sys/debounce.vhd
 set_global_assignment -name VHDL_FILE src_addons/sm_emsx_top.vhd
 set_global_assignment -name VHDL_FILE src_addons/top.vhd

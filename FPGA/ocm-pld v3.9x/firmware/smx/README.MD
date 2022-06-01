@@ -27,8 +27,17 @@ Also, be aware that if power fails during update, you are most likely to end up
 with a bricked unit and you will need to use an USB Blaster and JIC file to
 restore it, again, a pain!
 
-OCM-PLD v3.9b is an extension on KdL OCM release v3.9. What this extension
-brings to the table on this version:
+# New in relation to v3.9b
+
+    - Improvements and fixes to MSX Mouse emulation over PS/2 mouse
+    - As a result, paddle emulation also is now smooter
+
+# Release notes
+
+OCM-PLD v3.9c is an extension on KdL OCM release v3.9. What this extension
+brings to the table:
+
+- OPL3 related:
 
     - Fix: I've fixed OPL3, it had two issues that prevented it to work with
       the latest VGMPlay version:
@@ -45,25 +54,46 @@ brings to the table on this version:
       interrupt, not having IRQ and not having the proper scaler for timer
       caused its timing to be slow, darn slow...
 
-    - Fix: I've fixed OPL3 sound rendering as it was discarding all information
-      that is on right output channel only, unfortunately we do not have enough
-      FPGA resources to run the sequencer for two channels, but a clever trick
-      allow all songs content to be properly played in MONO glory :P Try as an
-      example Doom soundtrack track 3 before updating and after updating it. :)
+    - Fix for second gen devices: I've fixed OPL3 sound rendering as it was
+      discarding all information that is on right output channel only,
+      unfortunately we do not have enough FPGA resources to run the sequencer
+      for two channels, but a clever trick allows all songs content to be
+      properly played in MONO glory :P Try as an example Doom soundtrack track
+      3 before updating and after updating it. :)
+
+- For all devices:
+
+    - Improved: Victor Trucco made improvements on the SDRAM controller so it
+      is able to work with different chips. Some SM-X mini and SMX-HB use chips
+      that need this to work.
 
     - Extra: I've added Paddle emulation when using a PS/2 mouse. To enable
       VAUS (Arkanoid/Taito) Paddle emulation use SETSMART -8E, to enable MSX
       standard paddle emulation use SETSMART -8F, to disable it (default) use
       SETSMART -8D. Note that MSX Standard paddle only works properly if Z80
-      clock is 3.58MHz, like a realm MSX Standard paddle on a MSX machine with
+      clock is 3.58MHz, like a real MSX Standard paddle on a MSX machine with
       turbo CPU.
 
-- Planned for the future SM-X, SM-X mini and SX-2 will have a franky build:
+    - Fix: I've fixed mouse emulation. It was not possible to move a single
+      pixel on X axis, now it is. Also, four different levels of sensibility
+      are available by clicking the third mouse button (if your mouse is not an
+      intellimouse compatible mouse w/ 3 buttons, sensibility will be fixed 
+      almost the same as before)
 
-    - Missing: FPGA in those devices can't fit OPL3 along with Franky VDP and
-      PSG, so that build won't have OPL3 support.
+    - Fix: Mouse emulation would not work nice if you had an eight button mega
+      drive joystick connected with joymega. Now it detects properly
 
-    - Extra: this is a WIP, please wait, but it will have Franky VDP :P
+    - Fix: When switching from mouse to joystick or joystick to mouse, joystick
+      port is "disconnected" for 1 second. On a real MSX it is not possible to
+      change from joystick to mouse without disconnecting each one so HIDTEST
+      and software that uses HIDLIB to detect rely on the device being
+      disconnected for a while to detect its removal and then be able to see
+      the new device being connected
+
+    - Improvement: ported the Multicore 2+ Mouse emulation to all devices. It
+      is a better approach as it has a time-out to return to the first state
+      after a few time without communication, like a real MSX mouse.
+
 
 All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com

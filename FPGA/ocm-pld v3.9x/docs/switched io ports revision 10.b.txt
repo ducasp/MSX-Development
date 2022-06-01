@@ -43,3 +43,48 @@ New Smart Commands:
           not be smooth, exactly as would happen to a real MSX Standard Paddle.
           This will persist after boots, reset only with 8D or power cycle /
           cold boot.
+
+Esse é um adendo ao arquivo switched io ports revision 10.pdf, informando o que
+não está documentado no mesmo.
+
+Atalhos do Teclado / Módlulas ativados pelo teclado:
+
+Módulo de disparo automático do HRA! com 16 velocidades:
+    - Para alternar entre desabilitado/habilitado, CTRL + SHIFT + PG UP | PG
+      DOWN (qualquer um funciona)
+    - Para diminuir a velocidade (ou um belo atalho para a velocidade máxima já
+      que ao habilitar ele começa na velocidade menor), CTRL + PG DOWN
+    - Para aumentar a velocidade, CTRL + PG UP
+
+Atalhos do teclado Hotbit do SM-X HB:
+    - PG UP pode ser simulado com SELECT e +
+    - PG DOWN pode ser simulado com SELECT e -
+    - F9 a F12 pode ser simulado com SELECT e F1 a F4
+
+Novos comandos Smart:
+    - 89: desliga o debounce da porta de controles do SMX-HB (dispositivos que
+          não são controles podem não funcionar bem com o debounce dependendo
+          da velocidade que alternam estados). Não afeta SM-X/SM-X Mini/SX2/MC2+.
+    - 8A: liga o debounce da porta de controles do SMX-HB (padrão). Não afeta
+          SM-X/SM-X Mini/SX2/MC2+.
+    - 8B: funcionamento padrão das portas de I/O 48 e 49 (padrão).
+    - 8C: portas de I/O 48 e 49 são reservadas apeanas para o SN76489 / Franky
+          PSG, independente do funcionamento da I/O chaveada (apenas para os
+          builds que tem o SN76489).
+    - 8D: Porta 1 de uso geral ligada a porta externa ou ao mouse PS/2 (padrão)
+    - 8E: Liga a emulação de Paddle VAUS, usando o mouse PS/2 como referência
+          para a posição. A Porta 1 de uso geral é desabilitada, botões 1 e 2
+          do mouse funcionam como o único botão do Paddle VAUS, botão 3 do
+          mouse alterna a sensibilidade do mouse. A configuração persiste após
+          um reset, volta ao padrão apenas com o comando 8D ou ao ser desligado
+          o dispositivo.
+    - 8F: Liga a emulação de paddle MSX, usando o mouse PS/2 como referência para
+          a posição. A Porta 1 de uso geral é desabilitada, botões 1 e 2 do
+          mouse funcionam como botões A e B, botão 3 do mouse alterna a
+          sensibilidade do mouse. A configuração persiste após um reset, volta
+          ao padrão apenas com o comando 8D ou ao ser desligado o dispositivo.
+          IMPORTANTE: Paddles MSX são normalmente lidos através de rotinas da
+          BIOS, que são feitas assumindo que o clock da CPU Z80 é de ~3.58MHz.
+          Usar velocidade Turbo na CPU poderá causar uma extrema sensibilidade
+          aos movimentos e a uma movimentação que não é suave, exatamente como
+          acontece em um MSX real com Turbo usando um Paddle MSX.

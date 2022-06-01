@@ -32,7 +32,13 @@ del src_addons\peripheral\sm_swioports.vhd* >nul 2>nul
 del src_addons\sys\pll.vhd >nul 2>nul
 del src_addons\sys\pll_franky.* >nul 2>nul
 del src_addons\top.vhd >nul 2>nul
+del src_addons\top.sv >nul 2>nul
 del src_addons\debounce_joy.vhd >nul 2>nul
+del src_addons\debounce.vhd >nul 2>nul
+del src_addons\build_id_verilog.tcl >nul 2>nul
+del src_addons\build_id.v >nul 2>nul
+del src_addons\sd_card.v >nul 2>nul
+del src_addons\mc2p_emsx_top.vhd >nul 2>nul
 del "__*__" >nul 2>nul
 del *.cdf >nul 2>nul
 del *.qsf* >nul 2>nul

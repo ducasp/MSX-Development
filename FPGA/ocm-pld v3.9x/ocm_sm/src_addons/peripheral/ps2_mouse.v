@@ -8,16 +8,12 @@ module ps2mouse
   input   reset,                    //reset
   inout   ps2mdat,                  //mouse PS/2 data
   inout   ps2mclk,                  //mouse PS/2 clk
-  input   [5:0] mou_emu,
-  input   sof,
   output  reg [7:0]zcount = 8'h00,  //mouse Z counter
   output  reg [7:0]ycount = 8'h00,  //mouse Y counter
   output  reg [7:0]xcount = 8'h00,  //mouse X counter
   output  reg mleft,                //left mouse button output
   output  reg mthird,               //third(middle) mouse button output
   output  reg mright,               //right mouse button output
-  input   test_load,                //load test value to mouse counter
-  input   [15:0] test_data,         //mouse counter test value
   output  reg mouse_data_out = 1'b0 //mouse has data to present
 );
 
@@ -44,9 +40,12 @@ reg  [ 3-1:0] mpacket;
 reg           intellimouse = 0;
 wire          mcmd_done;
 reg  [ 4-1:0] mcmd_cnt = 4'd0;      //=1;
+reg  [ 2-1:0] resolution = 2'b01;
 reg           mcmd_inc = 0;
 reg  [12-1:0] mcmd;
-
+reg           mXsign, mYsign;
+reg  [ 2-1:0] thirdedge = 2'b00;
+reg  [ 8-1:0] reso_out;
 
 // bidirectional open collector IO buffers
 assign ps2mclk = (mclkout) ? 1'bz : 1'b0;
@@ -73,10 +72,16 @@ assign mrready = !mreceive[0];
 
 // PS2 mouse data counter
 always @ (posedge clk) begin
-  if (reset)
+  if (reset) begin
     mcmd_cnt <= #1 4'd0;
-  else if (mcmd_inc && !mcmd_done)
+    thirdedge <= 2'b11;
+  end
+  else if (mcmd_inc && !mcmd_done) begin
     mcmd_cnt <= #1 mcmd_cnt + 4'd1;
+    thirdedge <= {thirdedge[0], mthird};
+  end
+  else
+    thirdedge <= {thirdedge[0], mthird};
 end
 
 assign mcmd_done = (mcmd_cnt == 4'd9);
@@ -85,15 +90,15 @@ assign mcmd_done = (mcmd_cnt == 4'd9);
 always @ (*) begin
   case (mcmd_cnt)
     //                GUARD STOP  PARITY DATA   START
-    4'h0    : mcmd = {1'b1, 1'b1, 1'b1,  8'hff, 1'b0}; // reset
-    4'h1    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
-    4'h2    : mcmd = {1'b1, 1'b1, 1'b0,  8'hc8, 1'b0}; // sample rate = 200
-    4'h3    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
-    4'h4    : mcmd = {1'b1, 1'b1, 1'b0,  8'h64, 1'b0}; // sample rate = 100
-    4'h5    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
-    4'h6    : mcmd = {1'b1, 1'b1, 1'b1,  8'h50, 1'b0}; // sample rate = 80
-    4'h7    : mcmd = {1'b1, 1'b1, 1'b0,  8'hf2, 1'b0}; // read device type
-    4'h8    : mcmd = {1'b1, 1'b1, 1'b0,  8'hf4, 1'b0}; // enable data reporting
+    4'd0    : mcmd = {1'b1, 1'b1, 1'b1,  8'hff, 1'b0}; // reset
+    4'd1    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
+    4'd2    : mcmd = {1'b1, 1'b1, 1'b0,  8'hc8, 1'b0}; // sample rate = 200
+    4'd3    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
+    4'd4    : mcmd = {1'b1, 1'b1, 1'b0,  8'h64, 1'b0}; // sample rate = 100
+    4'd5    : mcmd = {1'b1, 1'b1, 1'b1,  8'hf3, 1'b0}; // set sample rate
+    4'd6    : mcmd = {1'b1, 1'b1, 1'b1,  8'h50, 1'b0}; // sample rate = 80
+    4'd7    : mcmd = {1'b1, 1'b1, 1'b0,  8'hf2, 1'b0}; // read device type
+    4'd8    : mcmd = {1'b1, 1'b1, 1'b0,  8'hf4, 1'b0}; // enable data reporting
     default : mcmd = {1'b1, 1'b1, 1'b0,  8'hf4, 1'b0}; // enable data reporting
   endcase
 end
@@ -129,45 +134,58 @@ always @ (posedge clk) begin
       ycount[7:0] <= #1 8'h00;
       zcount[7:0] <= #1 8'h00;
       mouse_data_out <= 1'b0;
+      mXsign <= 1'b0;
+      mYsign <= 1'b0;
     end
   else
     begin
-      if (test_load) // test value preload
-        {ycount[7:2],xcount[7:2]} <= #1 {test_data[15:10],test_data[7:2]};
-      else
+      // Check for resolution change on third button release
+      if (thirdedge == 2'b01)
+        resolution <= resolution + 2'b01;
+
+      mouse_data_out <= 1'b0;
+
+      if (mpacket == 3'd1) // buttons
         begin
-          mouse_data_out <= 1'b0;
-
-          if (mpacket == 3'd1) // buttons
-            begin
-              {mthird,mright,mleft} <= #1 ~mreceive[3:1];
-              mouse_data_out <= 1'b1;
-            end
-          else if (mpacket == 3'd2) // delta X movement
-            begin
-              // xcount[7:0] <= #1 xcount[7:0] +  mreceive[8:1];
-
-              xcount[7:0] <= ((~mreceive[8:1])+1)*2;
-              mouse_data_out <= 1'b1;
-            end
-          else if (mpacket == 3'd3) // delta Y movement
-            begin
-              // ycount[7:0] <= #1 ycount[7:0] - mreceive[8:1];
-              ycount[7:0] <= mreceive[8:1];
-              mouse_data_out <= 1'b1;
-            end
-          else if (mpacket == 3'd4) // delta Z movement
-            begin
-              zcount[7:0] <= #1 zcount[7:0] + {{4{mreceive[4]}}, mreceive[4:1]};
-              mouse_data_out <= 1'b1;
-            end
-          else if (sof)
-            begin
-              if (mou_emu[3]) ycount <= #1 ycount - 1'b1;
-              else if (mou_emu[2]) ycount <= #1 ycount + 1'b1;
-              if (mou_emu[1]) xcount <= #1 xcount - 1'b1;
-              else if (mou_emu[0]) xcount <= #1 xcount + 1'b1;
-            end
+          {mthird,mright,mleft} <= #1 ~mreceive[3:1];
+          mXsign <= mreceive[5];
+          mYsign <= mreceive[6];
+          // Make sure it doesn't send done when sending commands and receiving commands response
+          // during mouse initialization
+          mouse_data_out <= mcmd_done;
+        end
+      else if (mpacket == 3'd2) // delta X movement
+        begin
+          case (resolution)
+            2'b00: reso_out = (mreceive[8]&&!mXsign) ? 8'b10000000 : (!mreceive[8]&&mXsign) ? 8'b01111111 : ({~mXsign,~mreceive[7:1]}+1);
+            2'b01: reso_out = ({~mXsign,~mreceive[8:2]}+1);
+            2'b10: reso_out = (mXsign) ? ({2'b00,~mreceive[8:3]}+1) : ({2'b11,~mreceive[8:3]}+1);
+            2'b11: reso_out = (mXsign) ? ({3'b000,~mreceive[8:4]}+1) :({3'b111,~mreceive[8:4]}+1);
+          endcase
+          xcount[7:0] <= reso_out;
+          // Make sure it doesn't send done when sending commands and receiving commands response
+          // during mouse initialization
+          mouse_data_out <= mcmd_done;
+        end
+      else if (mpacket == 3'd3) // delta Y movement
+        begin
+          case (resolution)
+            2'b00: reso_out = (mreceive[8]&&!mYsign) ? 8'b01111111 : (!mreceive[8]&&mYsign) ? 8'b10000000 : {mYsign,mreceive[7:1]};
+            2'b01: reso_out = {mYsign,mreceive[8:2]};
+            2'b10: reso_out = (mYsign) ? {2'b11,mreceive[8:3]} : {2'b00,mreceive[8:3]};
+            2'b11: reso_out = (mYsign) ? {3'b111,mreceive[8:4]} : {3'b000,mreceive[8:4]};
+          endcase
+          ycount[7:0] <= reso_out;
+          // Make sure it doesn't send done when sending commands and receiving commands response
+          // during mouse initialization
+          mouse_data_out <= mcmd_done;
+        end
+      else if (mpacket == 3'd4) // delta Z movement
+        begin
+          zcount[7:0] <= #1 zcount[7:0] + {{4{mreceive[4]}}, mreceive[4:1]};
+          // Make sure it doesn't send done when sending commands and receiving commands response
+          // during mouse initialization
+          mouse_data_out <= mcmd_done;
         end
     end
 end

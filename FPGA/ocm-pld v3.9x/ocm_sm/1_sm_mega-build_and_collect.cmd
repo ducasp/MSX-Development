@@ -9,6 +9,7 @@ set SEEDENV=%PROJECT%_synthesis_seed.env
 if "%1"=="" color 1f&title AUTO-COLLECT for %PROJECT%
 if not exist %PROJECT%_device.env goto err_init
 set DEVSTR=&set /P DEVICE=<%PROJECT%_device.env
+if "%DEVICE%"=="mc2p" set DEVSTR= for Multicore 2P
 if "%DEVICE%"=="smx" set DEVSTR= for SM-X
 if "%DEVICE%"=="smx_frankysnd" set DEVSTR= for SM-X w/ Franky Sound
 if "%DEVICE%"=="smxhb" set DEVSTR= for SMX-HB
@@ -22,6 +23,7 @@ if not exist "%QUARTUS_ROOTDIR%\common\devinfo\cycloneive" goto err_quartus
 if not exist src_addons\ goto err_msg
 if exist %SEEDENV% set /P CURSEED=<%SEEDENV%
 if "%1"=="" echo.&echo Building %DEVICE%...&echo. >nul 2>nul
+if "%DEVICE%"=="mc2p" goto err_mc2p
 echo.&echo Please wait...&echo.&if "%1"=="" echo Output path: "%~dp0output_files\"&echo.
 rem ---------------cleanup----------------
 call 2_sm_finalize.cmd --no-wait
@@ -153,6 +155,11 @@ goto timer
 :err_init
 if "%1"=="" color f0
 echo.&echo Please initialize a device first!
+goto timer
+
+:err_mc2p
+if "%1"=="" color f0
+echo.&echo Multicore 2P doesn't require multiple builds or collect, it already has all keyboard layouts and no COFF file. Compile normally and rename output\ocm_sm.rbf to ocm_sm.mcp.
 goto timer
 
 :err_quartus
