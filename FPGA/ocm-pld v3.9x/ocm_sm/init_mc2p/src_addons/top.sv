@@ -1153,18 +1153,14 @@ wire        slot_CLOCK_o, slot_RESET_o, slot_RESET_io;
 wire        esp_rx_o, esp_tx_i;
 
 //--- alias
-assign ext_cart_detect =    status[18]           ? 1'b1             : GPIO[5];
+assign ext_cart_detect =  ( status[18]         ) ? 1'b1             : GPIO[5];
 
-assign GPIO[13]        =  ( ext_cart_detect_db ) ? ext_lvc_dir      : 1'bZ;
-assign GPIO[12]        =  ( ext_cart_detect_db ) ? ext_lvc_oe       : 1'bZ;
+assign GPIO[13]        =  ( ~status[18]        ) ? ext_lvc_dir      : 1'bZ;
+assign GPIO[12]        =  ( ~status[18]        ) ? ext_lvc_oe       : 1'bZ;
         
-assign esp_tx_i        =  ( ext_cart_detect_db ) ?
-                                                GPIO[7] :
-                                                    ( status[18] ) ?
-                                                        GPIO[0] :
-                                                        1'bZ;
+assign esp_tx_i        =  ( status[18]         ) ? GPIO[0]          : GPIO[7];
 assign GPIO[1]         =  ( status[18]         ) ? esp_rx_o         : 1'bZ;
-assign GPIO[11]        =  ( ext_cart_detect_db ) ? esp_rx_o         : 1'bZ;
+assign GPIO[11]        =  ( ~status[18]        ) ? esp_rx_o         : 1'bZ;
 
 assign sram_addr_o[4]  =  ( ext_cart_detect_db ) ? ext_cart_a[0]    : 1'bZ;
 assign sram_addr_o[5]  =  ( ext_cart_detect_db ) ? ext_cart_a[1]    : 1'bZ;
@@ -1197,10 +1193,10 @@ assign GPIO[16]        =  ( ext_cart_detect_db ) ? slot_RD_o        : 1'bZ;
 assign GPIO[14]        =  ( ext_cart_detect_db ) ? slot_WR_o        : 1'bZ;
 assign GPIO[19]        =  ( ext_cart_detect_db ) ? slot_M1_o        : 1'bZ;
 
-assign sw1             =  ( ext_cart_detect_db ) ? GPIO[8]          : 1'bZ;
-assign sw2             =  ( ext_cart_detect_db ) ? GPIO[6]          : 1'bZ;
-assign slot_WAIT_i     =  ( ext_cart_detect_db ) ? GPIO[29]         : 1'bZ;
-assign slot_BUSDIR_i   =  ( ext_cart_detect_db ) ? GPIO[31]         : 1'bZ;
+assign sw1             =  ( ~status[18]        ) ? GPIO[8]          : 1'bZ;
+assign sw2             =  ( ~status[18]        ) ? GPIO[6]          : 1'bZ;
+assign slot_WAIT_i     =  ( ~status[18]        ) ? GPIO[29]         : 1'bZ;
+assign slot_BUSDIR_i   =  ( ~status[18]        ) ? GPIO[31]         : 1'bZ;
 
 assign GPIO[10]        =  ( ext_cart_detect_db ) ? slot_CLOCK_o     : 1'bZ;
 
