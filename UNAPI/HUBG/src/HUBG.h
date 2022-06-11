@@ -2,10 +2,11 @@
 --
 -- HUBG.h
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.80
+--   Revision 0.90
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2020-2022 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Israel F. Araujo (github.com/israelferrazaraujo): contribution to expand the number of packages that can be listed for a category.
 -- All rights reserved.
 -- Some routines are adaptations and have been re-used from original MSX-HUB
 -- source code by fr3nd, available at https://github.com/fr3nd/msxhub
@@ -123,7 +124,7 @@ typedef struct {
 } groups_package;
 
 //Title when installing the first time
-const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.80 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.90 <\r\n (c) 2022 Israel F. Araujo - github.com/israelferrazaraujo \r\n Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 
 //Those are not re-usable, they carry configuration for the whole time program is running
 char hubdrive; //Drive HUB is running
@@ -188,4 +189,6 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage);
 void upgrade(unsigned char ucPage, unsigned char ucItem);
 void info(char *package);
 unsigned char is_installed(unsigned char *ucPackage);
+void ClearCache();
+void *AllocCache(unsigned int size);
 #endif // _HUBG_HEADER_INCLUDED

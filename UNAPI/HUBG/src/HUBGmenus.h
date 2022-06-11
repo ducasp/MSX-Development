@@ -2,7 +2,7 @@
 --
 -- HUBGmenus.h
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.1
+--   Revision 0.2
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -41,7 +41,7 @@
 //Only edit this file on a text editor that supports CP850 or 437, otherwise strings converted to UTF8 will be looking like... meh!
 
 const char chHubGMenu[] = "\x1bx5\x1b[0;31;40m\x1b[2J" //Clear Screen, red on black background
-                       "ษออออออออออ\x1b[1;37mMSX HUB Client for MSX2 by DucaSP (ducasp@gmail.com) v0.80\x1b[0;31mออออออออออป"
+                       "ษอออออออ\x1b[1;37mMSX HUB Client for MSX2 by IFA / DucaSP (ducasp@gmail.com) v0.90\x1b[0;31mอออออออป"
                        "ฬอ\x1b[38bหอ\x1b[37bน"
 					   "บ\x1b[3;41Hบ\x1b[3;80Hบ"
 					   "ฬอ\x1b[19bหอ\x1b[17bสอ\x1b[37bน"

@@ -2,10 +2,11 @@
 --
 -- HUBG.c
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.80
+--   Revision 0.90
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2020-2022 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Israel F. Araujo (github.com/israelferrazaraujo): contribution to expand the number of packages that can be listed for a category.
 -- All rights reserved.
 -- Some routines are adaptations and have been re-used from original MSX-HUB
 -- source code by fr3nd, available at https://github.com/fr3nd/msxhub
@@ -43,23 +44,21 @@
 
 // dynamic memory allocation
 // used only for storing package details
-void Free();
-
 unsigned char dynamic_mem[DYNAMIC_MEM_SIZE];
 unsigned char *_heap_top = dynamic_mem; 
 
-void *Malloc(unsigned int size)
+void *AllocCache(unsigned int size)
 {
     if (_heap_top+size-dynamic_mem > DYNAMIC_MEM_SIZE) {
         //Dynamic memory size has been reached. Releases all previously allocated memory.
-        Free();
+        ClearCache();
     }
     unsigned char *ret = _heap_top;
     _heap_top += size;
     return (void *) ret;
 }
 
-void Free()
+void ClearCache()
 {
     //The next lines are equivalent to calling the "free" function on all ucPackageDetail pointers.
     _heap_top = dynamic_mem;
@@ -814,8 +813,8 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
 
     if (hubGroupPackages.ucPackages < MAX_REMOTE_PACKAGES)
     {
-        rcv_buffer[bytes_read] = 0;
-        while (*rcv_buffer)
+        char *buffer_end = rcv_buffer+bytes_read;
+        while (rcv_buffer < buffer_end)
         {
             switch (GGLLState)
             {
@@ -868,7 +867,7 @@ void GroupListRcvCallBack(char *rcv_buffer, int bytes_read)
                         if (fill_detail) {
                             *p_detail = 0;
                             // Allocates exactly the memory required
-                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = Malloc(m+1);
+                            hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages] = AllocCache(++m);
                             strcpy(hubGroupPackages.ucPackageDetail[hubGroupPackages.ucPackages], v_detail);
                         }
                         ++hubGroupPackages.ucPackages; 
@@ -894,7 +893,7 @@ void GetGroupList(char *GroupName)
     AnsiPrint(chTextLine);
 
     //Reset details cache
-    Free();
+    ClearCache();
 
     strcpy(chTextLine,baseurl);
     strcat(chTextLine,"list?category=");
@@ -985,7 +984,7 @@ void SearchListRcvCallBack(char *rcv_buffer, int bytes_read)
                         if (found) {
                             *p_detail = 0;
                             // Allocates exactly the memory required
-                            hubGroupPackages.ucPackageDetail[ucSearch] = Malloc(m+1);
+                            hubGroupPackages.ucPackageDetail[ucSearch] = AllocCache(++m);
                             strcpy(hubGroupPackages.ucPackageDetail[ucSearch], v_detail);
                             found = 2;
                             return;
