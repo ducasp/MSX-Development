@@ -1,8 +1,18 @@
 # HUBG BINARY PACK
 
-(c)2020 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2020-2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+Israel F. Araujo - github.com/israelferrazaraujo
 
 This pack includes HUBG as well as its manual
+
+# HUBG v0.90
+
+(c)2020-2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+Israel F. Araujo - github.com/israelferrazaraujo
+
+# CHANGELOG v0.90
+
+	- Expands the number of packages that can be listed for a category.
 
 # HUBG v0.80
 
