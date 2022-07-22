@@ -57,11 +57,11 @@ do Firmware STM. Não está no escopo dessa documentação esse tipo de atualiza
 , procure ajuda no Git Lab do Victor Trucco ou em um dos grupos dedicados sobre
 o Multicore no Facebook.
 
-OCM-PLD v3.9c
+OCM-PLD v3.9d
 
 Notas de liberação da versão
 
-OCM-PLD v3.9c é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
+OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
 diferente:
 
     - Multicore 2+: parecido com o MiSTER, porém com um FPGA menor que o mesmo(
@@ -185,7 +185,10 @@ diferente:
 
     - Melhoria: Victor Trucco fez melhorias no controlador de SDRAM que agora é
       capaz de trabalhar com diferentes chips. Alguns SM-X mini e SMX-HB usam
-      chips que precisam dessa melhoria pra funcionar.
+      chips que precisam dessa melhoria pra funcionar. O KdL gentilmente ajudou
+      trabalhando no código do Victor Trucco e extrapolando ele para alguns
+      cenários não cobertos, agora o controlador é compatível com o mapa de RAM
+      da OCM 3.9, obrigado KdL! :)
 
     - Novidade: Emulação de Paddle usando um mouse PS/2. Para habilitar o modo
       VAUS (Arkanoid/Taito) ou o modo MSX use o menu OSD (F12 ou MODE + START

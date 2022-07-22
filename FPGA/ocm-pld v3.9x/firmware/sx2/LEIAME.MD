@@ -36,14 +36,14 @@ Também, fique ciente que se houver queda de energia durante a atualização, é
 bem provável que seu dispositivo irá BRICAR e precisará utilizar o USB Blaster
 e arquivo JIC para restaurar o mesmo...
 
-# Novidades em relação a v3.9b
+# Novidades em relação a v3.9c
 
-    - Melhorias e correções na emulação de mouse MSX usando mouse PS/2
-    - Como resultado, a emulação do paddle ficou mais suave
+    - Melhorias do KdL na controladora de SDRAM permitindo que coisas como a
+      VRAM de 1MB funcionem com o controlador do Victor Trucco
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9c é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
+OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
 diferente:
 
 - OPL3:
@@ -81,7 +81,10 @@ diferente:
 
     - Melhoria: Victor Trucco fez melhorias no controlador de SDRAM que agora é
       capaz de trabalhar com diferentes chips. Alguns SM-X mini e SMX-HB usam
-      chips que precisam dessa melhoria pra funcionar.
+      chips que precisam dessa melhoria pra funcionar. O KdL gentilmente ajudou
+      trabalhando no código do Victor Trucco e extrapolando ele para alguns
+      cenários não cobertos, agora o controlador é compatível com o mapa de RAM
+      da OCM 3.9, obrigado KdL! :)
 
     - Novidade: Emulação de Paddle usando um mouse PS/2. Para habilitar o modo
       VAUS (Arkanoid/Taito) use SETSMART -8E, to habilitar o modo MSX use

@@ -33,13 +33,21 @@
 -- OCM-PLD Pack v3.9 by KdL (2021.08.23)
 -- MSX2+ Stable Release for SM-X (regular), SM-X Mini and SX-2 / MSXtR Experimental
 -- Special thanks to t.hara, caro, mygodess & all MRC users (http://www.msx.org)
+--
 -- OCM-PLD Pack v3.9a by Ducasp (2022.04.21)
 -- Version that allows removal of OPL3, adding Franky VDP and Franky PSG
 -- Added Victor Trucco Improvements to SDR Controller so it works w/ different
 -- types of SRAM (some SM-X mini and SMX-HB won't work with the previous code)
+--
 -- OCM-PLD Pack v3.9b by Ducasp (2022.04.29)
 -- VAUS and MSX Paddle Emulation over PS/2 Mouse
 -- Second PSG on ports 0x10 to 0x13 supported
+--
+-- OCM-PLD Pack v3.9d by Ducasp (2022.07.22)
+-- KdL kindly worked on improving SDRAM controller by Victor Trucco as that one
+-- was based on OCM 3.7 and did not contemplate a few optional features like 1MB
+-- VRAM, thanks KdL!
+--
 ------------------------------------------------------------------------------------
 -- Setup for XTAL 50.00000MHz
 ------------------------------------------------------------------------------------
@@ -2590,42 +2598,49 @@ begin
         if( memclk'event and memclk = '1' )then
             case ff_sdr_seq is
                 when "000" =>
-                    if( SdrSta(2) = '0' )then                   -- set command mode
+                    if( SdrSta(2) = '0' )then                                                       -- set command mode
                         --  single  CL=2 WT=0(seq) BL=1
-                        SdrAdr <= "00100" & "010" & "0" & "000";
+                        SdrAdr <= "0010" & "0" & "010" & "0" & "000";
                         SdrBa  <= "00";
-                    else                                        -- set row address
+                    else                                                                            -- set row address
                         SdrBa <= "11";
                         if( RstSeq(4 downto 2) = "010" )then
-                            SdrAdr <= ClrAdr(11 downto 0);      -- clear VRAM
+                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear VRAM, ESE-RAM
                         elsif( RstSeq(4 downto 2) = "011" )then
-                            SdrAdr <= ClrAdr(11 downto 0);      -- clear ERAM
+                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear ESE-SCC1, ESE-SCC2
                             SdrBa  <= "10";
                         elsif( RstSeq(4 downto 3) = "10" )then
-                            SdrAdr <= ClrAdr(11 downto 0);      -- clear Main RAM
+                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear Main-RAM
                         elsif( VideoDLClk = '0' )then
-                            SdrAdr <= CpuAdr(12 downto 1);      -- cpu read/write
+                            SdrAdr <= CpuAdr(12 downto 1);                                          -- cpu read/write
                             SdrBa  <= CpuAdr(22 downto 21);
                         else
-                            SdrAdr <= VdpAdr(11 downto 0);      -- vdp read/write
+                            SdrAdr <= VdpAdr(11 downto 0);                                          -- vdp read/write
                         end if;
                     end if;
-                when "010" =>                                   -- set column address
-                    SdrAdr(11 downto 8) <= "0100";                                          -- A10=1 => enable auto precharge
-                    SdrBa <= "11";
+                when "010" =>                                                                       -- set column address
+                    SdrAdr(11 downto 8) <= "0100";                                                  -- A10=1 => enable auto precharge
                     -- clear memory
+                    SdrBa <= "11";
                     if( RstSeq(4 downto 2) = "010" )then
-                        SdrAdr(7 downto 0) <= "1000" & ClrAdr(15 downto 12);                -- clear VRAM
-                    elsif( RstSeq(4 downto 2) = "011" )then
-                        SdrAdr(7 downto 0) <= "0000" & ClrAdr(15 downto 12);                -- clear ERAM
+                        SdrAdr(7 downto 0) <= "1" & "000" & ClrAdr(15 downto 12);                   -- clear VRAM       =>  start adr 700000h
+                    elsif( RstSeq(4 downto 1) = "0110" )then
+                        SdrAdr(7 downto 0) <= "0" & "000" & "0" & ClrAdr(14 downto 12);             -- clear ESE-RAM    =>  start adr 600000h
+                    elsif( RstSeq(4 downto 0) = "01110" and warmRESET /= '1' )then
+                        SdrAdr(7 downto 0) <= "1" & "000" & "00" & ClrAdr(13 downto 12);            -- clear ESE-SCC1   =>  start adr 500000h
+                        SdrBa <= "10";
+                    elsif( RstSeq(4 downto 0) = "01111" and warmRESET /= '1' )then
+                        SdrAdr(7 downto 0) <= "0" & "000" & "00" & ClrAdr(13 downto 12);            -- clear ESE-SCC2   =>  start adr 400000h
                         SdrBa <= "10";
                     elsif( RstSeq(4 downto 3) = "10" )then
-                        SdrAdr(7 downto 0) <= "0000" & ClrAdr(15 downto 12);                -- clear MainRAM
+                        SdrAdr(7 downto 0) <= "0" & "00" & ClrAdr(16 downto 12);                    -- clear Main-RAM   =>  start adr 000000h
                     elsif( VideoDLClk = '0' )then
-                        SdrAdr(7 downto 0) <= CpuAdr(20 downto 13);                         -- cpu r/w
+                        SdrAdr(7 downto 0) <= CpuAdr(20 downto 13);                                 -- cpu read/write
                         SdrBa <= CpuAdr(22 downto 21);
+                    elsif( VdpAdr(15) = '0' )then
+                        SdrAdr(7 downto 0) <= "1" & vram_page(3 downto 0) & VdpAdr(14 downto 12);   -- vdp read/write (even)
                     else
-                        SdrAdr(7 downto 0) <= "1000" & VdpAdr(15 downto 12);
+                        SdrAdr(7 downto 0) <= "1" & vram_page(7 downto 4) & VdpAdr(14 downto 12);   -- vdp read/write (odd)
                     end if;
                 when others =>
                     null;
@@ -2744,7 +2759,7 @@ begin
     pMemBa1     <= SdrBa(1);
     pMemBa0     <= SdrBa(0);
 
-    pMemAdr     <= '0' & SdrAdr;
+    pMemAdr     <= "0" & SdrAdr;                -- addressing for the SD-RAM of some SM-X Mini and SMX-HB by Victor Trucco
     pMemDat     <= SdrDat;
 
     ----------------------------------------------------------------

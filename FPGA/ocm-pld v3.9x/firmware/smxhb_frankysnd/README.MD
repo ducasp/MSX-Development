@@ -27,16 +27,14 @@ Also, be aware that if power fails during update, you are most likely to end up
 with a bricked unit and you will need to use an USB Blaster and JIC file to
 restore it, again, a pain!
 
-# New in relation to v3.9b
+# New in relation to v3.9c
 
-    - MC2+ supported
-    - Fixes for MC2+ related to original 3.8 build from Focosi/Trucco
-    - Improvements and fixes to MSX Mouse emulation over PS/2 mouse
-    - As a result, paddle emulation also is now smooter
+    - Improvements from KdL to the SDRAM controller allowing features like 1MB
+      VRAM to work with Victor Trucco SDRAM controller
 
 # Release notes
 
-OCM-PLD v3.9c is an extension on KdL OCM release v3.9. What this extension
+OCM-PLD v3.9d is an extension on KdL OCM release v3.9. What this extension
 brings to the table:
 
     - SMX-HB: It is a 1.75gen device. Its FPGA has about 1/3 less logic cells
@@ -98,7 +96,9 @@ brings to the table:
 
     - Improved: Victor Trucco made improvements on the SDRAM controller so it
       is able to work with different chips. Some SM-X mini and SMX-HB use chips
-      that need this to work.
+      that need this to work. KdL kindly worked on that code from Victor Trucco
+      to extrapolate it to uncovered scenarios, making it aware of OCM 3.9
+      SD-RAM usage, thanks KdL! :)
 
     - Fix: I've fixed mouse emulation. It was not possible to move a single
       pixel on X axis, now it is. Also, four different levels of sensibility

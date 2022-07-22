@@ -51,11 +51,11 @@ STM Firmware. It is not in the scope of this to document this update procedure,
 please seek help through Victor Trucco git lab or Facebook dedicate Multicore
 groups.
 
-# OCM-PLD v3.9c
+# OCM-PLD v3.9d
 
 # Release notes
 
-OCM-PLD v3.9c is an extension on KdL OCM release v3.9. What this extension
+OCM-PLD v3.9d is an extension on KdL OCM release v3.9. What this extension
 brings to the table:
 
     - Multicore 2+: it is like a MiSTER device, but with less FPGA capacity (
@@ -175,7 +175,9 @@ brings to the table:
 
     - Improved: Victor Trucco made improvements on the SDRAM controller so it
       is able to work with different chips. Some SM-X mini and SMX-HB use chips
-      that need this to work.
+      that need this to work. KdL kindly worked on that code from Victor Trucco
+      to extrapolate it to uncovered scenarios, making it aware of OCM 3.9
+      SD-RAM usage, thanks KdL! :)
 
     - Extra: I've added Paddle emulation when using a PS/2 mouse. To enable
       VAUS (Arkanoid/Taito) Paddle emulation, MSX Standard Paddle emulation 

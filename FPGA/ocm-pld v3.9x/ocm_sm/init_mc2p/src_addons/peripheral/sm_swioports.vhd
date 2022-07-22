@@ -122,8 +122,8 @@ architecture RTL of switched_io_ports is
     signal  swio_ack    : std_logic;
     signal  prev_scan   : std_logic_vector(  1 downto 0 ) := "11";
 
-    -- Machine Type ID (0-15)                                               -- 0=1chipMSX, 1=Zemmix Neo / SX-1, 2=SM-X, 3=SX-2, 4=SM-X Mini, 5=DE0CV, 6=MC2P ..., 15=Unknown
-    constant MachineID  : std_logic_vector(  3 downto 0 ) :=     "0110";    -- 6 - MC2P
+    -- Machine Type ID (0-15)                                               -- 0=1chipMSX, 1=Zemmix Neo / SX-1, 2=SM-X, 3=SX-2, 4=SM-X Mini, 5=DE0CV, 6=SMX-HB ..., 15=Unknown
+    constant MachineID  : std_logic_vector(  3 downto 0 ) :=     "0110";    -- 2 - SM-X as MC2P mimics that device
 
     -- OCM-PLD version number (x \ 10).(y mod 10).(z[0~3])                  -- OCM-PLD version 0.0(.0) ~ 25.5(.3)
     constant ocm_pld_xy : std_logic_vector(  7 downto 0 ) := "00100111";    -- 39

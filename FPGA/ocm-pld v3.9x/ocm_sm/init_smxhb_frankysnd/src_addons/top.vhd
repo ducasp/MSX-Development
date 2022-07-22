@@ -397,11 +397,11 @@ architecture Behavior of top is
 
     sdram_clk_o     <= clk_sdram;
 
-    joy1_s          <= joy1_d_s when( joy_deb = '1' )else
-                       ( joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io );
+    joy1_s          <= joy1_d_s; -- when( joy_deb = '1' )else
+                       --( joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io );
 
-    joy2_s          <= joy2_d_s when( joy_deb = '1' )else
-                       ( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
+    joy2_s          <= joy2_d_s; -- when( joy_deb = '1' )else
+                       --( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
 
     vga_r_o         <= vga_r_out_s;
     vga_g_o         <= vga_g_out_s;
