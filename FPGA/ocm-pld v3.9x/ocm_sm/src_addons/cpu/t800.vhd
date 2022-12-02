@@ -1,7 +1,7 @@
 --
 -- Z80 compatible microprocessor core
 --
--- Version : 0250_T800 (+k04)
+-- Version : 0250_T800 (+k05)
 --
 -- Copyright (c) 2001-2002 Daniel Wallner (jesus@opencores.org)
 --
@@ -63,6 +63,7 @@
 --  +k02 : Added R800_mode signal by KdL 2018.05.14
 --  +k03 : Version alignment by KdL 2019.05.20
 --  +k04 : Separation of T800 from T80 by KdL 2021.02.01
+--  +k05 : Fixed a bug in which the flag register was not changing in "LD A,I" and "LD A,R". by t.hara 2022.11.05
 --
 
 library IEEE;
@@ -73,7 +74,7 @@ use work.T800_Pack.all;
 entity T800 is
     generic(
         Mode        : integer := 0;  -- 0 => Z80, 1 => Fast Z80, 2 => 8080, 3 => GB
-        R800_MULU   : integer := 1;  -- 0 => no MULU, 1=> R800 MULU 
+        R800_MULU   : integer := 1;  -- 0 => no MULU, 1=> R800 MULU
         IOWait      : integer := 0;  -- 0 => Single I/O cycle, 1 => Std I/O cycle
         Flag_C      : integer := 0;
         Flag_N      : integer := 1;
@@ -623,9 +624,25 @@ begin
                     when "00" =>
                         ACC <= I;
                         F(Flag_P) <= IntE_FF2;
+                        F(Flag_N) <= '0';           -- Added by t.hara, 2022/Nov/05th
+                        F(Flag_H) <= '0';           -- Added by t.hara, 2022/Nov/05th
+                        F(Flag_S) <= I(7);          -- Added by t.hara, 2022/Nov/05th
+                        if I = "00000000" then      -- Added by t.hara, 2022/Nov/05th
+                            F(Flag_Z) <= '1';
+                        else
+                            F(Flag_Z) <= '0';
+                        end if;
                     when "01" =>
                         ACC <= std_logic_vector(R);
                         F(Flag_P) <= IntE_FF2;
+                        F(Flag_N) <= '0';                           -- Added by t.hara, 2022/Nov/05th
+                        F(Flag_H) <= '0';                           -- Added by t.hara, 2022/Nov/05th
+                        F(Flag_S) <= std_logic_vector(R)(7);        -- Added by t.hara, 2022/Nov/05th
+                        if std_logic_vector(R) = "00000000" then    -- Added by t.hara, 2022/Nov/05th
+                            F(Flag_Z) <= '1';
+                        else
+                            F(Flag_Z) <= '0';
+                        end if;
                     when "10" =>
                         I <= ACC;
                     when others =>
@@ -755,7 +772,7 @@ begin
             end if;
         end if;
     end process;
-    
+
 ---------------------------------------------------------------------------
 --
 -- BC('), DE('), HL('), IX and IY
@@ -863,7 +880,7 @@ begin
     begin
         RegDIH <= Save_Mux;
         RegDIL <= Save_Mux;
-        
+
         if I_MULU = '1' then
             if T_Res = '1' then
                 RegDIH <= MULU_Prod32(31 downto 24);
@@ -873,7 +890,7 @@ begin
                 RegDIL <= MULU_tmp(7 downto 0);
             end if;
         end if;
-        
+
         if ExchangeDH = '1' and TState = 3 then
             RegDIH <= RegBusB(15 downto 8);
             RegDIL <= RegBusB(7 downto 0);

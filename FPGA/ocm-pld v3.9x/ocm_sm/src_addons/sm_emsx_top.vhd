@@ -43,10 +43,11 @@
 -- VAUS and MSX Paddle Emulation over PS/2 Mouse
 -- Second PSG on ports 0x10 to 0x13 supported
 --
--- OCM-PLD Pack v3.9d by Ducasp (2022.07.22)
+-- OCM-PLD Pack v3.9d by Ducasp (2022.12.01)
 -- KdL kindly worked on improving SDRAM controller by Victor Trucco as that one
 -- was based on OCM 3.7 and did not contemplate a few optional features like 1MB
 -- VRAM, thanks KdL!
+-- Fixes to z80 emulation by t.hara
 --
 ------------------------------------------------------------------------------------
 -- Setup for XTAL 50.00000MHz
@@ -797,7 +798,7 @@ architecture RTL of emsx_top is
     signal  RstSeq          : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal  FreeCounter     : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  HardRst_cnt     : std_logic_vector(  3 downto 0 ) := (others => '0');
-    signal  LogoRstCnt      : std_logic_vector(  4 downto 0 ) := (others => '0');
+    signal  LogoRstCnt      : std_logic_vector(  5 downto 0 ) := (others => '0');
     signal  logo_timeout    : std_logic_vector(  1 downto 0 );
     signal  iCpuClk         : std_logic;
 --  signal  power_on_reset  : std_logic := '0';
@@ -839,6 +840,7 @@ architecture RTL of emsx_top is
 
     -- Slot decode signals
     signal  iSltBot         : std_logic;
+    signal  iSltMap0        : std_logic := '0';
     signal  iSltMap         : std_logic;
     signal  jSltMem         : std_logic;
     signal  iSltScc1        : std_logic;
@@ -1010,22 +1012,21 @@ architecture RTL of emsx_top is
     signal  RamReq          : std_logic;
     signal  RamAck          : std_logic;
     signal  RamDbi          : std_logic_vector(  7 downto 0 );
-    signal  ClrAdr          : std_logic_vector( 17 downto 0 );
-    signal  CpuAdr          : std_logic_vector( 22 downto 0 );
+    signal  CpuAdr          : std_logic_vector( 24 downto 0 );
 
-    -- SD-RAM control signals
+    -- SDRAM control signals
     signal  SdrSta          : std_logic_vector(  2 downto 0 );
     signal  SdrCmd          : std_logic_vector(  3 downto 0 );
-    signal  SdrBa           : std_logic_vector(  1 downto 0 );
+    signal  SdrBa           : std_logic_vector(  1 downto 0 ) := "00";
     signal  SdrUdq          : std_logic;
     signal  SdrLdq          : std_logic;
-    signal  SdrAdr          : std_logic_vector( 11 downto 0 );
+    signal  SdrAdr          : std_logic_vector( 12 downto 0 ) := (others => '0');
     signal  SdrDat          : std_logic_vector( 15 downto 0 );
 
     constant SdrCmd_de      : std_logic_vector(  3 downto 0 ) := "1111";            -- deselect
     constant SdrCmd_pr      : std_logic_vector(  3 downto 0 ) := "0010";            -- precharge all
     constant SdrCmd_re      : std_logic_vector(  3 downto 0 ) := "0001";            -- refresh
-    constant SdrCmd_ms      : std_logic_vector(  3 downto 0 ) := "0000";            -- mode regiser set
+    constant SdrCmd_ms      : std_logic_vector(  3 downto 0 ) := "0000";            -- mode register set
 
     constant SdrCmd_xx      : std_logic_vector(  3 downto 0 ) := "0111";            -- no operation
     constant SdrCmd_ac      : std_logic_vector(  3 downto 0 ) := "0011";            -- activate
@@ -1054,7 +1055,7 @@ architecture RTL of emsx_top is
     -- DRAM arbiter
     signal  w_wrt_req       : std_logic;
 
-    -- SD-RAM controller
+    -- SDRAM controller
     signal  ff_sdr_seq      : std_logic_vector(  2 downto 0 );
 
     -- Port F2 device (ESP8266 BIOS)
@@ -1253,21 +1254,28 @@ begin
     end process;
 
     -- logo speed limiter
-    process( clk21m )
-    begin
-        if( clk21m'event and clk21m = '1' )then
-            if( ff_ldbios_n = '0' )then
+    process( reset, clk21m )
+        constant lsl_mode : std_logic := '1';                                           -- lsl_mode = '0' : logo only
+    begin                                                                               -- lsl_mode = '1' : logo + beep sound (default)
+        if( reset = '1' )then
+            logo_timeout <= "00";
+        elsif( clk21m'event and clk21m = '1' )then                                      -- times change depending on the mappers installed, and
+            if( ff_ldbios_n = '0' )then                                                 -- the current configuration has only one external mapper
                 if( LastRst_sta = portF4_mode )then
-                    LogoRstCnt <= "11111";                                              -- 3100ms
-                    logo_timeout <= "00";
+                    if( lsl_mode = '0' )then
+                        LogoRstCnt <= "100110";                                         -- 3800ms  <= '0' : OCM-BIOS begins
+                    else
+                        LogoRstCnt <= "110001";                                         -- 4900ms  <= '1' : OCM-BIOS begins
+                    end if;
                 end if;
-            elsif( w_10hz = '1' and LogoRstCnt /= "00000" )then
+            elsif( w_10hz = '1' and LogoRstCnt /= "000000" )then
                 LogoRstCnt <= LogoRstCnt - 1;
-                if( LogoRstCnt = "10010" )then                                          -- 1800ms
+                if( (LogoRstCnt = "011000" and lsl_mode = '0') or                       -- 2400ms  <= '0' : MSX2+ animation starts here w/o external mapper
+                    (LogoRstCnt = "100011" and lsl_mode = '1') )then                    -- 3500ms  <= '1' : MSX2+ animation starts here w/o external mapper
                     logo_timeout <= "01";
                 end if;
-            elsif( LogoRstCnt = "00000" )then                                           -- 0ms
-                logo_timeout <= "10";
+            elsif( LogoRstCnt = "000000" )then                                          -- 0ms     <= '0' : MSX2+ logo ends
+                logo_timeout <= "10";                                                   --         or '1' : BEEP sound ends
             end if;
         end if;
     end process;
@@ -1277,7 +1285,7 @@ begin
     begin
         if( clk21m'event and clk21m = '0' )then
             if( cpuclk = '0' and clkdiv = "00" and wait_n_s = '0' )then
-                if( ff_ldbios_n = '0' or logo_timeout = "00" )then                      -- ultra-fast boot
+                if( logo_timeout = "00" )then                      -- ultra-fast boot
                     ff_clksel5m_n   <=  '1';
                     ff_clksel       <=  '1';
                 elsif( logo_timeout = "10" )then
@@ -1398,7 +1406,7 @@ begin
                     if( ff_reload_n = '0' )then
                         HardRst_cnt <= "0010";                                          -- 100ms to timeout
                     else
-                        HardRst_cnt <= "1100";                                          -- short click < 1000ms
+                        HardRst_cnt <= "1001";                                          -- short click < 800ms (M51953BFP is not there)
                     end if;
                 elsif( w_10hz = '1' and HardRst_cnt /= "0001" )then                     -- timeout
                     HardRst_cnt <= HardRst_cnt - 1;
@@ -1443,7 +1451,7 @@ begin
                 reset <= not (iSltRst_n and swioRESET_n);                               -- global reset
             else
                 -- RstSeq is in progress
-                reset <= '1';                                                           -- SD-RAM integrity protection
+                reset <= '1';                                                           -- SDRAM integrity protection
             end if;
         end if;
     end process;
@@ -1675,9 +1683,9 @@ begin
                 end if;
             elsif( pSltIorq_n = '0' and jSltIorq_n = '1' )then          -- wait for external bus
                 if( ff_clksel = '1' )then
-                    count := "0011";
+                    count := "0110";                                    -- "0011" = original value, "0110" = better reading the pull-up states at 10.74MHz
                 elsif( ff_clksel5m_n = '0' )then
-                    count := "0110";
+                    count := "0110";                                    -- "0110" = calibrated to properly access the ADPCM unit (NMS-1205) at 5.37 MHz
                 end if;
             elsif( count /= "0000" )then                                -- countdown timer
                 count := count - 1;
@@ -1764,10 +1772,10 @@ begin
                 dlydbi <= KanDbi;
             elsif( mem = '0' and adr(  7 downto 1 ) = "1101100" )then                           -- Kanji-data (JIS1 only)
                 dlydbi <= KanDbi;
-            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" and FullRAM = '0' )then          -- Memory-mapper 2048 kB
-                dlydbi <= "1" & MapDbi(  6 downto 0 );
-            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" )then                            -- Memory-mapper 4096 kB
+            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" and FullRAM = '1' )then          -- Memory-mapper 4096 kB | Extra-mapper 4096 kB
                 dlydbi <= MapDbi;
+            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" )then                            -- Memory-mapper 2048 kB
+                dlydbi <= "1" & MapDbi(  6 downto 0 );
             elsif( mem = '0' and adr(  7 downto 1 ) = "1011010" )then                           -- RTC (RP-5C01)
                 dlydbi <= RtcDbi;
             elsif( mem = '0' and adr(  7 downto 1 ) = "1110011" )then                           -- System timer (S1990)
@@ -1939,7 +1947,7 @@ begin
                         when "001"  => PpiPortC(1) <= dbo(0); -- key_matrix Y(1)
                         when "010"  => PpiPortC(2) <= dbo(0); -- key_matrix Y(2)
                         when "011"  => PpiPortC(3) <= dbo(0); -- key_matrix Y(3)
-                        when "100"  => PpiPortC(4) <= dbo(0); -- cassete motor on (0=On,1=Off)
+                        when "100"  => PpiPortC(4) <= dbo(0); -- cassete motor (0=On,1=Off)
                         when "101"  => PpiPortC(5) <= dbo(0); -- cassete audio out
                         when "110"  => PpiPortC(6) <= dbo(0); -- CAPS lamp (0=On,1=Off)
                         when others => PpiPortC(7) <= dbo(0); -- 1bit sound port
@@ -2427,55 +2435,66 @@ begin
         end if;
     end process;
 
-    ----------------------------------------------------------------
+    -----------------------------------------------------------------
     -- External memory access
-    ----------------------------------------------------------------
-    -- Slot map / SD-RAM memory map
+    -----------------------------------------------------------------
+    -- Slot map / SDRAM memory map      (SDRAM 8 MB or higher)
     --
-    -- Slot 0-0 : MainROM               620000-627FFF (  32 kB)
-    -- Slot 3-3 : XBASIC                628000-62BFFF (  16 kB)
-    -- Slot 0-2 : FM-BIOS               62C000-62FFFF (  16 kB)
-    -- Slot 0-3 : rom_free(OPT)         63C000-63FFFF (  16 kB)
+    -- Slot 0-0 : MainROM               [ D ]020000-027FFF (  32 kB)
+    -- Slot 3-3 : XBASIC                [ D ]028000-02BFFF (  16 kB)
+    -- Slot 0-2 : FM-BIOS               [ D ]02C000-02FFFF (  16 kB)
+    -- Slot 0-3 : rom_free(OPT)         [ D ]03C000-03FFFF (  16 kB)
     -- Slot 1   : (EXTERNAL-SLOT)
-    --            / ESE-SCC1            500000-5FFFFF (1024 kB) <= shared w/ the 2nd half of ESE-SCC2
-    --            / Linear(1)           500000-50FFFF (  64 kB) <= shared w/ ESE-SCC1
+    --            / ESE-SCC1            [ C ]100000-1FFFFF (1024 kB) <= shared with the 2nd half of ESE-SCC2
+    --            / Linear(1)           [ C ]100000-10FFFF (  64 kB) <= shared with ESE-SCC1
     -- Slot 2   : (EXTERNAL-SLOT)
-    --            / ESE-SCC2            400000-5FFFFF (2048 kB)
-    --            / Linear(2)           400000-40FFFF (  64 kB) <= shared w/ ESE-SCC2
-    -- Slot 3-0 : Mapper                000000-3FFFFF (4096 kB)
-    -- Slot 3-1 : ExtROM + KanjiROM     630000-63BFFF (  48 kB)
-    -- Slot 3-2 : MegaSDHC / NEXTOR     600000-61FFFF ( 128 kB)
-    --            EseRAM                600000-67FFFF (BIOS: 512 kB)
-    --            RAMDISK(unused)       680000-6FFFFF (FREE: 512 kB) <= not implemented because it slows down the startup
-    -- Slot 3-3 : IPL-ROM               (blockRAM: 1 kB, see IPLROM*.ASM) <= shared w/ XBASIC
-    -- VRAM     : VRAM                  700000-7FFFFF (1024 kB)
-    -- I/O      : Kanji-data            640000-67FFFF ( 256 kB)
+    --            / ESE-SCC2            [ C ]000000-1FFFFF (2048 kB)
+    --            / Linear(2)           [ C ]000000-00FFFF (  64 kB) <= shared with ESE-SCC2
+    -- Slot 3-0 : Mapper                [A+B]000000-1FFFFF (4096 kB)
+    -- Slot 3-1 : ExtROM + KanjiROM     [ D ]030000-03BFFF (  48 kB)
+    -- Slot 3-2 : MegaSDHC / NEXTOR     [ D ]000000-01FFFF ( 128 kB)
+    --            ESE-RAM               [ D ]000000-07FFFF (BIOS: 512 kB)
+    --            RAMDISK(unused)       [ D ]080000-0FF3FF (FREE: 509 kB)
+    --            IPL-ROM(hex)          [ D ]0FF400-0FFFFF (the last 3 kB can be used to extended IPL-ROM in some firmware)
+    -- Slot 3-3 : IPL-ROM(preloader)                       (blockRAM: < 3 kB, see IPLROM*.ASM) <= swapped with XBASIC at boot time
+    -- VRAM     : VRAM                  [ D ]100000-1FFFFF (1024 kB)
+    -- I/O      : Kanji-data            [ D ]040000-07FFFF ( 256 kB)
+    -----------------------------------------------------------------
+    -- Slot map / SDRAM memory map      (SDRAM 16 MB or higher)
+    --
+    -- Slot 0-1 : Extra-Mapper          [A+B]200000-3FFFFF (4096 kB)
+    -----------------------------------------------------------------
+    -- Memo: SdrAdr(12 downto 11) <= CpuAdr(24 downto 23);
+    --       SdrBa ( 1 downto  0) <= CpuAdr(22 downto 21);
+    -----------------------------------------------------------------
 
-    CpuAdr(22 downto 20) <= "0" & MapAdr(21 downto 20)  when( iSltMap  = '1' and FullRAM = '1' )else        -- 0xxxxx => 4096 kB Mapped RAM
-                            "00" & MapAdr(20)           when( iSltMap  = '1' )else                          -- 0xxxxx => 2048 kB Mapped RAM
-                            "100"                       when( iSltLin2 = '1' )else                          -- 4xxxxx =>   64 kB Linear over ESE-SCC2
-                            "10" & Scc2Adr(20)          when( iSltScc2 = '1' )else                          -- 4xxxxx => 2048 kB ESE-SCC2
-                            "101"                       when( iSltLin1 = '1' or iSltScc1 = '1' )else        -- 5xxxxx =>   64 kB Linear over ESE-SCC1
-                                                                                                            -- 5xxxxx => 1024 kB ESE-SCC1
-                            "110";                                                                          -- 6xxxxx => 1024 kB ESE-RAM
---                          "111";                                                                          -- 7xxxxx => 1024 kB Video RAM
+    CpuAdr(24 downto 20) <= -- "01" & "0"  & MapAdr(21 downto 20)  when( iSltMap0 = '1' and iSlt0_1 = '1' )else    -- [A+B]2xxxxx => 4096 kB Extra-RAM
+                            "00" & "0"  & MapAdr(21 downto 20)  when( iSltMap  = '1' and FullRAM = '1' )else    -- [A+B]0xxxxx => 4096 kB Main-RAM
+                            "00" & "00" & MapAdr(20)            when( iSltMap  = '1' )else                      -- [ A ]0xxxxx => 2048 kB Main-RAM
+                            "00" & "100"                        when( iSltLin2 = '1' )else                      -- [ C ]0xxxxx =>   64 kB Linear over ESE-SCC2
+                            "00" & "10" & Scc2Adr(20)           when( iSltScc2 = '1' )else                      -- [ C ]0xxxxx => 2048 kB ESE-SCC2
+                            "00" & "101"                        when( iSltLin1 = '1' or iSltScc1 = '1' )else    -- [ C ]1xxxxx =>   64 kB Linear over ESE-SCC1
+                                                                                                                -- [ C ]1xxxxx => 1024 kB ESE-SCC1
+                            "00" & "110";                                                                       -- [ D ]0xxxxx => 1024 kB ESE-RAM
+--                          "00" & "111";
 
-    CpuAdr(19 downto 0)  <= MapAdr(19 downto  0)            when( iSltMap  = '1' )else                      -- 000000-3FFFFF (4096 kB)  Internal Slot3-0
-                            "0000"   & adr(15 downto  0)    when( iSltLin1 = '1' or iSltLin2 = '1' )else    -- 400000-40FFFF (  64 kB)  Internal Slot2 Linear
-                                                                                                            -- 500000-50FFFF (  64 kB)  Internal Slot1 Linear
-                            Scc2Adr(19 downto  0)           when( iSltScc2 = '1' )else                      -- 400000-5FFFFF (2048 kB)  Internal Slot2
-                            Scc1Adr(19 downto  0)           when( iSltScc1 = '1' )else                      -- 500000-5FFFFF (1024 kB)  Internal Slot1
-                            "0"      & ErmAdr(18 downto  0) when( iSltErm  = '1' )else                      -- 600000-67FFFF ( 512 kB)  Internal Slot3-2
-                            "00100"  & adr(14 downto  0)    when( rom_main = '1' )else                      -- 620000-627FFF (  32 kB)  Internal Slot0-0
-                            "001010" & adr(13 downto  0)    when( rom_xbas = '1' )else                      -- 628000-62BFFF (  16 kB)  Internal Slot3-3
-                            "001011" & adr(13 downto  0)    when( rom_opll = '1' )else                      -- 62C000-62FFFF (  16 kB)  Internal Slot0-2
-                            "0011"   & adr(15 downto  0)    when( rom_extd = '1' )else                      -- 630000-63BFFF (  48 kB)  Internal Slot3-1
-                            "001111" & adr(13 downto  0)    when( rom_free = '1' )else                      -- 63C000-63FFFF (  16 kB)  Internal Slot0-3
-                            "01"     & KanAdr(17 downto  0) when( rom_kanj = '1' )else                      -- 640000-67FFFF ( 256 kB)  Kanji-data (JIS1+JIS2)
+    CpuAdr(19 downto  0) <= MapAdr(19 downto  0)                when( iSltMap0 = '1' or iSltMap  = '1' )else    -- [A+B]200000-3FFFFF (4096 kB) Internal Slot0-1
+                                                                                                                -- [A+B]000000-1FFFFF (4096 kB) Internal Slot3-0
+                            "0000"   & adr(15 downto  0)        when( iSltLin1 = '1' or iSltLin2 = '1' )else    -- [ C ]000000-00FFFF (  64 kB) Internal Slot2 Linear
+                                                                                                                -- [ C ]100000-10FFFF (  64 kB) Internal Slot1 Linear
+                            Scc2Adr(19 downto  0)               when( iSltScc2 = '1' )else                      -- [ C ]000000-1FFFFF (2048 kB) Internal Slot2
+                            Scc1Adr(19 downto  0)               when( iSltScc1 = '1' )else                      -- [ C ]100000-1FFFFF (1024 kB) Internal Slot1
+                            "0"      & ErmAdr(18 downto  0)     when( iSltErm  = '1' )else                      -- [ D ]000000-07FFFF ( 512 kB) Internal Slot3-2
+                            "00100"  & adr(14 downto  0)        when( rom_main = '1' )else                      -- [ D ]020000-027FFF (  32 kB) Internal Slot0-0
+                            "001010" & adr(13 downto  0)        when( rom_xbas = '1' )else                      -- [ D ]028000-02BFFF (  16 kB) Internal Slot3-3
+                            "001011" & adr(13 downto  0)        when( rom_opll = '1' )else                      -- [ D ]02C000-02FFFF (  16 kB) Internal Slot0-2
+                            "0011"   & adr(15 downto  0)        when( rom_extd = '1' )else                      -- [ D ]030000-03BFFF (  48 kB) Internal Slot3-1
+                            "001111" & adr(13 downto  0)        when( rom_free = '1' )else                      -- [ D ]03C000-03FFFF (  16 kB) Internal Slot0-3
+                            "01"     & KanAdr(17 downto  0)     when( rom_kanj = '1' )else                      -- [ D ]040000-07FFFF ( 256 kB) Kanji-data (JIS1+JIS2)
                             (others => '0');
 
     ----------------------------------------------------------------
-    -- SD-RAM access
+    -- SDRAM access
     ----------------------------------------------------------------
     --   SdrSta = "000" => idle
     --   SdrSta = "001" => precharge all
@@ -2593,54 +2612,56 @@ begin
         end if;
     end process;
 
+    -----------------------------------------------------------------------
+    -- SDRAM controller compatible with 8 MB, 16 MB and 32 MB single chip
+    -- STABLE VERSION 2022.08.24 by KdL  [ USE AT YOUR OWN RISK!! ]
+    -----------------------------------------------------------------------
+    -- * ClrAdr counter has been removed.
+    -- * Other SDRAM processes are unchanged.
+    -----------------------------------------------------------------------
+    -- Memo: SdrAdr(12 downto 11) <= CpuAdr(24 downto 23);
+    --       SdrBa ( 1 downto  0) <= CpuAdr(22 downto 21);
+    -----------------------------------------------------------------------
     process( memclk )
     begin
         if( memclk'event and memclk = '1' )then
             case ff_sdr_seq is
                 when "000" =>
-                    if( SdrSta(2) = '0' )then                                                       -- set command mode
-                        --  single  CL=2 WT=0(seq) BL=1
-                        SdrAdr <= "0010" & "0" & "010" & "0" & "000";
-                        SdrBa  <= "00";
-                    else                                                                            -- set row address
-                        SdrBa <= "11";
-                        if( RstSeq(4 downto 2) = "010" )then
-                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear VRAM, ESE-RAM
-                        elsif( RstSeq(4 downto 2) = "011" )then
-                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear ESE-SCC1, ESE-SCC2
-                            SdrBa  <= "10";
-                        elsif( RstSeq(4 downto 3) = "10" )then
-                            SdrAdr <= ClrAdr(11 downto 0);                                          -- clear Main-RAM
+                    if( SdrSta(2) = '0' )then                                       -- set [command mode]
+                        --           WBL=single TM=off CL=2 WT=0(seq) BL=1
+                        SdrAdr <= "00" & "010" & "0" & "010" & "0" & "000";
+                        SdrBa  <= "00";                                             -- bank A
+                    else                                                            -- set [row address]
+                        if( RstSeq(4 downto 2) = "011" and warmRESET /= '1' )then
+                            SdrAdr <= (others => '0');                              -- clear "AB" mark (ESE-SCC2 >> ESE-SCC1 >> ESE-RAM)
+                            SdrBa  <= "1" & RstSeq(1);                              -- bank C+D
                         elsif( VideoDLClk = '0' )then
-                            SdrAdr <= CpuAdr(12 downto 1);                                          -- cpu read/write
-                            SdrBa  <= CpuAdr(22 downto 21);
+                            SdrAdr <= CpuAdr(24 downto 23) & CpuAdr(11 downto 1);   -- cpu read/write
+                            SdrBa  <= CpuAdr(22 downto 21);                         -- bank A+B+C+D
                         else
-                            SdrAdr <= VdpAdr(11 downto 0);                                          -- vdp read/write
+                            SdrAdr <= "00" & VdpAdr(10 downto 0);                   -- vdp read/write
+                            SdrBa  <= "11";                                         -- bank D
                         end if;
                     end if;
-                when "010" =>                                                                       -- set column address
-                    SdrAdr(11 downto 8) <= "0100";                                                  -- A10=1 => enable auto precharge
-                    -- clear memory
-                    SdrBa <= "11";
-                    if( RstSeq(4 downto 2) = "010" )then
-                        SdrAdr(7 downto 0) <= "1" & "000" & ClrAdr(15 downto 12);                   -- clear VRAM       =>  start adr 700000h
-                    elsif( RstSeq(4 downto 1) = "0110" )then
-                        SdrAdr(7 downto 0) <= "0" & "000" & "0" & ClrAdr(14 downto 12);             -- clear ESE-RAM    =>  start adr 600000h
-                    elsif( RstSeq(4 downto 0) = "01110" and warmRESET /= '1' )then
-                        SdrAdr(7 downto 0) <= "1" & "000" & "00" & ClrAdr(13 downto 12);            -- clear ESE-SCC1   =>  start adr 500000h
-                        SdrBa <= "10";
-                    elsif( RstSeq(4 downto 0) = "01111" and warmRESET /= '1' )then
-                        SdrAdr(7 downto 0) <= "0" & "000" & "00" & ClrAdr(13 downto 12);            -- clear ESE-SCC2   =>  start adr 400000h
-                        SdrBa <= "10";
-                    elsif( RstSeq(4 downto 3) = "10" )then
-                        SdrAdr(7 downto 0) <= "0" & "00" & ClrAdr(16 downto 12);                    -- clear Main-RAM   =>  start adr 000000h
+                when "010" =>                                                                               -- set [column address]
+                    SdrAdr(10 downto 9) <= "10";                                                            -- A10=1 => enable auto precharge
+                    -- when A10=1, SdrBa is ignored and all banks are selected
+                    -- be careful not to assign SdrBa during auto precharge, otherwise it will cause instability
+                    if( RstSeq(4 downto 1) = "0110" and warmRESET /= '1' )then
+                        SdrAdr(12 downto 11) <= CpuAdr(24 downto 23);
+                        SdrAdr(8 downto 0) <= RstSeq(0) & "00000000";                                       -- clear ESE-SCC2 >> ESE-SCC1
+                    elsif( RstSeq(4 downto 1) = "0111" and warmRESET /= '1' )then
+                        SdrAdr(12 downto 11) <= CpuAdr(24 downto 23);
+                        SdrAdr(8 downto 0) <= (others => '0');                                              -- clear ESE-RAM
                     elsif( VideoDLClk = '0' )then
-                        SdrAdr(7 downto 0) <= CpuAdr(20 downto 13);                                 -- cpu read/write
-                        SdrBa <= CpuAdr(22 downto 21);
+                        SdrAdr(12 downto 11) <= CpuAdr(24 downto 23);
+                        SdrAdr(8 downto 0) <= CpuAdr(20 downto 12);                                         -- cpu read/write
                     elsif( VdpAdr(15) = '0' )then
-                        SdrAdr(7 downto 0) <= "1" & vram_page(3 downto 0) & VdpAdr(14 downto 12);   -- vdp read/write (even)
+                        SdrAdr(12 downto 11) <= "00";
+                        SdrAdr(8 downto 0) <= "1" & vram_page(3 downto 0) & VdpAdr(14 downto 11);           -- vdp read/write (even)
                     else
-                        SdrAdr(7 downto 0) <= "1" & vram_page(7 downto 4) & VdpAdr(14 downto 12);   -- vdp read/write (odd)
+                        SdrAdr(12 downto 11) <= "00";
+                        SdrAdr(8 downto 0) <= "1" & vram_page(7 downto 4) & VdpAdr(14 downto 11);           -- vdp read/write (odd)
                     end if;
                 when others =>
                     null;
@@ -2672,18 +2693,18 @@ begin
     end process;
 
     -- Clear address for DRAM initialization
-    process( memclk )
-    begin
-        if( memclk'event and memclk = '1' )then
-            if( ff_sdr_seq = "010" )then
-                if( RstSeq(4 downto 3) /= "11" )then
-                    ClrAdr <= (others => '0');
-                else
-                    ClrAdr <= ClrAdr + 1;
-                end if;
-            end if;
-        end if;
-    end process;
+--    process( memclk )
+--    begin
+--        if( memclk'event and memclk = '1' )then
+--            if( ff_sdr_seq = "010" )then
+--                if( RstSeq(4 downto 3) /= "11" )then
+--                    ClrAdr <= (others => '0');
+--                else
+--                    ClrAdr <= ClrAdr + 1;
+--                end if;
+--            end if;
+--        end if;
+--    end process;
 
     -- Data read latch for CPU
     process( memclk )
@@ -2759,7 +2780,7 @@ begin
     pMemBa1     <= SdrBa(1);
     pMemBa0     <= SdrBa(0);
 
-    pMemAdr     <= "0" & SdrAdr;                -- addressing for the SD-RAM of some SM-X Mini and SMX-HB by Victor Trucco
+    pMemAdr     <= SdrAdr;
     pMemDat     <= SdrDat;
 
     ----------------------------------------------------------------
