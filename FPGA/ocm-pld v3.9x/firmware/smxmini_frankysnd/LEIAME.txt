@@ -43,6 +43,9 @@ Novidades em relação a v3.9c
     - Melhorias do KdL na controladora de SDRAM permitindo que coisas como a
       VRAM de 1MB funcionem com o controlador do Victor Trucco
 
+    - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
+      Lilly's Saga, correção feita pelo Hara-san
+
 Notas de liberação da versão
 
 OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
@@ -143,6 +146,9 @@ diferente:
     - Melhoria: a emulação de mouse MSX do MC2+ foi portada para todos. É uma
       forma melhor que contam com time-out para retornar sozinho ao primeiro
       estado após algum tempo sem leitura, assim como um mouse MSX real.
+
+    - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
+      Lilly's Saga, correção feita pelo Hara-san
 
 Todo código fonte e binários alterados em relação ao OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com

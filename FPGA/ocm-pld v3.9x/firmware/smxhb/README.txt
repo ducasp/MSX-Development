@@ -34,6 +34,9 @@ New in relation to v3.9c
     - Improvements from KdL to the SDRAM controller allowing features like 1MB
       VRAM to work with Victor Trucco SDRAM controller
 
+    - Fix: there was a bug in z80 implementation causing issues while playing
+      Lilly's Saga, fix provided by Hara-san
+
 Release notes
 
 OCM-PLD v3.9d is an extension on KdL OCM release v3.9. What this extension
@@ -102,6 +105,8 @@ brings to the table:
       is a better approach as it has a time-out to return to the first state
       after a few time without communication, like a real MSX mouse.
 
+    - Fix: there was a bug in z80 implementation causing issues while playing
+      Lilly's Saga, fix provided by Hara-san
 
 All source code and binaries that changed in relation to OCM 3.9:
 (c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com

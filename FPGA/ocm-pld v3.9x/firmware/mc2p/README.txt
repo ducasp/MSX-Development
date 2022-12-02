@@ -200,6 +200,9 @@ brings to the table:
       disconnected for a while to detect its removal and then be able to see
       the new device being connected
 
+    - Fix: there was a bug in z80 implementation causing issues while playing
+      Lilly's Saga, fix provided by Hara-san
+
 - Future:
 
     - Extra: this is a WIP, please wait, but it will have Franky VDP :P

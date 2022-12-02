@@ -66,7 +66,11 @@ to choose from...
     take effect), in the position for 2048 MB Mapper it will use MSX Dos 2
     Kernel. Single EPBIOS use only MSX Dos 2 Kernel. If you use SD-BIOS, then
     this is not relevant as the SD-BIOS will override whatever is flashed in
-    that regards
+    that regards. If you use an external interface with Nextor, remember to use
+    MSX Dos 2 Kernel (by either having Single EPBIOS or setting Mapper size to
+    2048MB / Choosing MSX Dos 2 Kernel if having Dual EPBIOS) as there is a bug
+    that should be fixed in OCM 3.9.1 that prevents a Nextor device to work if
+    internal SD is initialized with Nextor Kernel.
 
 5 - Now you have your firmware file, just use it :)
 
