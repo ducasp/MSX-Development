@@ -1,0 +1,57 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0000 L
+    _AllIntHook                                                 =  FD9A G
+    _AnsiFinish                                                    **** GX
+    _AnsiInit                                                      **** GX
+    _AnsiPrint                                                     **** GX
+  0 _CountVdpInterrupt                                             0262 GR
+  0 _Done_Version                                                  00D6 R
+    _DosCall                                                       **** GX
+  0 _EndMyInterruptHandler                                         01F0 GR
+  0 _InitializeMyInterruptHandler                                  0008 GR
+    _Inkey                                                         **** GX
+  1 _IntFunc                                                       0018 GR
+  0 _InterruptHandlerHelper                                        0000 GR
+  0 _IsValidInput                                                  0231 GR
+  1 _MyHook                                                        0013 GR
+  1 _OldHook                                                       000E GR
+    _Print                                                         **** GX
+    _RAMAD3                                                     =  F344 G
+  1 _TypeOfInt                                                     001D GR
+    _VdpIntHook                                                 =  FD9F G
+  0 ___str_6                                                       03C8 R
+  0 ___str_7                                                       03E1 R
+  0 _main                                                          026A GR
+    _printf                                                        **** GX
+  1 _regs                                                          0002 GR
+    _ucBufferMemorySize                                         =  3000 G
+  0 _ucCursorOff                                                   01E8 GR
+  0 _ucCursor_On                                                   01EC GR
+  0 _ucSWInfo                                                      0147 GR
+  0 _ucSWInfoANSI                                                  0194 GR
+  0 _ucUsage                                                       00F6 GR
+  1 _uiGetSize                                                     0000 GR
+  1 _uiIntCount                                                    001E GR
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Zilog Z80 / Hitachi HD64180 / ZX-Next / eZ80), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size  401   flags    0
+   1 _DATA                                      size   20   flags    0
+   2 _INITIALIZED                               size    0   flags    0
+   3 _DABS                                      size    0   flags    8
+   4 _HOME                                      size    0   flags    0
+   5 _GSINIT                                    size    0   flags    0
+   6 _GSFINAL                                   size    0   flags    0
+   7 _INITIALIZER                               size    0   flags    0
+   8 _CABS                                      size    0   flags    8
+

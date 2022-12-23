@@ -1,0 +1,681 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.0.0 #11528 (MINGW64)
+                              4 ;--------------------------------------------------------
+                              5 	.module ANSDMP
+                              6 	.optsdcc -mz80
+                              7 	
+                              8 ;--------------------------------------------------------
+                              9 ; Public variables in this module
+                             10 ;--------------------------------------------------------
+                             11 	.globl _main
+                             12 	.globl _CountVdpInterrupt
+                             13 	.globl _EndMyInterruptHandler
+                             14 	.globl _InitializeMyInterruptHandler
+                             15 	.globl _InterruptHandlerHelper
+                             16 	.globl _AnsiPrint
+                             17 	.globl _AnsiFinish
+                             18 	.globl _AnsiInit
+                             19 	.globl _DosCall
+                             20 	.globl _Inkey
+                             21 	.globl _Print
+                             22 	.globl _printf
+                             23 	.globl _uiIntCount
+                             24 	.globl _RAMAD3
+                             25 	.globl _AllIntHook
+                             26 	.globl _VdpIntHook
+                             27 	.globl _TypeOfInt
+                             28 	.globl _IntFunc
+                             29 	.globl _MyHook
+                             30 	.globl _OldHook
+                             31 	.globl _regs
+                             32 	.globl _uiGetSize
+                             33 	.globl _ucBufferMemorySize
+                             34 	.globl _ucCursor_On
+                             35 	.globl _ucCursorOff
+                             36 	.globl _ucSWInfoANSI
+                             37 	.globl _ucSWInfo
+                             38 	.globl _ucUsage
+                             39 	.globl _IsValidInput
+                             40 ;--------------------------------------------------------
+                             41 ; special function registers
+                             42 ;--------------------------------------------------------
+                             43 ;--------------------------------------------------------
+                             44 ; ram data
+                             45 ;--------------------------------------------------------
+                             46 	.area _DATA
+                     3000    47 _ucBufferMemorySize	=	0x3000
+   0000                      48 _uiGetSize::
+   0000                      49 	.ds 2
+   0002                      50 _regs::
+   0002                      51 	.ds 12
+   000E                      52 _OldHook::
+   000E                      53 	.ds 5
+   0013                      54 _MyHook::
+   0013                      55 	.ds 5
+   0018                      56 _IntFunc::
+   0018                      57 	.ds 5
+   001D                      58 _TypeOfInt::
+   001D                      59 	.ds 1
+                     FD9F    60 _VdpIntHook	=	0xfd9f
+                     FD9A    61 _AllIntHook	=	0xfd9a
+                     F344    62 _RAMAD3	=	0xf344
+   001E                      63 _uiIntCount::
+   001E                      64 	.ds 2
+                             65 ;--------------------------------------------------------
+                             66 ; ram data
+                             67 ;--------------------------------------------------------
+                             68 	.area _INITIALIZED
+                             69 ;--------------------------------------------------------
+                             70 ; absolute external ram data
+                             71 ;--------------------------------------------------------
+                             72 	.area _DABS (ABS)
+                             73 ;--------------------------------------------------------
+                             74 ; global & static initialisations
+                             75 ;--------------------------------------------------------
+                             76 	.area _HOME
+                             77 	.area _GSINIT
+                             78 	.area _GSFINAL
+                             79 	.area _GSINIT
+                             80 ;--------------------------------------------------------
+                             81 ; Home
+                             82 ;--------------------------------------------------------
+                             83 	.area _HOME
+                             84 	.area _HOME
+                             85 ;--------------------------------------------------------
+                             86 ; code
+                             87 ;--------------------------------------------------------
+                             88 	.area _CODE
+                             89 ;src\ANSDMP.c:54: void InterruptHandlerHelper (void) __naked
+                             90 ;	---------------------------------
+                             91 ; Function InterruptHandlerHelper
+                             92 ; ---------------------------------
+   0000                      93 _InterruptHandlerHelper::
+                             94 ;src\ANSDMP.c:61: __endasm;
+   0000 F5            [11]   95 	push	af
+   0001 CDr18r00      [17]   96 	call	_IntFunc
+   0004 F1            [10]   97 	pop	af
+   0005 C3r0Er00      [10]   98 	jp	_OldHook
+                             99 ;src\ANSDMP.c:62: }
+                            100 ;src\ANSDMP.c:64: void InitializeMyInterruptHandler (int myInterruptHandlerFunction, unsigned char isVdpInterrupt)
+                            101 ;	---------------------------------
+                            102 ; Function InitializeMyInterruptHandler
+                            103 ; ---------------------------------
+   0008                     104 _InitializeMyInterruptHandler::
+   0008 DD E5         [15]  105 	push	ix
+   000A DD 21 00 00   [14]  106 	ld	ix,#0
+   000E DD 39         [15]  107 	add	ix,sp
+   0010 3B            [ 6]  108 	dec	sp
+                            109 ;src\ANSDMP.c:67: MyHook[0]=0xF7; //RST 30 is interslot call both with bios or dos
+   0011 21r13r00      [10]  110 	ld	hl, #_MyHook
+   0014 36 F7         [10]  111 	ld	(hl), #0xf7
+                            112 ;src\ANSDMP.c:68: MyHook[1]=RAMAD3; //Page 3 generally is not paged out and is the slot of the ram, so this should be good
+   0016 21r14r00      [10]  113 	ld	hl, #(_MyHook + 0x0001)
+   0019 FD 21 44 F3   [14]  114 	ld	iy, #_RAMAD3
+   001D FD 7E 00      [19]  115 	ld	a, 0 (iy)
+   0020 77            [ 7]  116 	ld	(hl), a
+                            117 ;src\ANSDMP.c:69: MyHook[2]=(unsigned char)((int)InterruptHandlerHelper&0xff);
+   0021 01r15r00      [10]  118 	ld	bc, #_MyHook + 2
+   0024 3Er00         [ 7]  119 	ld	a, #<(_InterruptHandlerHelper)
+   0026 02            [ 7]  120 	ld	(bc), a
+                            121 ;src\ANSDMP.c:70: MyHook[3]=(unsigned char)(((int)InterruptHandlerHelper>>8)&0xff);
+   0027 21r16r00      [10]  122 	ld	hl, #_MyHook + 3
+   002A 01r00r00      [10]  123 	ld	bc, #_InterruptHandlerHelper
+   002D 48            [ 4]  124 	ld	c, b
+   002E 79            [ 4]  125 	ld	a, c
+   002F CB 07         [ 8]  126 	rlc	a
+   0031 9F            [ 4]  127 	sbc	a, a
+   0032 71            [ 7]  128 	ld	(hl), c
+                            129 ;src\ANSDMP.c:71: MyHook[4]=0xC9;
+   0033 21r17r00      [10]  130 	ld	hl, #(_MyHook + 0x0004)
+   0036 36 C9         [10]  131 	ld	(hl), #0xc9
+                            132 ;src\ANSDMP.c:72: IntFunc[0]=0xCD; //CALL
+   0038 21r18r00      [10]  133 	ld	hl, #_IntFunc
+   003B 36 CD         [10]  134 	ld	(hl), #0xcd
+                            135 ;src\ANSDMP.c:73: IntFunc[1]=(unsigned char)((int)myInterruptHandlerFunction&0xff);
+   003D 01r19r00      [10]  136 	ld	bc, #_IntFunc + 1
+   0040 DD 7E 04      [19]  137 	ld	a, 4 (ix)
+   0043 02            [ 7]  138 	ld	(bc), a
+                            139 ;src\ANSDMP.c:74: IntFunc[2]=(unsigned char)(((int)myInterruptHandlerFunction>>8)&0xff);
+   0044 23            [ 6]  140 	inc	hl
+   0045 23            [ 6]  141 	inc	hl
+   0046 DD 4E 05      [19]  142 	ld	c, 5 (ix)
+   0049 79            [ 4]  143 	ld	a, c
+   004A CB 07         [ 8]  144 	rlc	a
+   004C 9F            [ 4]  145 	sbc	a, a
+   004D 47            [ 4]  146 	ld	b, a
+   004E 71            [ 7]  147 	ld	(hl), c
+                            148 ;src\ANSDMP.c:75: IntFunc[3]=0xC9;
+   004F 21r1Br00      [10]  149 	ld	hl, #(_IntFunc + 0x0003)
+   0052 36 C9         [10]  150 	ld	(hl), #0xc9
+                            151 ;src\ANSDMP.c:76: TypeOfInt = isVdpInterrupt;
+   0054 DD 7E 06      [19]  152 	ld	a, 6 (ix)
+   0057 32r1Dr00      [13]  153 	ld	(_TypeOfInt+0), a
+                            154 ;src\/../../fusion-c/header/msx_fusion.h:296: __endasm; 
+   005A F3            [ 4]  155 	di
+                            156 ;src\ANSDMP.c:79: if (isVdpInterrupt)
+   005B B7            [ 4]  157 	or	a, a
+   005C 28 34         [12]  158 	jr	Z,00125$
+                            159 ;src\ANSDMP.c:81: for(ui=0;ui<5;ui++)
+   005E 0E 00         [ 7]  160 	ld	c, #0x00
+   0060                     161 00110$:
+                            162 ;src\ANSDMP.c:82: OldHook[ui]=VdpIntHook[ui];
+   0060 3Er0E         [ 7]  163 	ld	a, #<(_OldHook)
+   0062 81            [ 4]  164 	add	a, c
+   0063 5F            [ 4]  165 	ld	e, a
+   0064 3Es00         [ 7]  166 	ld	a, #>(_OldHook)
+   0066 CE 00         [ 7]  167 	adc	a, #0x00
+   0068 57            [ 4]  168 	ld	d, a
+   0069 21 9F FD      [10]  169 	ld	hl, #_VdpIntHook
+   006C 06 00         [ 7]  170 	ld	b, #0x00
+   006E 09            [11]  171 	add	hl, bc
+   006F 7E            [ 7]  172 	ld	a, (hl)
+   0070 12            [ 7]  173 	ld	(de), a
+                            174 ;src\ANSDMP.c:81: for(ui=0;ui<5;ui++)
+   0071 0C            [ 4]  175 	inc	c
+   0072 79            [ 4]  176 	ld	a, c
+   0073 D6 05         [ 7]  177 	sub	a, #0x05
+   0075 38 E9         [12]  178 	jr	C,00110$
+                            179 ;src\ANSDMP.c:83: for(ui=0;ui<5;ui++)
+   0077 0E 00         [ 7]  180 	ld	c, #0x00
+   0079                     181 00112$:
+                            182 ;src\ANSDMP.c:84: VdpIntHook[ui]=MyHook[ui];
+   0079 11 9F FD      [10]  183 	ld	de, #_VdpIntHook+0
+   007C 7B            [ 4]  184 	ld	a, e
+   007D 81            [ 4]  185 	add	a, c
+   007E 5F            [ 4]  186 	ld	e, a
+   007F 30 01         [12]  187 	jr	NC,00164$
+   0081 14            [ 4]  188 	inc	d
+   0082                     189 00164$:
+   0082 21r13r00      [10]  190 	ld	hl, #_MyHook
+   0085 06 00         [ 7]  191 	ld	b, #0x00
+   0087 09            [11]  192 	add	hl, bc
+   0088 7E            [ 7]  193 	ld	a, (hl)
+   0089 12            [ 7]  194 	ld	(de), a
+                            195 ;src\ANSDMP.c:83: for(ui=0;ui<5;ui++)
+   008A 0C            [ 4]  196 	inc	c
+   008B 79            [ 4]  197 	ld	a, c
+   008C D6 05         [ 7]  198 	sub	a, #0x05
+   008E 38 E9         [12]  199 	jr	C,00112$
+   0090 18 3F         [12]  200 	jr	00107$
+                            201 ;src\ANSDMP.c:88: for(ui=0;ui<5;ui++)
+   0092                     202 00125$:
+   0092 0E 00         [ 7]  203 	ld	c, #0x00
+   0094                     204 00114$:
+                            205 ;src\ANSDMP.c:89: OldHook[ui]=AllIntHook[ui];
+   0094 3Er0E         [ 7]  206 	ld	a, #<(_OldHook)
+   0096 81            [ 4]  207 	add	a, c
+   0097 5F            [ 4]  208 	ld	e, a
+   0098 3Es00         [ 7]  209 	ld	a, #>(_OldHook)
+   009A CE 00         [ 7]  210 	adc	a, #0x00
+   009C 57            [ 4]  211 	ld	d, a
+   009D 21 9A FD      [10]  212 	ld	hl, #_AllIntHook
+   00A0 06 00         [ 7]  213 	ld	b, #0x00
+   00A2 09            [11]  214 	add	hl, bc
+   00A3 7E            [ 7]  215 	ld	a, (hl)
+   00A4 12            [ 7]  216 	ld	(de), a
+                            217 ;src\ANSDMP.c:88: for(ui=0;ui<5;ui++)
+   00A5 0C            [ 4]  218 	inc	c
+   00A6 79            [ 4]  219 	ld	a, c
+   00A7 D6 05         [ 7]  220 	sub	a, #0x05
+   00A9 38 E9         [12]  221 	jr	C,00114$
+                            222 ;src\ANSDMP.c:90: for(ui=0;ui<5;ui++)
+   00AB AF            [ 4]  223 	xor	a, a
+   00AC DD 77 FF      [19]  224 	ld	-1 (ix), a
+   00AF                     225 00116$:
+                            226 ;src\ANSDMP.c:91: AllIntHook[ui]=MyHook[ui];
+   00AF 01 9A FD      [10]  227 	ld	bc, #_AllIntHook+0
+   00B2 79            [ 4]  228 	ld	a, c
+   00B3 DD 86 FF      [19]  229 	add	a, -1 (ix)
+   00B6 4F            [ 4]  230 	ld	c, a
+   00B7 30 01         [12]  231 	jr	NC,00165$
+   00B9 04            [ 4]  232 	inc	b
+   00BA                     233 00165$:
+   00BA 3Er13         [ 7]  234 	ld	a, #<(_MyHook)
+   00BC DD 86 FF      [19]  235 	add	a, -1 (ix)
+   00BF 5F            [ 4]  236 	ld	e, a
+   00C0 3Es00         [ 7]  237 	ld	a, #>(_MyHook)
+   00C2 CE 00         [ 7]  238 	adc	a, #0x00
+   00C4 57            [ 4]  239 	ld	d, a
+   00C5 1A            [ 7]  240 	ld	a, (de)
+   00C6 02            [ 7]  241 	ld	(bc), a
+                            242 ;src\ANSDMP.c:90: for(ui=0;ui<5;ui++)
+   00C7 DD 34 FF      [23]  243 	inc	-1 (ix)
+   00CA DD 7E FF      [19]  244 	ld	a, -1 (ix)
+   00CD D6 05         [ 7]  245 	sub	a, #0x05
+   00CF 38 DE         [12]  246 	jr	C,00116$
+   00D1                     247 00107$:
+                            248 ;src\/../../fusion-c/header/msx_fusion.h:291: __endasm; 
+   00D1 FB            [ 4]  249 	ei
+                            250 ;src\ANSDMP.c:95: EnableInterrupt();
+                            251 ;src\ANSDMP.c:96: }
+   00D2 33            [ 6]  252 	inc	sp
+   00D3 DD E1         [14]  253 	pop	ix
+   00D5 C9            [10]  254 	ret
+   00D6                     255 _Done_Version:
+   00D6 4D 61 64 65 20 77   256 	.ascii "Made with FUSION-C 1.2 (ebsoft)"
+        69 74 68 20 46 55
+        53 49 4F 4E 2D 43
+        20 31 2E 32 20 28
+        65 62 73 6F 66 74
+        29
+   00F5 00                  257 	.db 0x00
+   00F6                     258 _ucUsage:
+   00F6 55 73 61 67 65 3A   259 	.ascii "Usage: ansdmp <file>"
+        20 61 6E 73 64 6D
+        70 20 3C 66 69 6C
+        65 3E
+   010A 0D                  260 	.db 0x0d
+   010B 0A                  261 	.db 0x0a
+   010C 0D                  262 	.db 0x0d
+   010D 0A                  263 	.db 0x0a
+   010E 3C 66 69 6C 65 3E   264 	.ascii "<file>: name of file containing ANSI image/animation"
+        3A 20 6E 61 6D 65
+        20 6F 66 20 66 69
+        6C 65 20 63 6F 6E
+        74 61 69 6E 69 6E
+        67 20 41 4E 53 49
+        20 69 6D 61 67 65
+        2F 61 6E 69 6D 61
+        74 69 6F 6E
+   0142 0D                  265 	.db 0x0d
+   0143 0A                  266 	.db 0x0a
+   0144 0D                  267 	.db 0x0d
+   0145 0A                  268 	.db 0x0a
+   0146 00                  269 	.db 0x00
+   0147                     270 _ucSWInfo:
+   0147 3E 20 4D 53 58 20   271 	.ascii "> MSX ANSDMP v0.01 <"
+        41 4E 53 44 4D 50
+        20 76 30 2E 30 31
+        20 3C
+   015B 0D                  272 	.db 0x0d
+   015C 0A                  273 	.db 0x0a
+   015D 20 28 63 29 20 32   274 	.ascii " (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com"
+        30 31 39 20 4F 64
+        75 76 61 6C 64 6F
+        20 50 61 76 61 6E
+        20 4A 75 6E 69 6F
+        72 20 2D 20 64 75
+        63 61 73 70 40 67
+        6D 61 69 6C 2E 63
+        6F 6D
+   018F 0D                  275 	.db 0x0d
+   0190 0A                  276 	.db 0x0a
+   0191 0D                  277 	.db 0x0d
+   0192 0A                  278 	.db 0x0a
+   0193 00                  279 	.db 0x00
+   0194                     280 _ucSWInfoANSI:
+   0194 1B                  281 	.db 0x1b
+   0195 5B 33 31 6D 3E 20   282 	.ascii "[31m> MSX ANSDMP v0.01 <"
+        4D 53 58 20 41 4E
+        53 44 4D 50 20 76
+        30 2E 30 31 20 3C
+   01AD 0D                  283 	.db 0x0d
+   01AE 0A                  284 	.db 0x0a
+   01AF 20 28 63 29 20 32   285 	.ascii " (c) 2019 Oduvaldo Pavan Junior - ducasp@gmail.com"
+        30 31 39 20 4F 64
+        75 76 61 6C 64 6F
+        20 50 61 76 61 6E
+        20 4A 75 6E 69 6F
+        72 20 2D 20 64 75
+        63 61 73 70 40 67
+        6D 61 69 6C 2E 63
+        6F 6D
+   01E1 1B                  286 	.db 0x1b
+   01E2 5B 30 6D            287 	.ascii "[0m"
+   01E5 0D                  288 	.db 0x0d
+   01E6 0A                  289 	.db 0x0a
+   01E7 00                  290 	.db 0x00
+   01E8                     291 _ucCursorOff:
+   01E8 1B                  292 	.db 0x1b
+   01E9 78 35               293 	.ascii "x5"
+   01EB 00                  294 	.db 0x00
+   01EC                     295 _ucCursor_On:
+   01EC 1B                  296 	.db 0x1b
+   01ED 79 35               297 	.ascii "y5"
+   01EF 00                  298 	.db 0x00
+                            299 ;src\ANSDMP.c:98: void EndMyInterruptHandler (void)
+                            300 ;	---------------------------------
+                            301 ; Function EndMyInterruptHandler
+                            302 ; ---------------------------------
+   01F0                     303 _EndMyInterruptHandler::
+                            304 ;src\/../../fusion-c/header/msx_fusion.h:296: __endasm; 
+   01F0 F3            [ 4]  305 	di
+                            306 ;src\ANSDMP.c:104: if (TypeOfInt)
+   01F1 FD 21r1Dr00   [14]  307 	ld	iy, #_TypeOfInt
+   01F5 FD 7E 00      [19]  308 	ld	a, 0 (iy)
+   01F8 B7            [ 4]  309 	or	a, a
+   01F9 28 1B         [12]  310 	jr	Z,00117$
+                            311 ;src\ANSDMP.c:105: for(ui=0;ui<5;ui++)
+   01FB 0E 00         [ 7]  312 	ld	c, #0x00
+   01FD                     313 00108$:
+                            314 ;src\ANSDMP.c:106: VdpIntHook[ui]=OldHook[ui];
+   01FD 3E 9F         [ 7]  315 	ld	a, #<(_VdpIntHook)
+   01FF 81            [ 4]  316 	add	a, c
+   0200 5F            [ 4]  317 	ld	e, a
+   0201 3E FD         [ 7]  318 	ld	a, #>(_VdpIntHook)
+   0203 CE 00         [ 7]  319 	adc	a, #0x00
+   0205 57            [ 4]  320 	ld	d, a
+   0206 21r0Er00      [10]  321 	ld	hl, #_OldHook
+   0209 06 00         [ 7]  322 	ld	b, #0x00
+   020B 09            [11]  323 	add	hl, bc
+   020C 7E            [ 7]  324 	ld	a, (hl)
+   020D 12            [ 7]  325 	ld	(de), a
+                            326 ;src\ANSDMP.c:105: for(ui=0;ui<5;ui++)
+   020E 0C            [ 4]  327 	inc	c
+   020F 79            [ 4]  328 	ld	a, c
+   0210 D6 05         [ 7]  329 	sub	a, #0x05
+   0212 38 E9         [12]  330 	jr	C,00108$
+   0214 18 19         [12]  331 	jr	00105$
+                            332 ;src\ANSDMP.c:108: for(ui=0;ui<5;ui++)
+   0216                     333 00117$:
+   0216 0E 00         [ 7]  334 	ld	c, #0x00
+   0218                     335 00110$:
+                            336 ;src\ANSDMP.c:109: AllIntHook[ui]=OldHook[ui];
+   0218 11 9A FD      [10]  337 	ld	de, #_AllIntHook+0
+   021B 7B            [ 4]  338 	ld	a, e
+   021C 81            [ 4]  339 	add	a, c
+   021D 5F            [ 4]  340 	ld	e, a
+   021E 30 01         [12]  341 	jr	NC,00136$
+   0220 14            [ 4]  342 	inc	d
+   0221                     343 00136$:
+   0221 21r0Er00      [10]  344 	ld	hl, #_OldHook
+   0224 06 00         [ 7]  345 	ld	b, #0x00
+   0226 09            [11]  346 	add	hl, bc
+   0227 7E            [ 7]  347 	ld	a, (hl)
+   0228 12            [ 7]  348 	ld	(de), a
+                            349 ;src\ANSDMP.c:108: for(ui=0;ui<5;ui++)
+   0229 0C            [ 4]  350 	inc	c
+   022A 79            [ 4]  351 	ld	a, c
+   022B D6 05         [ 7]  352 	sub	a, #0x05
+   022D 38 E9         [12]  353 	jr	C,00110$
+   022F                     354 00105$:
+                            355 ;src\/../../fusion-c/header/msx_fusion.h:291: __endasm; 
+   022F FB            [ 4]  356 	ei
+                            357 ;src\ANSDMP.c:112: EnableInterrupt();
+                            358 ;src\ANSDMP.c:114: }
+   0230 C9            [10]  359 	ret
+                            360 ;src\ANSDMP.c:126: unsigned int IsValidInput (char**argv, int argc, unsigned char *ucFile)
+                            361 ;	---------------------------------
+                            362 ; Function IsValidInput
+                            363 ; ---------------------------------
+   0231                     364 _IsValidInput::
+   0231 DD E5         [15]  365 	push	ix
+   0233 DD 21 00 00   [14]  366 	ld	ix,#0
+   0237 DD 39         [15]  367 	add	ix,sp
+                            368 ;src\ANSDMP.c:128: unsigned int iRet = 0;
+   0239 01 00 00      [10]  369 	ld	bc, #0x0000
+                            370 ;src\ANSDMP.c:129: unsigned char * ucInput = (unsigned char*)argv[0];
+   023C DD 6E 04      [19]  371 	ld	l, 4 (ix)
+   023F DD 66 05      [19]  372 	ld	h, 5 (ix)
+   0242 5E            [ 7]  373 	ld	e, (hl)
+   0243 23            [ 6]  374 	inc	hl
+   0244 66            [ 7]  375 	ld	h, (hl)
+                            376 ;src\ANSDMP.c:131: if (argc)
+   0245 DD 7E 07      [19]  377 	ld	a, 7 (ix)
+   0248 DD B6 06      [19]  378 	or	a, 6 (ix)
+   024B 28 10         [12]  379 	jr	Z,00102$
+                            380 ;src\ANSDMP.c:133: strcpy (ucFile, ucInput);
+   024D 6B            [ 4]  381 	ld	l, e
+   024E DD 5E 08      [19]  382 	ld	e, 8 (ix)
+   0251 DD 56 09      [19]  383 	ld	d, 9 (ix)
+   0254 AF            [ 4]  384 	xor	a, a
+   0255                     385 00110$:
+   0255 BE            [ 7]  386 	cp	a, (hl)
+   0256 ED A0         [16]  387 	ldi
+   0258 20 FB         [12]  388 	jr	NZ, 00110$
+                            389 ;src\ANSDMP.c:134: iRet = 1;
+   025A 01 01 00      [10]  390 	ld	bc, #0x0001
+   025D                     391 00102$:
+                            392 ;src\ANSDMP.c:137: return iRet;
+   025D 69            [ 4]  393 	ld	l, c
+   025E 60            [ 4]  394 	ld	h, b
+                            395 ;src\ANSDMP.c:138: }
+   025F DD E1         [14]  396 	pop	ix
+   0261 C9            [10]  397 	ret
+                            398 ;src\ANSDMP.c:142: void CountVdpInterrupt()
+                            399 ;	---------------------------------
+                            400 ; Function CountVdpInterrupt
+                            401 ; ---------------------------------
+   0262                     402 _CountVdpInterrupt::
+                            403 ;src\ANSDMP.c:144: uiIntCount++;
+   0262 2Ar1Er00      [16]  404 	ld	hl, (_uiIntCount)
+   0265 23            [ 6]  405 	inc	hl
+   0266 22r1Er00      [16]  406 	ld	(_uiIntCount), hl
+                            407 ;src\ANSDMP.c:145: }
+   0269 C9            [10]  408 	ret
+                            409 ;src\ANSDMP.c:148: int main(char** argv, int argc)
+                            410 ;	---------------------------------
+                            411 ; Function main
+                            412 ; ---------------------------------
+   026A                     413 _main::
+   026A DD E5         [15]  414 	push	ix
+   026C DD 21 00 00   [14]  415 	ld	ix,#0
+   0270 DD 39         [15]  416 	add	ix,sp
+   0272 21 7B FF      [10]  417 	ld	hl, #-133
+   0275 39            [11]  418 	add	hl, sp
+   0276 F9            [ 6]  419 	ld	sp, hl
+                            420 ;src\ANSDMP.c:153: unsigned char ucFirst = 1;
+   0277 DD 36 FB 01   [19]  421 	ld	-5 (ix), #0x01
+                            422 ;src\ANSDMP.c:157: uiGetSize = 0;
+   027B 21 00 00      [10]  423 	ld	hl, #0x0000
+   027E 22r00r00      [16]  424 	ld	(_uiGetSize), hl
+                            425 ;src\ANSDMP.c:160: if(!IsValidInput(argv, argc, ucFile))
+   0281 21 00 00      [10]  426 	ld	hl, #0
+   0284 39            [11]  427 	add	hl, sp
+   0285 DD 75 FC      [19]  428 	ld	-4 (ix), l
+   0288 DD 74 FD      [19]  429 	ld	-3 (ix), h
+   028B E5            [11]  430 	push	hl
+   028C DD 6E 06      [19]  431 	ld	l, 6 (ix)
+   028F DD 66 07      [19]  432 	ld	h, 7 (ix)
+   0292 E5            [11]  433 	push	hl
+   0293 DD 6E 04      [19]  434 	ld	l, 4 (ix)
+   0296 DD 66 05      [19]  435 	ld	h, 5 (ix)
+   0299 E5            [11]  436 	push	hl
+   029A CDr31r02      [17]  437 	call	_IsValidInput
+   029D F1            [10]  438 	pop	af
+   029E F1            [10]  439 	pop	af
+   029F F1            [10]  440 	pop	af
+   02A0 DD 75 FE      [19]  441 	ld	-2 (ix), l
+   02A3 DD 74 FF      [19]  442 	ld	-1 (ix), h
+   02A6 7C            [ 4]  443 	ld	a, h
+   02A7 DD B6 FE      [19]  444 	or	a, -2 (ix)
+   02AA 20 15         [12]  445 	jr	NZ,00102$
+                            446 ;src\ANSDMP.c:163: Print(ucSWInfo);
+   02AC 21r47r01      [10]  447 	ld	hl, #_ucSWInfo
+   02AF E5            [11]  448 	push	hl
+   02B0 CDr00r00      [17]  449 	call	_Print
+                            450 ;src\ANSDMP.c:164: Print(ucUsage);
+   02B3 21rF6r00      [10]  451 	ld	hl, #_ucUsage
+   02B6 E3            [19]  452 	ex	(sp),hl
+   02B7 CDr00r00      [17]  453 	call	_Print
+   02BA F1            [10]  454 	pop	af
+                            455 ;src\ANSDMP.c:165: return 0;
+   02BB 21 00 00      [10]  456 	ld	hl, #0x0000
+   02BE C3rC3r03      [10]  457 	jp	00116$
+   02C1                     458 00102$:
+                            459 ;src\ANSDMP.c:168: regs.Words.DE = (int)ucFile;
+   02C1 DD 4E FC      [19]  460 	ld	c, -4 (ix)
+   02C4 DD 46 FD      [19]  461 	ld	b, -3 (ix)
+   02C7 DD 71 FE      [19]  462 	ld	-2 (ix), c
+   02CA DD 70 FF      [19]  463 	ld	-1 (ix), b
+   02CD 21r06r00      [10]  464 	ld	hl, #(_regs + 0x0004)
+   02D0 DD 7E FE      [19]  465 	ld	a, -2 (ix)
+   02D3 77            [ 7]  466 	ld	(hl), a
+   02D4 23            [ 6]  467 	inc	hl
+   02D5 DD 7E FF      [19]  468 	ld	a, -1 (ix)
+   02D8 77            [ 7]  469 	ld	(hl), a
+                            470 ;src\ANSDMP.c:169: regs.Bytes.A = 1; //open for read
+   02D9 21r03r00      [10]  471 	ld	hl, #(_regs + 0x0001)
+   02DC 36 01         [10]  472 	ld	(hl), #0x01
+                            473 ;src\ANSDMP.c:170: DosCall(0x43, &regs, REGS_MAIN, REGS_MAIN);
+   02DE 11 02 02      [10]  474 	ld	de, #0x0202
+   02E1 D5            [11]  475 	push	de
+   02E2 21r02r00      [10]  476 	ld	hl, #_regs
+   02E5 E5            [11]  477 	push	hl
+   02E6 3E 43         [ 7]  478 	ld	a, #0x43
+   02E8 F5            [11]  479 	push	af
+   02E9 33            [ 6]  480 	inc	sp
+   02EA CDr00r00      [17]  481 	call	_DosCall
+   02ED F1            [10]  482 	pop	af
+   02EE F1            [10]  483 	pop	af
+   02EF 33            [ 6]  484 	inc	sp
+                            485 ;src\ANSDMP.c:172: fileHandle = regs.Bytes.B;
+   02F0 3Ar05r00      [13]  486 	ld	a,(#(_regs + 0x0003) + 0)
+   02F3 DD 77 FE      [19]  487 	ld	-2 (ix), a
+                            488 ;src\ANSDMP.c:174: if (regs.Bytes.A!=0)
+   02F6 3Ar03r00      [13]  489 	ld	a,(#(_regs + 0x0001) + 0)
+   02F9 DD 77 FF      [19]  490 	ld	-1 (ix), a
+   02FC B7            [ 4]  491 	or	a, a
+   02FD 28 22         [12]  492 	jr	Z,00104$
+                            493 ;src\ANSDMP.c:176: printf ("Failed to open file %s\r\n",ucFile);
+   02FF DD 7E FC      [19]  494 	ld	a, -4 (ix)
+   0302 DD 77 FE      [19]  495 	ld	-2 (ix), a
+   0305 DD 7E FD      [19]  496 	ld	a, -3 (ix)
+   0308 DD 77 FF      [19]  497 	ld	-1 (ix), a
+   030B DD 6E FE      [19]  498 	ld	l, -2 (ix)
+   030E DD 66 FF      [19]  499 	ld	h, -1 (ix)
+   0311 E5            [11]  500 	push	hl
+   0312 21rC8r03      [10]  501 	ld	hl, #___str_6
+   0315 E5            [11]  502 	push	hl
+   0316 CDr00r00      [17]  503 	call	_printf
+   0319 F1            [10]  504 	pop	af
+   031A F1            [10]  505 	pop	af
+                            506 ;src\ANSDMP.c:177: return 0;
+   031B 21 00 00      [10]  507 	ld	hl, #0x0000
+   031E C3rC3r03      [10]  508 	jp	00116$
+   0321                     509 00104$:
+                            510 ;src\ANSDMP.c:180: AnsiInit();
+   0321 CDr00r00      [17]  511 	call	_AnsiInit
+                            512 ;src\ANSDMP.c:184: do
+   0324                     513 00110$:
+                            514 ;src\ANSDMP.c:187: uiGetSize = BufferMemorySize;
+   0324 21 00 80      [10]  515 	ld	hl, #0x8000
+   0327 22r00r00      [16]  516 	ld	(_uiGetSize), hl
+                            517 ;src\ANSDMP.c:189: regs.Words.DE = (int)(ucBufferMemorySize); //where to data read
+   032A 21 00 30      [10]  518 	ld	hl, #_ucBufferMemorySize
+   032D 22r06r00      [16]  519 	ld	((_regs + 0x0004)), hl
+                            520 ;src\ANSDMP.c:190: regs.UWords.HL = uiGetSize; //get up to...
+   0330 01r08r00      [10]  521 	ld	bc, #_regs + 6
+   0333 69            [ 4]  522 	ld	l, c
+   0334 60            [ 4]  523 	ld	h, b
+   0335 FD 21r00r00   [14]  524 	ld	iy, #_uiGetSize
+   0339 FD 7E 00      [19]  525 	ld	a, 0 (iy)
+   033C 77            [ 7]  526 	ld	(hl), a
+   033D 23            [ 6]  527 	inc	hl
+   033E FD 7E 01      [19]  528 	ld	a, 1 (iy)
+   0341 77            [ 7]  529 	ld	(hl), a
+                            530 ;src\ANSDMP.c:191: regs.Bytes.B = fileHandle; //file handle
+   0342 21r05r00      [10]  531 	ld	hl, #(_regs + 0x0003)
+   0345 DD 7E FE      [19]  532 	ld	a, -2 (ix)
+   0348 77            [ 7]  533 	ld	(hl), a
+                            534 ;src\ANSDMP.c:192: DosCall(0x48, &regs, REGS_MAIN, REGS_MAIN);
+   0349 C5            [11]  535 	push	bc
+   034A 11 02 02      [10]  536 	ld	de, #0x0202
+   034D D5            [11]  537 	push	de
+   034E 21r02r00      [10]  538 	ld	hl, #_regs
+   0351 E5            [11]  539 	push	hl
+   0352 3E 48         [ 7]  540 	ld	a, #0x48
+   0354 F5            [11]  541 	push	af
+   0355 33            [ 6]  542 	inc	sp
+   0356 CDr00r00      [17]  543 	call	_DosCall
+   0359 F1            [10]  544 	pop	af
+   035A F1            [10]  545 	pop	af
+   035B 33            [ 6]  546 	inc	sp
+   035C C1            [10]  547 	pop	bc
+                            548 ;src\ANSDMP.c:193: error = regs.Bytes.A;
+   035D 21r03r00      [10]  549 	ld	hl, #(_regs + 0x0001) + 0
+   0360 5E            [ 7]  550 	ld	e, (hl)
+                            551 ;src\ANSDMP.c:194: if (ucFirst)
+   0361 DD 7E FB      [19]  552 	ld	a, -5 (ix)
+   0364 B7            [ 4]  553 	or	a, a
+   0365 28 1B         [12]  554 	jr	Z,00106$
+                            555 ;src\ANSDMP.c:196: ucFirst = 0;
+   0367 AF            [ 4]  556 	xor	a, a
+   0368 DD 77 FB      [19]  557 	ld	-5 (ix), a
+                            558 ;src\ANSDMP.c:197: uiIntCount = 0;
+   036B 21 00 00      [10]  559 	ld	hl, #0x0000
+   036E 22r1Er00      [16]  560 	ld	(_uiIntCount), hl
+                            561 ;src\ANSDMP.c:198: InitializeMyInterruptHandler ((int)CountVdpInterrupt,1);
+   0371 21r62r02      [10]  562 	ld	hl, #_CountVdpInterrupt
+   0374 C5            [11]  563 	push	bc
+   0375 D5            [11]  564 	push	de
+   0376 3E 01         [ 7]  565 	ld	a, #0x01
+   0378 F5            [11]  566 	push	af
+   0379 33            [ 6]  567 	inc	sp
+   037A E5            [11]  568 	push	hl
+   037B CDr08r00      [17]  569 	call	_InitializeMyInterruptHandler
+   037E F1            [10]  570 	pop	af
+   037F 33            [ 6]  571 	inc	sp
+   0380 D1            [10]  572 	pop	de
+   0381 C1            [10]  573 	pop	bc
+   0382                     574 00106$:
+                            575 ;src\ANSDMP.c:202: if (error==0)
+   0382 7B            [ 4]  576 	ld	a, e
+   0383 B7            [ 4]  577 	or	a, a
+   0384 20 1D         [12]  578 	jr	NZ,00112$
+                            579 ;src\ANSDMP.c:204: uiGetSize = regs.UWords.HL;
+   0386 69            [ 4]  580 	ld	l, c
+   0387 60            [ 4]  581 	ld	h, b
+   0388 7E            [ 7]  582 	ld	a, (hl)
+   0389 32r00r00      [13]  583 	ld	(_uiGetSize+0), a
+   038C 23            [ 6]  584 	inc	hl
+   038D 7E            [ 7]  585 	ld	a, (hl)
+   038E 32r01r00      [13]  586 	ld	(_uiGetSize+1), a
+                            587 ;src\ANSDMP.c:206: ucBufferMemorySize[uiGetSize] = 0;
+   0391 01 00 30      [10]  588 	ld	bc, #_ucBufferMemorySize+0
+   0394 2Ar00r00      [16]  589 	ld	hl, (_uiGetSize)
+   0397 09            [11]  590 	add	hl, bc
+   0398 36 00         [10]  591 	ld	(hl), #0x00
+                            592 ;src\ANSDMP.c:207: AnsiPrint(ucBufferMemorySize);
+   039A 21 00 30      [10]  593 	ld	hl, #_ucBufferMemorySize
+   039D CDr00r00      [17]  594 	call	_AnsiPrint
+                            595 ;src\ANSDMP.c:219: while (1);
+   03A0 C3r24r03      [10]  596 	jp	00110$
+   03A3                     597 00112$:
+                            598 ;src\ANSDMP.c:220: EndMyInterruptHandler();
+   03A3 CDrF0r01      [17]  599 	call	_EndMyInterruptHandler
+                            600 ;src\ANSDMP.c:222: while (!Inkey());
+   03A6                     601 00113$:
+   03A6 CDr00r00      [17]  602 	call	_Inkey
+   03A9 DD 75 FF      [19]  603 	ld	-1 (ix), l
+   03AC 7D            [ 4]  604 	ld	a, l
+   03AD B7            [ 4]  605 	or	a, a
+   03AE 28 F6         [12]  606 	jr	Z,00113$
+                            607 ;src\ANSDMP.c:227: AnsiFinish();
+   03B0 CDr00r00      [17]  608 	call	_AnsiFinish
+                            609 ;src\ANSDMP.c:229: printf("Interrupt counted %u ticks...\r\n",uiIntCount);
+   03B3 2Ar1Er00      [16]  610 	ld	hl, (_uiIntCount)
+   03B6 E5            [11]  611 	push	hl
+   03B7 21rE1r03      [10]  612 	ld	hl, #___str_7
+   03BA E5            [11]  613 	push	hl
+   03BB CDr00r00      [17]  614 	call	_printf
+   03BE F1            [10]  615 	pop	af
+   03BF F1            [10]  616 	pop	af
+                            617 ;src\ANSDMP.c:231: return 0;
+   03C0 21 00 00      [10]  618 	ld	hl, #0x0000
+   03C3                     619 00116$:
+                            620 ;src\ANSDMP.c:232: }
+   03C3 DD F9         [10]  621 	ld	sp, ix
+   03C5 DD E1         [14]  622 	pop	ix
+   03C7 C9            [10]  623 	ret
+   03C8                     624 ___str_6:
+   03C8 46 61 69 6C 65 64   625 	.ascii "Failed to open file %s"
+        20 74 6F 20 6F 70
+        65 6E 20 66 69 6C
+        65 20 25 73
+   03DE 0D                  626 	.db 0x0d
+   03DF 0A                  627 	.db 0x0a
+   03E0 00                  628 	.db 0x00
+   03E1                     629 ___str_7:
+   03E1 49 6E 74 65 72 72   630 	.ascii "Interrupt counted %u ticks..."
+        75 70 74 20 63 6F
+        75 6E 74 65 64 20
+        25 75 20 74 69 63
+        6B 73 2E 2E 2E
+   03FE 0D                  631 	.db 0x0d
+   03FF 0A                  632 	.db 0x0a
+   0400 00                  633 	.db 0x00
+                            634 	.area _CODE
+                            635 	.area _INITIALIZER
+                            636 	.area _CABS (ABS)

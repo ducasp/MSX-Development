@@ -1,0 +1,167 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 3.9.0 #11195 (MINGW32)
+                              4 ;--------------------------------------------------------
+                              5 	.module print
+                              6 	.optsdcc -mz80
+                              7 	
+                              8 ;--------------------------------------------------------
+                              9 ; Public variables in this module
+                             10 ;--------------------------------------------------------
+                             11 	.globl _printCharExtAnsi
+                             12 	.globl _printExtAnsi
+                             13 	.globl _endExtAnsi
+                             14 	.globl _initExtAnsi
+                             15 	.globl _print_strout
+                             16 	.globl _print
+                             17 	.globl _AsmCall
+                             18 	.globl _prtregs
+                             19 ;--------------------------------------------------------
+                             20 ; special function registers
+                             21 ;--------------------------------------------------------
+                             22 ;--------------------------------------------------------
+                             23 ; ram data
+                             24 ;--------------------------------------------------------
+                             25 	.area _DATA
+   0000                      26 _prtregs::
+   0000                      27 	.ds 12
+                             28 ;--------------------------------------------------------
+                             29 ; ram data
+                             30 ;--------------------------------------------------------
+                             31 	.area _INITIALIZED
+                             32 ;--------------------------------------------------------
+                             33 ; absolute external ram data
+                             34 ;--------------------------------------------------------
+                             35 	.area _DABS (ABS)
+                             36 ;--------------------------------------------------------
+                             37 ; global & static initialisations
+                             38 ;--------------------------------------------------------
+                             39 	.area _HOME
+                             40 	.area _GSINIT
+                             41 	.area _GSFINAL
+                             42 	.area _GSINIT
+                             43 ;--------------------------------------------------------
+                             44 ; Home
+                             45 ;--------------------------------------------------------
+                             46 	.area _HOME
+                             47 	.area _HOME
+                             48 ;--------------------------------------------------------
+                             49 ; code
+                             50 ;--------------------------------------------------------
+                             51 	.area _CODE
+                             52 ;src\print.c:8: void print(char* s) __naked
+                             53 ;	---------------------------------
+                             54 ; Function print
+                             55 ; ---------------------------------
+   0000                      56 _print::
+                             57 ;src\print.c:30: __endasm;
+   0000 DD E5         [15]   58 	push	ix
+   0002 DD 21 04 00   [14]   59 	ld	ix,#4
+   0006 DD 39         [15]   60 	add	ix,sp
+   0008 DD 6E 00      [19]   61 	ld	l,(ix)
+   000B DD 66 01      [19]   62 	ld	h,1(ix)
+   000E                      63 	loop:
+   000E 7E            [ 7]   64 	ld	a,(hl)
+   000F B7            [ 4]   65 	or	a
+   0010 28 0B         [12]   66 	jr	z,end
+   0012 5F            [ 4]   67 	ld	e,a
+   0013 0E 02         [ 7]   68 	ld	c,#2
+   0015 E5            [11]   69 	push	hl
+   0016 CD 05 00      [17]   70 	call	#5
+   0019 E1            [10]   71 	pop	hl
+   001A 23            [ 6]   72 	inc	hl
+   001B 18 F1         [12]   73 	jr	loop
+   001D                      74 	end:
+   001D DD E1         [14]   75 	pop	ix
+   001F C9            [10]   76 	ret
+                             77 ;src\print.c:31: }
+                             78 ;src\print.c:33: void print_strout(char* s) __naked
+                             79 ;	---------------------------------
+                             80 ; Function print_strout
+                             81 ; ---------------------------------
+   0020                      82 _print_strout::
+                             83 ;src\print.c:45: __endasm;
+   0020 DD E5         [15]   84 	push	ix
+   0022 DD 21 04 00   [14]   85 	ld	ix,#4
+   0026 DD 39         [15]   86 	add	ix,sp
+   0028 DD 5E 00      [19]   87 	ld	e,(ix)
+   002B DD 56 01      [19]   88 	ld	d,1(ix)
+   002E 0E 09         [ 7]   89 	ld	c,#9
+   0030 CD 05 00      [17]   90 	call	#5
+   0033 DD E1         [14]   91 	pop	ix
+   0035 C9            [10]   92 	ret
+                             93 ;src\print.c:46: }
+                             94 ;src\print.c:48: void initExtAnsi()
+                             95 ;	---------------------------------
+                             96 ; Function initExtAnsi
+                             97 ; ---------------------------------
+   0036                      98 _initExtAnsi::
+                             99 ;src\print.c:50: AsmCall(0xb000, &prtregs, REGS_NONE, REGS_NONE);
+   0036 AF            [ 4]  100 	xor	a, a
+   0037 F5            [11]  101 	push	af
+   0038 33            [ 6]  102 	inc	sp
+   0039 AF            [ 4]  103 	xor	a, a
+   003A F5            [11]  104 	push	af
+   003B 33            [ 6]  105 	inc	sp
+   003C 21r00r00      [10]  106 	ld	hl, #_prtregs
+   003F E5            [11]  107 	push	hl
+   0040 21 00 B0      [10]  108 	ld	hl, #0xb000
+   0043 E5            [11]  109 	push	hl
+   0044 CDr00r00      [17]  110 	call	_AsmCall
+   0047 21 06 00      [10]  111 	ld	hl, #6
+   004A 39            [11]  112 	add	hl, sp
+   004B F9            [ 6]  113 	ld	sp, hl
+                            114 ;src\print.c:51: }
+   004C C9            [10]  115 	ret
+                            116 ;src\print.c:53: void endExtAnsi()
+                            117 ;	---------------------------------
+                            118 ; Function endExtAnsi
+                            119 ; ---------------------------------
+   004D                     120 _endExtAnsi::
+                            121 ;src\print.c:55: AsmCall(0xb003, &prtregs, REGS_NONE, REGS_NONE);
+   004D AF            [ 4]  122 	xor	a, a
+   004E F5            [11]  123 	push	af
+   004F 33            [ 6]  124 	inc	sp
+   0050 AF            [ 4]  125 	xor	a, a
+   0051 F5            [11]  126 	push	af
+   0052 33            [ 6]  127 	inc	sp
+   0053 21r00r00      [10]  128 	ld	hl, #_prtregs
+   0056 E5            [11]  129 	push	hl
+   0057 21 03 B0      [10]  130 	ld	hl, #0xb003
+   005A E5            [11]  131 	push	hl
+   005B CDr00r00      [17]  132 	call	_AsmCall
+   005E 21 06 00      [10]  133 	ld	hl, #6
+   0061 39            [11]  134 	add	hl, sp
+   0062 F9            [ 6]  135 	ld	sp, hl
+                            136 ;src\print.c:56: }
+   0063 C9            [10]  137 	ret
+                            138 ;src\print.c:58: void printExtAnsi(unsigned char * ucString) __naked
+                            139 ;	---------------------------------
+                            140 ; Function printExtAnsi
+                            141 ; ---------------------------------
+   0064                     142 _printExtAnsi::
+                            143 ;src\print.c:69: __endasm;
+   0064 DD E5         [15]  144 	push	ix
+   0066 DD 21 04 00   [14]  145 	ld	ix,#4
+   006A DD 39         [15]  146 	add	ix,sp
+   006C DD 6E 00      [19]  147 	ld	l,(ix)
+   006F DD 66 01      [19]  148 	ld	h,1(ix)
+   0072 CD 09 B0      [17]  149 	call	0xb009
+   0075 DD E1         [14]  150 	pop	ix
+   0077 C9            [10]  151 	ret
+                            152 ;src\print.c:70: }
+                            153 ;src\print.c:72: void printCharExtAnsi(unsigned char ucChar) __naked
+                            154 ;	---------------------------------
+                            155 ; Function printCharExtAnsi
+                            156 ; ---------------------------------
+   0078                     157 _printCharExtAnsi::
+                            158 ;src\print.c:81: __endasm;
+   0078 21 02 00      [10]  159 	ld	hl, #2
+   007B 39            [11]  160 	add	hl, sp
+   007C 7E            [ 7]  161 	ld	a, (hl)
+   007D CD 06 B0      [17]  162 	call	0xb006
+   0080 C9            [10]  163 	ret
+                            164 ;src\print.c:82: }
+                            165 	.area _CODE
+                            166 	.area _INITIALIZER
+                            167 	.area _CABS (ABS)

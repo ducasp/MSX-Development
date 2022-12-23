@@ -1,0 +1,26 @@
+# depslib dependency file v1.0
+1566449286 source:c:\fusion-c\ansdmp\src\print.c
+	"../../fusion-c/header/asm.h"
+
+1590013662 source:c:\fusion-c\ansdmp\src\ansdmp.c
+	"ANSDMP.h"
+	"../../fusion-c/header/io.h"
+	"../../fusion-c/header/msx2ansi.h"
+
+1567527451 c:\fusion-c\ansdmp\src\ansdmp.h
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"../../fusion-c/header/msx_fusion.h"
+	"../../fusion-c/header/asm.h"
+
+1586443156 c:\fusion-c\fusion-c\header\msx_fusion.h
+
+1266942264 c:\fusion-c\fusion-c\header\asm.h
+
+1566254808 c:\fusion-c\ansdmp\src\print.h
+
+1586876346 c:\fusion-c\fusion-c\header\io.h
+
+1589749357 c:\fusion-c\fusion-c\header\msx2ansi.h
+

@@ -1,0 +1,200 @@
+ASxxxx Linker V03.00 + NoICE + sdld,  page 1.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+.  .ABS.                            00000000    00000000 =           0. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000000  .__.ABS.                           _modulong
+     00000000  l__CABS                         
+     00000000  l__DABS                         
+     00000000  l__HEADER                       
+     00000000  l__HEAP                         
+     00000000  l__INITIALIZED                  
+     00000000  l__INITIALIZER                  
+     00000000  l__OVERLAY                      
+     00000000  s__CABS                         
+     00000000  s__DABS                         
+     00000000  s__HEADER                       
+     00000000  s__HEADER0                      
+     00000001  l__GSFINAL                      
+     0000000F  l__GSINIT                       
+     00000032  l__DATA                         
+     00000078  l__HEADER0                      
+     00000145  l__HOME                         
+     00000180  s__CODE                         
+     0000249E  l__CODE                         
+     0000261E  s__DATA                         
+     00002650  s__GSINIT                       
+     0000265F  s__GSFINAL                      
+     00002660  s__HEAP                         
+     00002660  s__HOME                         
+     00002660  s__INITIALIZED                  
+     000027A5  s__INITIALIZER                  
+     000027A5  s__OVERLAY                      
+     00003000  _ucBufferMemorySize                ANSDMP
+     0000F344  _RAMAD3                            ANSDMP
+     0000FD9A  _AllIntHook                        ANSDMP
+     0000FD9F  _VdpIntHook                        ANSDMP
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    0000249E =        9374. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000180  _InterruptHandlerHelper            ANSDMP
+     00000188  _InitializeMyInterruptHandler      ANSDMP
+     00000276  _ucUsage                           ANSDMP
+     000002C7  _ucSWInfo                          ANSDMP
+     00000314  _ucSWInfoANSI                      ANSDMP
+     00000368  _ucCursorOff                       ANSDMP
+     0000036C  _ucCursor_On                       ANSDMP
+     00000370  _EndMyInterruptHandler             ANSDMP
+     000003B1  _IsValidInput                      ANSDMP
+     000003E2  _CountVdpInterrupt                 ANSDMP
+     000003EA  _main                              ANSDMP
+     00000581  _DosCall                           DosCall
+     00000581  _DosCall_start                     DosCall
+     000005B8  _AnsiInit                          
+     000005B8  _DosCall_end                       DosCall
+     000005CA  _AnsiFinish                        
+     000005D6  _AnsiStartBuffer                   
+     000005E3  _AnsiEndBuffer                     
+     000005F7  _AnsiCallBack                      
+     00000600  _AnsiGetCursorPosition             
+     0000060B  _AnsiPutChar                       
+     000006C6  _AnsiPrint                         
+     00001DF0  _Inkey                             
+     00001E16  _Print                             print
+     00001E62  _printf                            printf
+     00001E7A  _sprintf                           printf
+     000022B2  _AsmCall                           AsmCall
+     00002355  __uitoa                            _itoa
+     00002426  __itoa                             _itoa
+     00002475  __ultoa                            _ltoa
+     00002536  __ltoa                             _ltoa
+     0000259E  _PrintChar                         
+     000025BC  _putchar                           
+     000025BC  _putchar_rr_s                      
+     000025C1  _putchar_rr_dbs                    
+     000025C6  __moduchar                         
+     000025D2  __moduint                          
+     000025DD  __divuint                          
+     000025E5  __divuchar                         
+     000025EC  __divu8                            
+     000025EF  __divu16                           
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 3.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEADER0                            00000000    00000078 =         120. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_DATA                               0000261E    00000032 =          50. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     0000261E  _heap_top                          
+     00002620  _uiGetSize                         ANSDMP
+     00002622  _regs                              ANSDMP
+     0000262E  _OldHook                           ANSDMP
+     00002633  _MyHook                            ANSDMP
+     00002638  _IntFunc                           ANSDMP
+     0000263D  _TypeOfInt                         ANSDMP
+     0000263E  _uiIntCount                        ANSDMP
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 5.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSINIT                             00002650    0000000F =          15. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 6.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSFINAL                            0000265F    00000001 =           1. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 7.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEAP                               00002660    00000000 =           0. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00002660  _HEAP_start                        
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 8.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HOME                               00002660    00000145 =         325. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00002660  __divulong                         _divulong
+     000026F2  __modulong                         _modulong
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 9.
+
+Files Linked                              [ module(s) ]
+
+..\fusion-c\include\crt0_msxdos_advanced.rel
+                                          [  ]
+obj\Release\src\ANSDMP.rel                [ ANSDMP ]
+
+
+Libraries Linked                          [ object file ]
+
+..\fusion-c\lib\asm.lib                   [ DosCall ]
+..\fusion-c\lib\msx2ansi.lib              [ msx2ansi.rel ]
+..\fusion-c\lib\fusion.lib                [ inkey.rel ]
+..\fusion-c\lib\fusion.lib                [ print.rel ]
+..\fusion-c\lib\fusion.lib                [ printf.rel ]
+..\fusion-c\lib\asm.lib                   [ AsmCall ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _itoa.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _ltoa.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _divulong.rel ]
+..\fusion-c\lib\fusion.lib                [ printchar.rel ]
+..\fusion-c\lib\fusion.lib                [ putchar_msxdos.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ modunsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ divunsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _modulong.rel ]
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 10.
+
+User Base Address Definitions
+
+_CODE = 0x0180
+_DATA = 0x0000
+
+

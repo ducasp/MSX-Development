@@ -1,0 +1,14 @@
+-mjwx
+-i bin\Release\ANSDMP.exe
+-b _CODE = 0x0180
+-b _DATA = 0x0000
+-k C:\Program Files\SDCC\lib
+-k C:\Program Files\SDCC\bin\..\lib\z80
+-l ..\fusion-c\lib\fusion.lib
+-l ..\fusion-c\lib\asm.lib
+-l ..\fusion-c\lib\msx2ansi.lib
+-l z80
+..\fusion-c\include\crt0_msxdos_advanced.rel
+obj\Release\src\ANSDMP.rel
+
+-e
