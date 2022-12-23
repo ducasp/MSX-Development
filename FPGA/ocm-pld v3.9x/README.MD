@@ -1,17 +1,17 @@
-# OCM-PLD v3.9c
+# OCM-PLD v3.9d
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
-# New in relation to v3.9b
+# New in relation to v3.9c
 
-    - MC2+ supported
-    - Fixes for MC2+ related to original 3.8 build from Focosi/Trucco
-    - Improvements and fixes to MSX Mouse emulation over PS/2 mouse
-    - As a result, paddle emulation also is now smooter
+- Improvements from KdL to the SDRAM controller allowing features like 1MB VRAM
+  to work with Victor Trucco SDRAM controller
+
+- Fix z80 so Lilly's Saga runs ok now
 
 # Release notes
 
-OCM-PLD v3.9c is an extension on KdL OCM release v3.9. What this extension
+OCM-PLD v3.9d is an extension on KdL OCM release v3.9. What this extension
 brings to the table:
 
 - New supported devices:
@@ -24,7 +24,9 @@ brings to the table:
         - I've allowed Joystick port debounce to be disabled, this perhaps can
         alleviate the issues some users were having with paddles. To turn off
         Joystick port debounce use the command SETSMART -89 , to turn it back
-        on use SETSMART -8A , power cycle will restore default, on.
+        on use SETSMART -8A , power cycle will restore default, on. NOTE: this
+        option at this moment is not available and debounce is always active no
+        matter the selection with SETSMART.
 
         - I've added support to a third keyboard map table, so you have the one
         from the build (us/br/fr/es), japanese and one for the built-in MSX
@@ -166,7 +168,9 @@ brings to the table:
 
     - Improved: Victor Trucco made improvements on the SDRAM controller so it
       is able to work with different chips. Some SM-X mini and SMX-HB use chips
-      that need this to work.
+      that need this to work. KdL kindly worked on that code from Victor Trucco
+      to extrapolate it to uncovered scenarios, making it aware of OCM 3.9
+      SD-RAM usage, thanks KdL! :)
 
     - Extra: I've added Paddle emulation when using a PS/2 mouse. To enable
       VAUS (Arkanoid/Taito) Paddle emulation use SETSMART -8E, to enable MSX
@@ -195,6 +199,8 @@ brings to the table:
       is a better approach as it has a time-out to return to the first state
       after a few time without communication, like a real MSX mouse.
 
+    - Fix: there was a bug in z80 implementation causing issues while playing
+      Lilly's Saga, fix provided by Hara-san
 
 - Future, devices that have full franky build:
 

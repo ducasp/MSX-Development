@@ -2,10 +2,11 @@
 --
 -- HUBG.h
 --   MSX HUB client using UNAPI for MSX2.
---   Revision 0.80
+--   Revision 0.90
 --
 -- Requires SDCC and Fusion-C library to compile
--- Copyright (c) 2020 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Copyright (c) 2020-2022 Oduvaldo Pavan Junior ( ducasp@gmail.com )
+-- Israel F. Araujo (github.com/israelferrazaraujo): contribution to expand the number of packages that can be listed for a category.
 -- All rights reserved.
 -- Some routines are adaptations and have been re-used from original MSX-HUB
 -- source code by fr3nd, available at https://github.com/fr3nd/msxhub
@@ -61,12 +62,24 @@
 #define BUFFER_SIZE 1024
 #define MAX_LOCAL_PACKAGES 100
 #define MAX_REMOTE_GROUPS 25
-#define MAX_REMOTE_PACKAGES 70
+#define MAX_REMOTE_PACKAGES 210 //This value must match the type of the groups_package.ucPackages variable
+
+//The default initialization value of a pointer depends on the compiler
+#define NULL_POINTER (char*)-1
+
+//Dynamic memory length (see Malloc function)
+#define DYNAMIC_MEM_SIZE 2048
 
 //Define how many can be displayed at once
 #define MAX_REMOTE_PACK_LIST_ITENS 10
 #define MAX_LOCAL_PACK_LIST_ITENS 10
 #define MAX_REMOTE_GROUP_ITENS 9
+
+//Define the maximum length of a package detail
+#define MAX_PACK_DETAIL_LENGTH 77
+
+//Number of package details loaded immediately for fast paging
+#define FAST_PAGING_LIST_ITENS 50
 
 //Where we will allocate memory for hget and other processes
 #define HI_MEMBLOCK_START 0xC000
@@ -107,11 +120,11 @@ typedef struct {
 typedef struct {
   unsigned char ucPackages;
   char ucPackageName[MAX_REMOTE_PACKAGES][9];
-  char ucPackageDetail[MAX_REMOTE_PACKAGES][77];
+  char *ucPackageDetail[MAX_REMOTE_PACKAGES]; //[77]
 } groups_package;
 
 //Title when installing the first time
-const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.80 <\r\n (c) 2020 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
+const char ucSWInfoANSI[] = "\x1b[31m> MSX HUB Client v0.90 <\r\n (c) 2022 Israel F. Araujo - github.com/israelferrazaraujo \r\n Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
 
 //Those are not re-usable, they carry configuration for the whole time program is running
 char hubdrive; //Drive HUB is running
@@ -140,6 +153,7 @@ groups_package hubGroupPackages; //Hold the currently available packages on the 
 
 //General temp variables mostly used in menu building routines, be careful not nesting the usage of those
 unsigned char ucRet;
+unsigned char ucSearch;
 char chCol,chRow;
 unsigned char ucTmp1,ucTmp2,ucTmp3,ucTmp4;
 
@@ -175,4 +189,6 @@ void install(unsigned char ucPage, unsigned char ucItem, char *chPackage);
 void upgrade(unsigned char ucPage, unsigned char ucItem);
 void info(char *package);
 unsigned char is_installed(unsigned char *ucPackage);
+void ClearCache();
+void *AllocCache(unsigned int size);
 #endif // _HUBG_HEADER_INCLUDED

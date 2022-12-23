@@ -1,8 +1,8 @@
-OCM-PLD Pack v3.9b
+OCM-PLD Pack v3.9d
 ==================
 
 Author:  KdL (3.9 for 1st Gen and 2nd Gen) Ducasp (3.9c 2nd Gen only)
-Update:  2022.05.31
+Update:  2022.12.01
 
 This package includes a set of custom firmware to update the following machines.
 

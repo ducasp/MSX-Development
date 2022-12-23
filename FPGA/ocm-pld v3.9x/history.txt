@@ -33,14 +33,14 @@
 --
 -------------------------------------------------------------------------------------------------------------------
 -- OCM-PLDs modified, compiled and tested by KdL 2006-2021
--- OCM 3.9x modified, compiled and tested by Ducasp 2022 ( https://www.github.com/ducasp )
+-- SMX-HB and SMX w/ Franky modified, compiled and tested by Ducasp 2022 ( https://www.github.com/ducasp )
 -------------------------------------------------------------------------------------------------------------------
 --
 -- Dedicated firmware for the following 1st Gen machines based on Altera Cyclone I:
 --                1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 (regular) and [SX-1 Mini/Mini+].
 --
 -- Dedicated firmware for the following 2nd Gen machines based on Altera Cyclone IV-E:
---                SM-X (regular), [SM-X Mini], [SMX-HB], [SX-2] and MC2+.
+--                SM-X (regular), [SM-X Mini], SX-2, [SMX-HB] and SX-2.
 --
 -- [!] ATTENTION: the machines in square brackets have not been tested directly by me as I do not own them.
 -------------------------------------------------------------------------------------------------------------------
@@ -95,42 +95,31 @@
 __________________________________
 v3.x KdL/HRA's Unofficial Release \________________________________________________________________________________
 
-v3.9c [2022.05.27] [Ducasp Updates!]
-- Fixes for MSX Mouse emulation w/ PS/2 mouse and new sensibility option using third mouse button
-    - Mouse can now move a single pixel on X Axis
-    - Sensibility change through third button click
-    - Mouse will work fine even if Joymega / Mega Drive joystick is connected
-    - Port disconnection/reconnection simulation when moving from joystick -> mouse and vice versa
-- Incorporated Multicore 2+ to the build, single build that has everything.
-    - Multicore 2+ supports stereo OPL3
-    - Multicore 2+ uses OSD on F12 key, so turbo speed change only through OSD or applications
-    - Multicore 2+ uses OSD instead of DIP Switches
-    - Multicore 2+ paddle emulation is set only on the OSD
-    - Multicore 2+ supports emulation of SD Card using a disk image file
+v3.9d [2022.12.XX] [Ducasp Updates!]
 
-v3.9b [2022.04.29] [Ducasp Updates!]
-- Frankysnd builds now also have a second PSG!
-- Added VAUS and MSX Standard Paddle emulation over PS/2 mouse.
+- New SDRAM controller logic with additions from KdL over what Victor Trucco did, as Victor Version was based on
+  3.7.1 OCM and not covering all scenarios, thanks KdL!
+- SMX-HB joystick debounce is always enabled and option to turn it off is deprecated, as it did not help with
+  joystick peripherals that weren't working with it.
+- All devices now benefit from updated T800 core from Hara-san that fixes issues with Lilly's Adventure.
 
-v3.9a [2022.04.19] [Ducasp Updates!]
+v3.9c [2022.06.XX] [Ducasp Updates!]
+
+- New logic for mouse, allowing single pixel moviments on X axys.
+- Support of MC2+.
+
+v3.9b [2022.05.XX] [Ducasp Updates!]
+
+- New SDRAM controller logic from Victor Trucco on all machines, should work for SM-X Mini and some SMX-HB.
+- Second PSG support on Frankysnd variations.
+
+v3.9a [2022.04.XX] [Ducasp Updates!]
 
 - New machine added: SMX-HB, using EPC15 and a few differences due to it being a motherboard to be used inside a
   SHARP Hotbit case / Keyboard.
-- New variants for SM-X (tested by me) and it's second gen counterparts, it has Franky sound support.
-- OPL3 fix #1: Interrupt was not connected, so timers weren't generating interrupt, this caused really slow
-  playback using VGMPLAY 1.3 or newer since it uses OPL3 timer for more accurate timing.
-- OPL3 fix #2: Timers timing were meant for 50MHz OPL3 clock and we are clocking it quite a bit higher, fixed the
-  timer scaler so timers are accurate
-- OPL3 fix #3: only left channel sound was being captured. We do not have space on FPGA to render left and right
-  channels sequencing, so right channel is disconnected and less cells are used, but some VGMs play really bad as
-  they have sounds that play only on right channel (i.e.: Doom soundtrack third vgm). Used a clever hack to make
-  those sounds play on left channel without needing to render the right channel sequencing (any command configuring
-  a channel to be only on Left or Right output is changed on the fly to render on both channels when the new "mono"
-  pin on OPL3 is high)
-- SMX-HB Internal Keyboard doesn't have Page Up, Page Down or F9 to F12, so SELECT + +/=, SELECT + -/_, SELECT + F1
-to SELECT + F4 acts as those keys
-- Victor Trucco made improvements on the SDRAM controller so it is able to work with different chips. Some SM-X mini
-  and SMX-HB use chips that need this to work.
+- New variants for SM-X (tested by me) and it's derivatives with EPC22, it has Franky support but it loses OPL3
+  support.
+
 
 v3.9 [2021.08.23] [KdL's Updates!]
 

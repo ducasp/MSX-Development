@@ -73,7 +73,12 @@ escolher...
     necessário desligar e religar o dispositivo para mudança ser efetiva), na
     posição de 2048 MB de memória irá usar o Kernel MSX Dos 2. Single EPBIOS
     utiliza apenas o Kernel MSX Dos 2. Se usar SD-BIOS, então isso não é
-    relevante já que a SD-BIOS irár sobrepujar essa escolha
+    relevante já que a SD-BIOS irár sobrepujar essa escolha. Se você usa uma
+    interface external com Nextor, lembre de utilizar o Kernel MSX Dos 2 (ou
+    usando Single EPBIOS ou configurando a Mapper para 2048MB / Escolhendo o
+    Kernel MSX Dos 2 se usar Dual EPBIOS) já que há um bug que deve ser
+    corrigido no OCM 3.9.1 que previne um dispositivo Nextor de funcionar caso
+    o SD interno seja iniciado com o Kernel Nextor.
 
 5 - Agora já tem seu arquivo de firmware, apenas use ele :)
 

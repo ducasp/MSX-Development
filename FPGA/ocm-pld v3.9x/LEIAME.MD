@@ -1,17 +1,17 @@
-# OCM-PLD v3.9c
+# OCM-PLD v3.9d
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
-# Novidades em relação a v3.9b
+# Novidades em relação a v3.9c
 
-    - Suporte ao MC2+
-    - Algumas correções para o MC2+ em relação ao build 3.8 original do Focosi/Trucco
-    - Melhorias e correções na emulação de mouse MSX usando mouse PS/2
-    - Como resultado, a emulação do paddle ficou mais suave
+- Melhorias do KdL na controladora de SDRAM permitindo que coisas como a VRAM
+  de 1MB funcionem com o controlador do Victor Trucco
+
+- Correção no z80 para que Lilly's Saga funcione adequadamente
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9c é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
+OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
 diferente:
 
 - Novos dispositivos suportados:
@@ -26,7 +26,8 @@ diferente:
         ajudar com problemas que algumas pessoas estavam tendo com paddles.
         Para desligar o debounce use o comando SETSMART -89 , para religar use
         SETSMART -8A , ao desligar e religar a placa, o padrão é debounce
-        ligado.
+        ligado. NOTA: temporariamente essa opção está indisponível e o debounce
+        está permanentemente ativado independente da seleção.
 
         - Suporte a um terceiro mapa de teclados, então tem o mapa da versão
         (us/br/fr/es), japonês e um para o teclado do Hotbit. O teclado do
@@ -178,7 +179,10 @@ diferente:
 
     - Melhoria: Victor Trucco fez melhorias no controlador de SDRAM que agora é
       capaz de trabalhar com diferentes chips. Alguns SM-X mini e SMX-HB usam
-      chips que precisam dessa melhoria pra funcionar.
+      chips que precisam dessa melhoria pra funcionar. O KdL gentilmente ajudou
+      trabalhando no código do Victor Trucco e extrapolando ele para alguns
+      cenários não cobertos, agora o controlador é compatível com o mapa de RAM
+      da OCM 3.9, obrigado KdL! :)
 
     - Novidade: Emulação de Paddle usando um mouse PS/2. Para habilitar o modo
       VAUS (Arkanoid/Taito) use SETSMART -8E, to habilitar o modo MSX use
@@ -210,6 +214,8 @@ diferente:
       forma melhor que contam com time-out para retornar sozinho ao primeiro
       estado após algum tempo sem leitura, assim como um mouse MSX real.
 
+    - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
+      Lilly's Saga, correção feita pelo Hara-san
 
 - Futuro, dispositivos que terão um build Franky Completo:
 

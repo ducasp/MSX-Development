@@ -206,6 +206,9 @@ diferente:
       porta, HIDTEST e jogos/programas que usem a HIDLIB dependem desse evento
       de desconexão e posterior conexão para detectar a troca de dispositivo.
 
+    - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
+      Lilly's Saga, correção feita pelo Hara-san
+
 - Futuro:
 
     - Novidade: ainda está em desenvolvimente, por favor aguarde, logo teremos
