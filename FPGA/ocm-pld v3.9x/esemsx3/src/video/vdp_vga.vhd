@@ -79,7 +79,7 @@
 --        even field  -> even line (odd  line is black)
 --        odd  field  -> odd line  (even line is black)
 --
--- 13rd,October,2003 created by Kunihiko Ohnaka
+-- 13th,October,2003 created by Kunihiko Ohnaka
 -- JP: VDPのコアの実装と表示デバイスへの出力を別ソースにした．
 --
 -------------------------------------------------------------------------------
@@ -87,8 +87,8 @@
 --
 -- JP: ESE-VDPコア(vdp.vhd)が生成したビデオ信号を、VGAタイミングに
 -- JP: 変換するアップスキャンコンバータです。
--- JP: NTSCは水平同期周波数が15.7KHz、垂直同期周波数が60Hzですが、
--- JP: VGAの水平同期周波数は31.5KHz、垂直同期周波数は60Hzであり、
+-- JP: NTSCは水平同期周波数が15.7kHz、垂直同期周波数が60Hzですが、
+-- JP: VGAの水平同期周波数は31.5kHz、垂直同期周波数は60Hzであり、
 -- JP: ライン数だけがほぼ倍になったようなタイミングになります。
 -- JP: そこで、vdpを ntscモードで動かし、各ラインを倍の速度で
 -- JP: 二度描画することでスキャンコンバートを実現しています。

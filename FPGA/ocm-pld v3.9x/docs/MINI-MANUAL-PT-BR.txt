@@ -1,4 +1,4 @@
-                          ***** OCM-PLD v3.9c *****
+                          ***** OCM-PLD v3.9.1a *****
 
 Feito por DucaSP ( https://github.com/ducasp )
 
@@ -17,7 +17,7 @@ Só o faça caso sinta vontade :)
         - Segundo PSG
         - Autofire por HrA!
         - BIOS Wi-Fi
-    - ESPECÍFICO PARA SMX-HB
+    - ESPECÍFICO PARA SMX-HB / HB MINI
         - Certifique-se de configurar corretamente o tipo de teclado!
         - Alternativas para teclas inexistentes no Hotbit
         - Debounce do Joystick
@@ -39,10 +39,10 @@ Só o faça caso sinta vontade :)
 
 Para não reinventar a roda, por favor use os manuais existentes para:
 
-    - I/O Chaveado e Atalhos do Teclado: switched io ports revision 10.pdf
+    - I/O Chaveado e Atalhos do Teclado: switched io ports revision 11.pdf
 
-    - Chaves DIP: dip-sw user manual v3.9-type2.pdf e se tiver um SMX-HB também
-      dip-sw user manual v3.9-SMX-HB.txt
+    - Chaves DIP: dip-sw user manual v3.9.1-type2.pdf e se tiver um SMX-HB
+      também dip-sw user manual v3.9.1-SMX-HB.txt
 
     - Dicas gerais: Zemmix_Neo_EN-US.pdf e Zemmix_Neo_PT-BR.pdf contam com uma
       grande quantidade de informações sobre como usar SD, fitas, cartuchos,
@@ -86,8 +86,8 @@ Se aplica a:
             TODOS DISPOSITIVOS E VERSÕES
 
 Como utilizar:
-            Um adaptador tipo splitter PS/2 é necessário para o SM-X e SM-X
-Mini, ele transforma o conector PS/2 em dois, um para teclado e outro para
+            Um adaptador tipo splitter PS/2 é necessário para o SM-X, HB Mini e
+SM-X Mini, ele transforma o conector PS/2 em dois, um para teclado e outro para
 mouse. O SX2 e MC2+ já tem dois conectores PS/2, então basta ligar o mouse na
 porta adequada. No caso do SMX-HB, infelizmente não há conectores PS/2 pré
 instalados, caso deseja utilizar um mouse ou teclado PS/2, deverá soldar um ou
@@ -155,7 +155,7 @@ MC2+ a solução é diferente, pois seu FPGA maior permite que os sequenciadores
 / renderizadores de um segundo canal sejam utilizados a temos o som em estéreo.
 
 Se aplica a:
-            TODOS DISPOSITIVOS MENOS SMX-HB, TODAS VERSÕES
+            TODOS DISPOSITIVOS MENOS SMX-HB E HB MINI, TODAS VERSÕES
 
 Como utilizar:
             A OPL3 está desligada por padrão, exceto no MC2+ aonde o padrão é
@@ -328,9 +328,9 @@ permitindo que:
     - Configurar a BIOS Wi-Fi para atualizar data e hora no boot (bem mais
       rápido que ter o SNTP.COM no AUTOEXEC.BAT)
 
-                      ***** ESPECÍFICO PARA SMX-HB *****
+                  ***** ESPECÍFICO PARA SMX-HB / HB MINI *****
 
-            Algumas diferenças ocorrem no SMX-HB, por algumas razões:
+            Algumas diferenças ocorrem no SMX-HB / HB MINI, por algumas razões:
 
     1 - Devido à falta de componentes e para manter um preço acessível, utiliza
         um FPGA com capacidade cerca de 1/3 menor que os dispositivos segunda
@@ -342,7 +342,9 @@ permitindo que:
         teclado PC-AT PS/2 (que pode ser utilizado também desde que solde um
         conector PS/2 nas portas GPIO e desabilite o teclado "interno"), grande
         parte da teclas utilizadas para atalhos / habilitar / desabilitar
-        dispositivos não estão disponíveis ao usuário.
+        dispositivos não estão disponíveis ao usuário. (apenas HB, HB MINI usa
+        uma porta PS/2 pra treclado e precisa de um splitter PS/2 para usar
+        mouses, como o SM-X / SM-X Mini)
 
     3 - As portas de joystick tem uma sensibilidade alta, o debounce é preciso
         para evitar acionamentos falsos quando não há nada conectado nas portas
@@ -353,12 +355,12 @@ permitindo que:
         nem tudo é acessível facilmente. O leitor de cartões SD, chaves DIP e o
         botão do gerador de scanlines não são acessíveis com o gabinete fechado
         a menos que o usuário opte por fazer rasgos no gabinete para tornar os
-        mesmos acessíveis.
+        mesmos acessíveis. (APENAS HB)
 
     5 - O acesso ao conector JTAG para o FPGA/Memória Flash só é possível se o
         módulo FPGA for retirado da placa. Devido a isso, o módulo FPGA não irá
         receber energia da fonte do gabinete e o USB Blaster não consegue
-        alimentar o módulo.
+        alimentar o módulo. (APENAS HB)
 
        - Certifique-se de configurar corretamente o tipo de teclado! -
 
@@ -370,7 +372,7 @@ poderá não responder. Se deseja utilizar um teclado PS/2, procure se informar
 com o Victor Trucco ou seu revendedor como fazer as conexões e configurações da
 placa para esse fim. Quando isso estiver feito, irá mudar a chave DIP 9 para a
 posição ON. Caso não o faça, como no caso anterior, algumas teclas estarão
-trocadas.
+trocadas. USUÁRIOS DO HB MINI DEVEM DEIXAR A DIP 9 SEMPRE NA POSIÇÃO ON!
 
              - Alternativas para teclas inexistentes no Hotbit -
 
@@ -618,4 +620,4 @@ sejam diferentes para esse dispositivo... :)
 Esse manual é gratuito e pode ser livremente distribuído. Trabalhos derivados
 podem ser criados dede que o manual original e seu autor sejam mencionados e
 creditados.
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2022 - 2023 Oduvaldo Pavan Junior - ducasp@gmail.com

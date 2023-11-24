@@ -1,4 +1,4 @@
-                          ***** OCM-PLD v3.9c *****
+                          ***** OCM-PLD v3.9.1a *****
 
 Brought to you by DucaSP ( https://github.com/ducasp )
 
@@ -17,7 +17,7 @@ Just do it if you feel like it :)
         - Second PSG
         - Autofire by HrA!
         - Wi-Fi BIOS
-    - SMX-HB SPECIFICS
+    - SMX-HB / HB MINI SPECIFICS
         - Make sure that you have the right Keyboard Type Set!
         - Alternatives for keys unavailable on built-in keyboard
         - Joystick Debounce
@@ -39,10 +39,10 @@ Just do it if you feel like it :)
 
 To not reinvent the wheel, please make use of the current manuals for:
 
-    - Switched I/O and Keyboard Shortcuts: switched io ports revision 10.pdf
+    - Switched I/O and Keyboard Shortcuts: switched io ports revision 11.pdf
 
-    - DIP Switches: dip-sw user manual v3.9-type2.pdf and if you have an SMX-HB
-      also dip-sw user manual v3.9-SMX-HB.txt
+    - DIP Switches: dip-sw user manual v3.9.1-type2.pdf and if you have an
+      SMX-HB also dip-sw user manual v3.9.1-SMX-HB.txt
 
     - General guidelines: Zemmix_Neo_EN-US.pdf and Zemmix_Neo_PT-BR.pdf have
       quite a lot of good information about using SD, tape, cartridges, etc.
@@ -85,10 +85,10 @@ Applies to:
             ALL DEVICES AND BUILDS
 
 How to use:
-            SM-X and SM-X Mini needs a PS/2 splitter adapter, that splits the
-PS/2 connector into two, one for keyboard and other for mouse. SX2 and MC2+
-have two PS/2 connectors, one for keyboard and other for mouse, so you just
-need to connect a mouse to the PS/2 port. Now, SMX-HB unfortunately doesn't
+            SM-X, HB Mini and SM-X Mini needs a PS/2 splitter adapter, that
+splits the PS/2 connector into two, one for keyboard and other for mouse. SX2
+and MC2+ have two PS/2 connectors, one for keyboard and other for mouse, so you
+just need to connect a mouse to the PS/2 port. SMX-HB unfortunately doesn't
 have any PS/2 connector built-in, if you want to use this feature (or an PS/2
 keyboard) you will need to solder one or two connectors using the main-board
 GPIO port, please seek directions on how to do it with Victor Trucco or the
@@ -152,7 +152,7 @@ hack that modifies the incoming channel programming on the fly to play on both
 channels. Only on MC2+, full stereo rendering/sequencing is now available.
 
 Applies to:
-            ALL DEVICES EXCEPT SMX-HB, ALL BUILDS
+            ALL DEVICES EXCEPT SMX-HB AND HB MINI, ALL BUILDS
 
 How to use:
             OPL3 emulation is off by default, except on MC2+ that it is on by
@@ -323,9 +323,9 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
     - Configure the Wi-Fi BIOS to update clock and date during boot (way faster
       than using SNTP.COM on AUTOEXEC.BAT)
 
-                         ***** SMX-HB SPECIFICS *****
+                     ***** SMX-HB / HB MINI SPECIFICS *****
 
-            SMX-HB has its own peculiarities, for some reasons:
+            SMX-HB / HB MINI have their own peculiarities, for some reasons:
 
     1 - Due to the electronic components shortage and to make it affordable, it
         uses a FPGA that has about 1/3 less capacity than the 2nd GEN OCM
@@ -337,7 +337,8 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
         keyboard (which can still be used if you solder a PS/2 connector on its
         GPIO port and disable "internal" keyboard), most of the times keys that
         are used for shortcuts or enabling disabling devices are not available
-        to the user.
+        to the user. (HB ONLY, HB MINI uses PS/2 Keyboards and needs PS/2
+        splitter to use mouses, like SM-X / SM-X Mini)
 
     3 - Due to its Joystick port connections being overly sensitive, debouncing
         is necessary to avoid ghost joystick hits when ports are not connected,
@@ -347,12 +348,12 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
     4 - Being built in a computer case, not everything is easily accessible. SD
         -Card slot, DIP-Switches and Scanline generator button are not
         accessible when the case is closed unless the user opts to cut the case
-        to make them accessible.
+        to make them accessible. (HB ONLY)
 
     5 - JTAG access to the FPGA/Flash Memory is not possible unless you take
         off the FPGA module board. Due to that, the FPGA board won't receive
         power from the case power supply and USB Blaster is not able to provide
-        enough power to it.
+        enough power to it. (HB ONLY)
 
            - Make sure that you have the right Keyboard Type Set! -
 
@@ -364,7 +365,7 @@ keyboard to freeze. If you want to use an external PS/2 keyboard, please seek
 guidance with Victor Trucco or your board seller on how to make the connections
 and configure the board for it. After those steps are taken, you will flick the
 DIP SWITCH position 9 to ON. Failure to do so, like with built-in keyboard, may
-cause wrong keys mapping.
+cause wrong keys mapping. HB MINI USERS SHOULD HAVE DIP 9 ALWAYS SET TO ON!
 
           - Alternatives for keys unavailable on built-in keyboard -
 
@@ -601,4 +602,4 @@ some things need to be different for this device... :)
 
 This manual is free to use and can be freely distributed. Derivative work can
 be created as long as the original manual and author are mentioned/credited.
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2022 - 2023 Oduvaldo Pavan Junior - ducasp@gmail.com

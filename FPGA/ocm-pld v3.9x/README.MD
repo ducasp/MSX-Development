@@ -1,32 +1,34 @@
-# OCM-PLD v3.9d
+# OCM-PLD v3.9.1a
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
-# New in relation to v3.9c
+# New in relation to v3.9d
 
-- Improvements from KdL to the SDRAM controller allowing features like 1MB VRAM
-  to work with Victor Trucco SDRAM controller
-
-- Fix z80 so Lilly's Saga runs ok now
+- Incorporated all 3.9.1 changes not present in 3.9d, check original KdL 3.9.1
+  release for more information. Note: PS2 new controller was not Incorporated
+  as my understanding is that it might make some keyboards currently working on
+  3.9.0 to not work on it unless you make some proposed hardware changes.
 
 # Release notes
 
-OCM-PLD v3.9d is an extension on KdL OCM release v3.9. What this extension
+OCM-PLD v3.9.1a is an extension on KdL OCM release v3.9.1. What this extension
 brings to the table:
 
 - New supported devices:
 
-    - SMX-HB: It is a 1.75gen device. Its FPGA has about 1/3 less logic cells
-      as a fruit of component shortage. It is meant to replace the motherboard
-      of Hotbit MSX Computers, adding (almost) the full OCM-SM experience. As
-      being a device with real MSX Keyboard, it has its own needs:
+    - SMX-HB and SMX-HB MINI: It is a 1.75gen device. Its FPGA has about 1/3
+      less logic cells as result of components shortage. It is meant to replace
+      the motherboard of Hotbit MSX Computers (HB), adding (almost) the full
+      OCM-SM experience. As being a device with real MSX Keyboard (HB ONLY), it
+      has its own needs (some doesn't apply to HB MINI that uses only PS/2
+      keyboards:
 
         - I've allowed Joystick port debounce to be disabled, this perhaps can
         alleviate the issues some users were having with paddles. To turn off
         Joystick port debounce use the command SETSMART -89 , to turn it back
         on use SETSMART -8A , power cycle will restore default, on. NOTE: this
         option at this moment is not available and debounce is always active no
-        matter the selection with SETSMART.
+        matter the selection with SETSMART. (HB and HB MINI)
 
         - I've added support to a third keyboard map table, so you have the one
         from the build (us/br/fr/es), japanese and one for the built-in MSX
@@ -34,17 +36,20 @@ brings to the table:
         its map is very peculiar and PS/2 keyboards have a different mapping.
         DIP switch 9 set to OFF is the default, using the internal mapping, if
         set to ON it will use the mapping the firmware was built-in, that is
-        handy when you want to use an external PS/2 keyboard.
+        handy when you want to use an external PS/2 keyboard. (HB MINI always
+        should have DIP 9 set to on)
 
         - Fix: Select key was not working on original 3.7.1 based release, it
-        works now.
+        works now. (HB)
 
         - Improvement: SELECT + UP and SELECT + DOWN replaces Page Up and Page
         Down, so it is possible to activate the autofire module using only
         SMX-HB internal keyboard. Also, SELECT + F1 to F4 replaces F9 to F12,
-        making it possible to use most of the keyboard shortcuts.
+        making it possible to use most of the keyboard shortcuts. (HB)
 
-        - Missing: it doesn't support OPL3 as it won't fit on the FPGA used.
+        - Missing: it doesn't support OPL3 as it won't fit on the FPGA used. It
+          doesn't support paddle emulation on frankysnd version for due to the
+          same reason. (HB and HB MINI)
 
     - Multicore 2+: it is like a MiSTER device, but with less FPGA capacity (
     more than double of second gen devices, but about half of MiSTER) and also
@@ -210,10 +215,10 @@ brings to the table:
 
     - Extra: this is a WIP, please wait, but it will have Franky VDP :P
 
-All source code and binaries that changed in relation to OCM 3.9:
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+All source code and binaries that changed in relation to OCM 3.9.1:
+(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-All source code from OCM 3.9 originally is a work of many people, including
+All source code from OCM 3.9.1 originally is a work of many people, including
 KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the

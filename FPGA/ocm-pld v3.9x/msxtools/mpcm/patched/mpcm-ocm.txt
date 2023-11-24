@@ -1,8 +1,0 @@
-MPCM-OCM.COM ver 1.04
-=====================
-
-MPCM patched by KdL (2020.01.09) with turbo speed in loading and normal speed in playing.
-
-
-______
-Enjoy!

@@ -197,7 +197,8 @@ ENTITY VDP_REGISTER IS
         VDPMODEISVRAMINTERLEAVE     : OUT   STD_LOGIC;
 
         -- SWITCHED I/O SIGNALS
-        FORCED_V_MODE               : IN    STD_LOGIC
+        FORCED_V_MODE               : IN    STD_LOGIC;
+        VDP_ID                      : IN    STD_LOGIC_VECTOR(  4 DOWNTO 0 )
     );
 END VDP_REGISTER;
 
@@ -301,10 +302,10 @@ BEGIN
                 REG_R1_DISP_ON      <= FF_R1_DISP_ON;
                 REG_R0_DISP_MODE    <= FF_R0_DISP_MODE;
                 REG_R1_DISP_MODE    <= FF_R1_DISP_MODE;
-
-                REG_R25_SP2         <= FF_R25_SP2;
-                REG_R26_H_SCROLL    <= FF_R26_H_SCROLL;
-
+                IF( VDP_ID /= "00000" )THEN
+                    REG_R25_SP2         <= FF_R25_SP2;
+                    REG_R26_H_SCROLL    <= FF_R26_H_SCROLL;
+                END IF;
             END IF;
         END IF;
     END PROCESS;
@@ -396,7 +397,7 @@ BEGIN
                 WHEN "01"       => -- PORT#1 (0x99): READ STATUS REGISTER
                     CASE( VDPR15STATUSREGNUM )IS
                     WHEN "0000" => -- READ S#0
-                        DBI <= (NOT REQ_VSYNC_INT_N) & (VDPS0SPOVERMAPPED AND REQ_VSYNC_INT_N) & VDPS0SPCOLLISIONINCIDENCE & VDPS0SPOVERMAPPEDNUM;
+                        DBI <= (NOT REQ_VSYNC_INT_N) & VDPS0SPOVERMAPPED & VDPS0SPCOLLISIONINCIDENCE & VDPS0SPOVERMAPPEDNUM;
                     WHEN "0001" => -- READ S#1
                         DBI <= "00" & VDP_ID & (NOT REQ_HSYNC_INT_N);
                     WHEN "0010" => -- READ S#2
@@ -507,7 +508,7 @@ BEGIN
             REG_R12_BLINK_MODE      <= (OTHERS => '0');
             REG_R13_BLINK_PERIOD    <= (OTHERS => '0');
             REG_R7_FRAME_COL        <= (OTHERS => '0');
-            REG_R8_SP_OFF           <= '1';
+            REG_R8_SP_OFF           <= '0';
             REG_R8_COL0_ON          <= '0';
             REG_R9_PAL_MODE         <= FORCED_V_MODE;
             FF_R9_2PAGE_MODE        <= '0';
@@ -690,15 +691,21 @@ BEGIN
                         WHEN "10111" =>     -- #23
                             REG_R23_VSTART_LINE     <= VDPP1DATA;
                         WHEN "11001" =>     -- #25
-                            REG_R25_CMD <= VDPP1DATA(6);
-                            REG_R25_YAE <= VDPP1DATA(4);
-                            REG_R25_YJK <= VDPP1DATA(3);
-                            REG_R25_MSK <= VDPP1DATA(1);
-                            FF_R25_SP2 <= VDPP1DATA(0);
+                            IF( VDP_ID /= "00000" )THEN
+                                REG_R25_CMD <= VDPP1DATA(6);
+                                REG_R25_YAE <= VDPP1DATA(4);
+                                REG_R25_YJK <= VDPP1DATA(3);
+                                REG_R25_MSK <= VDPP1DATA(1);
+                                FF_R25_SP2 <= VDPP1DATA(0);
+                            END IF;
                         WHEN "11010" =>     -- #26
-                            FF_R26_H_SCROLL <= VDPP1DATA( 5 DOWNTO 0 );
+                            IF( VDP_ID /= "00000" )THEN
+                                FF_R26_H_SCROLL <= VDPP1DATA( 5 DOWNTO 0 );
+                            END IF;
                         WHEN "11011" =>     -- #27
-                            REG_R27_H_SCROLL <= VDPP1DATA( 2 DOWNTO 0 );
+                            IF( VDP_ID /= "00000" )THEN
+                                REG_R27_H_SCROLL <= VDPP1DATA( 2 DOWNTO 0 );
+                            END IF;
                         WHEN OTHERS => NULL;
                     END CASE;
                 ELSIF ( VDPREGPTR(4) = '0') THEN

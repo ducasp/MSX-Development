@@ -40,10 +40,10 @@ del src_addons\build_id.v >nul 2>nul
 del src_addons\sd_card.v >nul 2>nul
 del src_addons\mc2p_emsx_top.vhd >nul 2>nul
 del "__*__" >nul 2>nul
-del *.cdf >nul 2>nul
+del %PROJECT%.cdf >nul 2>nul
 del *.qsf* >nul 2>nul
 del *.cof >nul 2>nul
-del *.hex >nul 2>nul
+del %PROJECT%*.hex >nul 2>nul
 del %PROJECT%_device.env >nul 2>nul
 del zz0*.* >nul 2>nul
 

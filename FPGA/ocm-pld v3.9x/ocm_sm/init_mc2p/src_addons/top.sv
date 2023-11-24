@@ -991,7 +991,7 @@ emsx_top emsx
         .pClk21m         ( clock_50_i    ),
         .pExtClk         ( 1'b0          ),
 
-        // SD-RAM ports
+        // SDRAM ports
         .pMemClk         ( memclk        ),
         .pSdrClk         ( clk_sdram     ),
         .pMemCke         ( SDRAM_CKE     ),
@@ -1064,7 +1064,7 @@ emsx_top emsx
         .pSltAdr         ( ext_cart_a    ),
         .pSltDat         ( sram_data_io  ),
 
-        .pSltMerq_n      ( slot_MREQ_o   ),
+        .pSltMerq_n      ( slot_MERQ_o   ),
         .pSltIorq_n      ( slot_IOREQ_o  ),
         .pSltRd_n        ( slot_RD_o     ),
         .pSltWr_n        ( slot_WR_o     ),
@@ -1146,7 +1146,7 @@ wire        cpu_rd_s, cpu_wr_s;
 wire        sw1, sw2, cs1,cs2,cs12;
 wire        slot_SLOT1_o, slot_SLOT2_o, slot_SLOT3_o;
 wire        slot_CS1_o, slot_CS2_o, slot_CS12_o;
-wire        slot_IOREQ_o, slot_MREQ_o, slot_RD_o, slot_WR_o, slot_M1_o;
+wire        slot_IOREQ_o, slot_MERQ_o, slot_RD_o, slot_WR_o, slot_M1_o;
 wire        slot_RFSH_i, slot_WAIT_i, slot_INT_i, slot_BUSDIR_i;
 wire        slot_CLOCK_o, slot_RESET_o, slot_RESET_io;
 
@@ -1187,7 +1187,7 @@ assign GPIO[25]        =  ( ext_cart_detect_db ) ? slot_CS1_o       : 1'bZ;
 assign GPIO[24]        =  ( ext_cart_detect_db ) ? slot_CS2_o       : 1'bZ;
 assign GPIO[23]        =  ( ext_cart_detect_db ) ? slot_CS12_o      : 1'bZ;
 
-assign sram_addr_o[16] =  ( ext_cart_detect_db ) ? slot_MREQ_o      : 1'bZ;
+assign sram_addr_o[16] =  ( ext_cart_detect_db ) ? slot_MERQ_o      : 1'bZ;
 assign GPIO[18]        =  ( ext_cart_detect_db ) ? slot_IOREQ_o     : 1'bZ;
 assign GPIO[16]        =  ( ext_cart_detect_db ) ? slot_RD_o        : 1'bZ;
 assign GPIO[14]        =  ( ext_cart_detect_db ) ? slot_WR_o        : 1'bZ;

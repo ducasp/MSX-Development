@@ -1,10 +1,10 @@
 @echo off
-rem --- 'zz1_sm_rotate_optimizations.cmd' v2.7 by KdL (2021.08.23)
+rem --- 'zz1_sm_rotate_optimizations.cmd' v2.9 by KdL (2022.11.27)
 
 set TIMEOUT=1
 set PROJECT=ocm_sm
 set SRC=.\
-set DEST=C:\Altera\multi-release\
+set DEST=C:\intelFPGA_lite\multi-release\
 if "%1"=="" color 1f&title Optimizations exchange tool for %PROJECT%
 if not exist %PROJECT%_device.env goto err_init
 if exist %DEST% goto err_msg

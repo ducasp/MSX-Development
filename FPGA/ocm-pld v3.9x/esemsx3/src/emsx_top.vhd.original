@@ -674,7 +674,7 @@ architecture rtl of emsx_top is
   constant SdrCmd_de : std_logic_vector(3 downto 0) := "1111"; -- deselect
   constant SdrCmd_pr : std_logic_vector(3 downto 0) := "0010"; -- precharge all
   constant SdrCmd_re : std_logic_vector(3 downto 0) := "0001"; -- refresh
-  constant SdrCmd_ms : std_logic_vector(3 downto 0) := "0000"; -- mode regiser set
+  constant SdrCmd_ms : std_logic_vector(3 downto 0) := "0000"; -- mode register set
 
   constant SdrCmd_xx : std_logic_vector(3 downto 0) := "0111"; -- no operation
   constant SdrCmd_ac : std_logic_vector(3 downto 0) := "0011"; -- activate
@@ -1135,7 +1135,7 @@ begin
             when "001"  => PpiPortC(1) <= dbo(0); -- key_matrix Y(1)
             when "010"  => PpiPortC(2) <= dbo(0); -- key_matrix Y(2)
             when "011"  => PpiPortC(3) <= dbo(0); -- key_matrix Y(3)
-            when "100"  => PpiPortC(4) <= dbo(0); -- cassete motor on (0=ON,1=OFF)
+            when "100"  => PpiPortC(4) <= dbo(0); -- cassete motor (0=ON,1=OFF)
             when "101"  => PpiPortC(5) <= dbo(0); -- cassete audio out
             when "110"  => PpiPortC(6) <= dbo(0); -- CAPS lamp (0=ON,1=OFF)
             when others => PpiPortC(7) <= dbo(0); -- 1 bit sound port

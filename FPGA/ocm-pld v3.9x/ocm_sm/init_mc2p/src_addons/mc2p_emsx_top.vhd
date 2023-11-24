@@ -61,6 +61,7 @@ library ieee;
 
 entity emsx_top is
     generic(
+        use_8gb_sdram_g : boolean   := false;
         use_wifi_g      : boolean   := true;
         use_midi_g      : boolean   := true;
         use_opl3_g      : boolean   := true;
@@ -103,20 +104,20 @@ entity emsx_top is
         pSltSw2         : inout std_logic;                                      -- Reserved
         BusDir_o        : inout std_logic;
 
-        -- SD-RAM ports
+        -- SDRAM ports
         pSdrClk         : out   std_logic;                                      -- SDRAM_CLK
-        pMemClk         : out   std_logic;                                      -- SD-RAM Clock
-        pMemCke         : out   std_logic;                                      -- SD-RAM Clock enable
-        pMemCs_n        : out   std_logic;                                      -- SD-RAM Chip select
-        pMemRas_n       : out   std_logic;                                      -- SD-RAM Row/RAS
-        pMemCas_n       : out   std_logic;                                      -- SD-RAM /CAS
-        pMemWe_n        : out   std_logic;                                      -- SD-RAM /WE
-        pMemUdq         : out   std_logic;                                      -- SD-RAM UDQM
-        pMemLdq         : out   std_logic;                                      -- SD-RAM LDQM
-        pMemBa1         : out   std_logic;                                      -- SD-RAM Bank select address 1
-        pMemBa0         : out   std_logic;                                      -- SD-RAM Bank select address 0
-        pMemAdr         : out   std_logic_vector( 12 downto 0 );                -- SD-RAM Address
-        pMemDat         : inout std_logic_vector( 15 downto 0 );                -- SD-RAM Data
+        pMemClk         : out   std_logic;                                      -- SDRAM Clock
+        pMemCke         : out   std_logic;                                      -- SDRAM Clock enable
+        pMemCs_n        : out   std_logic;                                      -- SDRAM Chip select
+        pMemRas_n       : out   std_logic;                                      -- SDRAM Row/RAS
+        pMemCas_n       : out   std_logic;                                      -- SDRAM /CAS
+        pMemWe_n        : out   std_logic;                                      -- SDRAM /WE
+        pMemUdq         : out   std_logic;                                      -- SDRAM UDQM
+        pMemLdq         : out   std_logic;                                      -- SDRAM LDQM
+        pMemBa1         : out   std_logic;                                      -- SDRAM Bank select address 1
+        pMemBa0         : out   std_logic;                                      -- SDRAM Bank select address 0
+        pMemAdr         : out   std_logic_vector( 12 downto 0 );                -- SDRAM Address
+        pMemDat         : inout std_logic_vector( 15 downto 0 );                -- SDRAM Data
 
         -- PS/2 keyboard ports
         pPs2Clk         : inout std_logic;
@@ -203,8 +204,8 @@ architecture RTL of emsx_top is
         port(
             inclk0  : in    std_logic := '0';   -- 21.48MHz input to PLL    (external I/O pin, from crystal oscillator)
             c0      : out   std_logic;          -- 21.48MHz output from PLL (internal LEs, for VDP, internal-bus, etc.)
-            c1      : out   std_logic;          -- 85.92MHz output from PLL (internal LEs, for SD-RAM)
-            e0      : out   std_logic           -- 85.92MHz output from PLL (external I/O pin, for SD-RAM)
+            c1      : out   std_logic;          -- 85.92MHz output from PLL (internal LEs, for SDRAM)
+            e0      : out   std_logic           -- 85.92MHz output from PLL (external I/O pin, for SDRAM)
         );
     end component;
 
@@ -245,19 +246,14 @@ architecture RTL of emsx_top is
         port(
             clk21m  : in    std_logic;
             reset   : in    std_logic;
-            clkena  : in    std_logic;
             req     : in    std_logic;
-            ack     : out   std_logic;
             wrt     : in    std_logic;
             adr     : in    std_logic_vector( 15 downto 0 );
-            dbi     : out   std_logic_vector(  7 downto 0 );
             dbo     : in    std_logic_vector(  7 downto 0 );
 
             ramreq  : out   std_logic;
             ramwrt  : out   std_logic;
             ramadr  : out   std_logic_vector( 19 downto 0 );
-            ramdbi  : in    std_logic_vector(  7 downto 0 );
-            ramdbo  : out   std_logic_vector(  7 downto 0 );
 
             mmcdbi  : out   std_logic_vector(  7 downto 0 );
             mmcena  : out   std_logic;
@@ -2862,8 +2858,8 @@ begin
         port map(clk21m, adr, RomDbi);
 
     U03 : megasd
-        port map(clk21m, reset, clkena, ErmReq, open, wrt, adr, open, dbo,
-                        ErmRam, ErmWrt, ErmAdr, RamDbi, open,
+        port map(clk21m, reset, ErmReq, wrt, adr, dbo,
+                        ErmRam, ErmWrt, ErmAdr,
                         MmcDbi, MmcEna, MmcAct, pSd_Ck, pSd_Dt(3), pSd_Cm, pSd_Dt(0),
                         EPC_CK, EPC_CS, EPC_OE, EPC_DI, EPC_DO);
 

@@ -2,7 +2,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "4.1 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:28:47  OCTOBER 07, 2004"
-set_global_assignment -name LAST_QUARTUS_VERSION 13.1
+set_global_assignment -name LAST_QUARTUS_VERSION "11.0 SP1"
 set_global_assignment -name VHDL_FILE src/video/vdp.vhd
 set_global_assignment -name VHDL_FILE src/video/vdp_colordec.vhd
 set_global_assignment -name VHDL_FILE src/video/vdp_command.vhd
@@ -50,13 +50,10 @@ set_global_assignment -name VHDL_FILE src/sound/lpf/lpf.vhd
 set_global_assignment -name VHDL_FILE src/sound/filter/esefir5.vhd
 set_global_assignment -name VHDL_FILE src/sound/filter/tapram.vhd
 set_global_assignment -name VHDL_FILE src/sound/dac/esepwm.vhd
-set_global_assignment -name VHDL_FILE src/peripheral/eseps2.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/fifo.vhd
-set_global_assignment -name VHDL_FILE src/peripheral/iplrom_304k.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/kanji.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/keymap.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/mapper.vhd
-set_global_assignment -name VHDL_FILE src/peripheral/megasd.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/midi.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/ram.vhd
 set_global_assignment -name VHDL_FILE src/peripheral/swioports.vhd
@@ -71,6 +68,9 @@ set_global_assignment -name VHDL_FILE src/cpu/T80_Pack.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80_Reg.vhd
 set_global_assignment -name VHDL_FILE src/cpu/T80a.vhd
 set_global_assignment -name VHDL_FILE src/emsx_top.vhd
+set_global_assignment -name VERILOG_FILE src/peripheral/eseps2.v
+set_global_assignment -name VERILOG_FILE src/peripheral/iplrom_304k.v
+set_global_assignment -name VERILOG_FILE src/peripheral/megasd.v
 set_global_assignment -name VERILOG_FILE src/peripheral/rtc.v
 set_global_assignment -name VERILOG_FILE src/sound/tr_pcm/tr_pcm.v
 set_global_assignment -name SDC_FILE emsx_top_constrains.sdc

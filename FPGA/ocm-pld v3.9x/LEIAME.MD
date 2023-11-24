@@ -1,52 +1,55 @@
-# OCM-PLD v3.9d
+# OCM-PLD v3.9.1a
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
-# Novidades em relação a v3.9c
+# Novidades em relação a v3.9d
 
-- Melhorias do KdL na controladora de SDRAM permitindo que coisas como a VRAM
-  de 1MB funcionem com o controlador do Victor Trucco
-
-- Correção no z80 para que Lilly's Saga funcione adequadamente
+- Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
+  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está Ausente
+  já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
+  podem não funcionar com o novo controlador a menos que faça algumas mudanças
+  propostas no hardware.
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
+OCM-PLD v3.9.1a é uma extensão da OCM v3.9.1 do KdL. O que essa versão tem de
 diferente:
 
 - Novos dispositivos suportados:
 
-    - SMX-HB: É um dispositivo geração "1.75". Seu FPGA tem cerca de 1/3 menos
-      células como resultado da falta de components. Seu uso principal é de
-      substituir a placa princial de um Hotbit, tendo (praticamente) toda a
-      experiência OCM-SM. Por ter um teclado próprio de MSX, tem suas
-      peculiaridades:
+    - SMX-HB e SMX-HB MINI: É um dispositivo geração "1.75". Seu FPGA tem cerca
+      de 1/3 menos células como resultado da falta de components. Seu uso
+      principal é de substituir a placa princial de um Hotbit (HB), tendo
+      (praticamente) toda a experiência OCM-SM. Por ter um teclado próprio de
+      MSX (HB apenas), tem suas peculiaridades (algumas não se aplicam ao HB
+      MINI que usa apenas teclados PS/2):
 
         - Permite o debounce das portas de joystick ser desligado, talvez possa
         ajudar com problemas que algumas pessoas estavam tendo com paddles.
         Para desligar o debounce use o comando SETSMART -89 , para religar use
         SETSMART -8A , ao desligar e religar a placa, o padrão é debounce
         ligado. NOTA: temporariamente essa opção está indisponível e o debounce
-        está permanentemente ativado independente da seleção.
+        está permanentemente ativado independente da seleção. (HB e HB MINI)
 
         - Suporte a um terceiro mapa de teclados, então tem o mapa da versão
         (us/br/fr/es), japonês e um para o teclado do Hotbit. O teclado do
         Hotbit não segue o padrão dos teclados de PC portanto seu mapa é bem
         diferente dos teclados PS/2. A chave DIP 9 em OFF é o padrão, uso do
         mapa Hotbit, configurada em ON irá usar o mapa da versão do firmware,
-        útil quando quiser conectar um teclado PS/2 externo.
+        útil quando quiser conectar um teclado PS/2 externo. (HB MINI usar a
+        DIP 9 em ON)
 
         - Correção: a tecla Select não estava funcionando na versão 3.7.1 que
-        as placas foram enviadas, agora funciona.
+        as placas foram enviadas, agora funciona. (HB)
 
         - Melhoria: SELECT + CIMA e SELECT + BAIXO substitui Page Up e Page
         Down, sendo possível ativar o disparo automático usando apenas teclas
         do Hotbit. Também temos SELECT + F1 a F4 sbustituindo F9 a F12, sendo
-        possível utilizar a maioria dos atalhos de teclados do OCM.
+        possível utilizar a maioria dos atalhos de teclados do OCM. (HB)
 
         - Ausente: não há suporte a OPL3, não cabe no FPGA do SMX-HB. Também
         não foi possível suportar emulação de paddle na versão frankysnd pela
-        mesma razão.
+        mesma razão. (HB e HB MINI)
 
     - Multicore 2+: parecido com o MiSTER, porém com um FPGA menor que o mesmo(
     mais que o dobro dos OCM segunda geração, mas cerca da metade do MiSTER) e
@@ -185,10 +188,10 @@ diferente:
       da OCM 3.9, obrigado KdL! :)
 
     - Novidade: Emulação de Paddle usando um mouse PS/2. Para habilitar o modo
-      VAUS (Arkanoid/Taito) use SETSMART -8E, to habilitar o modo MSX use
+      VAUS (Arkanoid/Taito) use SETSMART -8E, para habilitar o modo MSX use
       SETSMART -8F, para desabilitar (padrão) use SETSMART -8D. Note que um
       paddle MSX apenas funciona corretamente se o Z80 estiver a 3.58MHz, como
-      um veradeiro paddle MSX em um MSX com CPU turbo. A única exceção é o
+      um verdadeiro paddle MSX em um MSX com CPU turbo. A única exceção é o
       firmware para SMX-HB com som Franky, já que não há espaço no FPGA para o
       SN76489, o segundo PSG e o paddle.
 
@@ -211,7 +214,7 @@ diferente:
       de desconexão e posterior conexão para detectar a troca de dispositivo.
 
     - Melhoria: a emulação de mouse MSX do MC2+ foi portada para todos. É uma
-      forma melhor que contam com time-out para retornar sozinho ao primeiro
+      forma melhor que conta com time-out para retornar sozinho ao primeiro
       estado após algum tempo sem leitura, assim como um mouse MSX real.
 
     - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
@@ -227,12 +230,12 @@ diferente:
     - Novidade: ainda está em desenvolvimente, por favor aguarde, logo teremos
       o Franky com VDP e PSG :P
 
-Todo código fonte e binários alterados em relação ao OCM 3.9:
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+Todo código fonte e binários alterados em relação ao OCM 3.9.1:
+(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-Todo código fonte do OCM 3.9 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
-Todo código adcional pode ser reutilizado, re-escrito, trabalhos derivados
+Todo código adicional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9, verifique a licença do mesmo.
+Para o código original do OCM 3.9.1, verifique a licença do mesmo.
