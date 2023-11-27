@@ -5,10 +5,11 @@
 # Novidades em relação a v3.9d
 
 - Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
-  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está Ausente
+  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está ausente
   já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
   podem não funcionar com o novo controlador a menos que faça algumas mudanças
-  propostas no hardware.
+  propostas no hardware. Também o novo IPL está ausente no MC2P já que requer
+  uma memória flash que não existe em sistemas multi-core.
 
 # Notas de liberação da versão
 

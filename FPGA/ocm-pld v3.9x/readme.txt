@@ -9,6 +9,12 @@ This package includes a set of custom firmware to update the following machines.
 1st Gen  =>  1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 and SX-1 Mini/Mini+, use KdL pack.
 2nd Gen  =>  SM-X (regular) and SX-2. [!] SM-X Mini is no longer supported by KdL.
 
+Ducasp extra support:
+
+1.7 Gen  =>  SM-X HB and its variants, FPGA is a little bit smaller than the one in second generation
+             devices and most have 8MB SDRAM
+MC2P     =>  MC2P is a multicore system with a huge 55k LE FPGA, extra SRAM, etc
+
 All firmware are self-made and not provided by the respective manufacturers.
 However, manufacturers are allowed to use these firmware as long as no surcharge is applied.
 The common base firmware is that of the first generation, which originated with 1chipMSX.

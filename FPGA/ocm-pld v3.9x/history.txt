@@ -110,6 +110,7 @@ v3.9.1a [2023.09.08] [Ducasp Updates!]
   there is a risk that some keyboards might not work nice with the new PS2 controller. I've opted to keep the old
   controller for now (I might be wrong on my understanding of the PS2 new controller requiring the hardware changes
   though, but I think for now I would rather play safe)
+- MC2P is not using the new IPL, as it requires EPCS FLASH that multicore systems do not have
 
 ________________________________
 v3.x KdL/HRA's Official Release \__________________________________________________________________________________

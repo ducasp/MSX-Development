@@ -48,6 +48,7 @@ set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/esefir5.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/tapram.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/dac/esepwm.vhd
 set_global_assignment -name VHDL_FILE src_addons/peripheral/eseps2mcp.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/iplrom_512k.390.vhd
 set_global_assignment -name VHDL_FILE src_addons/peripheral/keymapmcp.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/kanji.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/mapper.vhd
@@ -68,7 +69,7 @@ set_global_assignment -name VHDL_FILE src_addons/sys/debounce.vhd
 set_global_assignment -name VHDL_FILE src_addons/mc2p_emsx_top.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE src_addons/top.sv
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/autofire.v
-set_global_assignment -name VERILOG_FILE src_addons/peripheral/iplrom_512k.v
+#set_global_assignment -name VERILOG_FILE src_addons/peripheral/iplrom_512k.v
 set_global_assignment -name VERILOG_FILE ../esemsx3/src/peripheral/megasd.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/ps2_mouse.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/sm_rtc.v
