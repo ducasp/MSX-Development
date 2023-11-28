@@ -7,9 +7,7 @@
 - Incorporated all 3.9.1 changes not present in 3.9d, check original KdL 3.9.1
   release for more information. Note: PS2 new controller was not Incorporated
   as my understanding is that it might make some keyboards currently working on
-  3.9.0 to not work on it unless you make some proposed hardware changes. Also,
-  the new IPL is not present on MC2P as it requires EPCS FLASH that doesn't
-  exist on multi-core systems.
+  3.9.0 to not work on it unless you make some proposed hardware changes.
 
 # Release notes
 

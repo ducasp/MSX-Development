@@ -11,7 +11,7 @@ This package includes a set of custom firmware to update the following machines.
 
 Ducasp extra support:
 
-1.7 Gen  =>  SM-X HB and its variants, FPGA is a little bit smaller than the one in second generation
+1.8 Gen  =>  SM-X HB and its variants, FPGA is a little bit smaller than the one in second generation
              devices and most have 8MB SDRAM
 MC2P     =>  MC2P is a multicore system with a huge 55k LE FPGA, extra SRAM, etc
 
