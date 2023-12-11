@@ -30,7 +30,7 @@ set OUTPUT=output_files\
 rd /S /Q %OUTPUT% >nul 2>nul
 del src_addons\peripheral\sm_swioports.vhd* >nul 2>nul
 del src_addons\sys\pll.vhd >nul 2>nul
-del src_addons\sys\pll_franky.* >nul 2>nul
+del src_addons\sys\pll2.* >nul 2>nul
 del src_addons\top.vhd >nul 2>nul
 del src_addons\top.sv >nul 2>nul
 del src_addons\debounce_joy.vhd >nul 2>nul

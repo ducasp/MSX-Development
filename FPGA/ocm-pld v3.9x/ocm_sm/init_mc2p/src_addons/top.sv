@@ -560,9 +560,9 @@ parameter CONF_STR = {
     "I1,IMG/VHD,Load Image...;",
     "OAB,Scanlines,Off,25%,50%,75%;",                           // No SD, F12 pops up 00, Off
     "OC,Blend,Off,On;",                                         // No SD, F12 pops up 0, Off
-    "O1,Scandoubler,On,Off;",                                   // No SD, F12 pops up 0, On
+    "O1,Scandoubler,On,Off;",                                   // No SD, F12 pops up 0, On, status[1]
     "O8,RGB/Comp or LED/CRT,1st,2nd;",                          // No SD, F12 pops up 0, RGB or LED (invert if status 1 = 0)
-    "O2,CPU Clock,Normal,Turbo;",                               // No SD, F12 pops up 0, Normal
+    "O2,CPU Clock,Normal,Turbo;",                               // No SD, F12 pops up 0, Normal, status[2]
     "O3,Slot1,MegaSCC+ 1MB,External;",                          // No SD, F12 pops up 0, MegaSCC+
     "O45,Slot2,MegaSCC+ 2MB,External,MegaRAM 2MB,MegaRAM 1MB;", // No SD, F12 pops up 00, inverts 5 to have 00 = MEGASCC+
     "O6,RAM,4096kB,2048kB;",                                    // No SD, F12 pops up 0, 4096
@@ -572,6 +572,9 @@ parameter CONF_STR = {
     "OD,OPL3 stereo,Yes,No;",                                   // No SD, F12 pops up 0, mono off, stereo yes
     "OGH,Paddle using mouse,No,Vaus,MSX;",                      // No SD, F12 pops up 00, paddle emulation off
     "OI,ZX Next Expansion,No,Yes;",                             // No SD, F12 pops up 0, do not try to use ZX Next Expansion
+    "OJ,Video Out,MSX,Franky;",                                 // No SD, F12 pops up 0, MSX Video Out, status[19]
+    "OK,Franky Video Type,NTSC,PAL;",                           // No SD, F12 pops up 0, NTSC, status[20]
+    "OL,Franky VDP,SMS,GG;",                                    // No SD, F12 pops up 0, SMS, status[21]
     "T0,Reset;"
 };
 
@@ -579,6 +582,7 @@ parameter CONF_STR = {
 
 wire        pll_locked;
 wire        clk_sys;
+wire        clk_sms;
 wire        memclk;
 
 //////////////////   MC2P I/O   ///////////////////
@@ -607,6 +611,51 @@ wire  [7:0] mouse_flags;
 wire        mouse_strobe;
 wire [63:0] rtc;
 wire sd_sclk_o_s, sd_cs_n_o_s, sd_mosi_o_s, sd_miso_i_s;
+
+pll2 pll2
+(
+    .inclk0(clock_50_i),
+    .c0(clk_sms)
+);
+
+reg ce_cpu_p;
+reg ce_cpu_n;
+reg ce_vdp;
+reg ce_pix;
+reg ce_sp;
+always @(negedge clk_sms) begin
+    reg [4:0] clkd;
+
+    ce_sp <= clkd[0];
+    ce_vdp <= 0;//div5
+    ce_pix <= 0;//div10
+    ce_cpu_p <= 0;//div15
+    ce_cpu_n <= 0;//div15
+    clkd <= clkd + 1'd1;
+    if (clkd==29) begin
+        clkd <= 0;
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==24) begin
+        ce_vdp <= 1;
+        ce_cpu_p <= 1;
+    end else if (clkd==19) begin
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==17) begin
+        ce_cpu_n <= 1;
+    end else if (clkd==14) begin
+        ce_vdp <= 1;
+    end else if (clkd==9) begin
+        ce_cpu_p <= 1;
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==4) begin
+        ce_vdp <= 1;
+    end else if (clkd==2) begin
+        ce_cpu_n <= 1;
+    end
+end
 
 sd_card sd_card
 (
@@ -1049,6 +1098,22 @@ emsx_top emsx
         .pDac_SL         ( audio_l       ),
         .pDac_SR         ( audio_r       ),
 
+        // Franky VDP
+        .clkSYSSMS       ( clk_sms       ),
+        .clkSMSVDP       ( ce_vdp        ),
+        .clkPIXSMS       ( ce_pix        ),
+        .clkSMSSP        ( ce_sp         ),
+        .colorSMSVDP     ( color         ),
+        .sms_mask_column ( sms_mask_column ),
+        .sms_x           ( sms_x           ),
+        .sms_y           ( sms_y           ),
+        .sms_smode_M1    ( sms_smode_M1    ),
+        .sms_smode_M2    ( sms_smode_M2    ),
+        .sms_smode_M3    ( sms_smode_M3    ),
+        .sms_smode_M4    ( sms_smode_M4    ),
+        .sms_pal         ( sms_pal         ),
+        .sms_gg          ( sms_gg          ),
+
         // MC2P Exclusive
         .pll_locked      ( pll_locked    ),
         .osd_o           ( osd_s         ),
@@ -1091,45 +1156,106 @@ emsx_top emsx
         .midi_active_o   ( midi_active_s )
 );
 
-
-
 //////////////////   VIDEO   //////////////////
-wire  [5:0] R_O;
-wire  [5:0] G_O;
-wire  [5:0] B_O;
-wire        HSync, VSync, CSync;
+wire  [ 5:0] R_O;
+wire  [ 5:0] G_O;
+wire  [ 5:0] B_O;
+wire         HSync, VSync;
+wire  [11:0] color;
+wire         sms_HSync, sms_VSync;
+wire  [ 4:0] MSX_VGA_R, MSX_VGA_G, MSX_VGA_B, SMS_VGA_R , SMS_VGA_B , SMS_VGA_G;
+wire         MSX_VGA_HS, MSX_VGA_VS, SMS_VGA_HS, SMS_VGA_VS;
+wire         sms_mask_column;
+wire  [ 8:0] sms_x;
+wire  [ 8:0] sms_y;
+wire         sms_HBlank;
+wire         sms_VBlank;
+wire         sms_smode_M1;
+wire         sms_smode_M2;
+wire         sms_smode_M3;
+wire         sms_smode_M4;
+wire         sms_pal;
+wire         sms_gg;
 
-wire [5:0]  osd_r_o, osd_g_o, osd_b_o;
-
-mist_video #( .OSD_COLOR ( 3'b001 )) mist_video_inst
+video
 (
-    .clk_sys     ( memclk ), //clk_sys ),
-    .scanlines   ( status[11:10] ),
-    .rotate      ( 2'b00 ),
-    .scandoubler_disable  ( 1'b1 ),
-    .ce_divider  ( 1'b0 ), //1 para clk_sys ou 0 com clksdram para usar blend
-    .blend       ( status[12] ),
-    .no_csync    ( 1'b1 ),
-
-    .SPI_SCK     ( SPI_SCK ),
-    .SPI_SS3     ( SPI_SS2 ),
-    .SPI_DI      ( SPI_DI ),
-
-    .HSync       ( HSync ),
-    .VSync       ( VSync ),
-    .R           ( R_O ),
-    .G           ( G_O ),
-    .B           ( B_O ),
-
-    .VGA_HS      ( VGA_HS ),
-    .VGA_VS      ( VGA_VS ),
-    .VGA_R       ( VGA_R ),
-    .VGA_G       ( VGA_G ),
-    .VGA_B       ( VGA_B ),
-
-    .osd_enable  ( )
+    .clk         ( clk_sms ),
+    .ce_pix      ( ce_pix ),
+    .pal         ( sms_pal ),
+    .gg          ( sms_gg ),
+    .border      ( ~sms_gg ),
+    .mask_column ( sms_mask_column ),
+    .x           ( sms_x ),
+    .y           ( sms_y ),
+    .smode_M1    ( sms_smode_M1 ),
+    .smode_M3    ( sms_smode_M3 ),
+    .HSync       ( sms_HSync ),
+    .VSync       ( sms_VSync ),
+    .HBlank      ( sms_HBlank ),
+    .VBlank      ( sms_VBlank )
 );
 
+
+mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(4)) mist_video_sms
+(
+    .clk_sys                ( clk_sms ),
+    .scanlines              ( status[11:10] ),
+    .rotate                 ( 2'b00 ),
+    .scandoubler_disable    ( status[1] ),
+    .blend                  ( status[12] ),
+
+    .SPI_DI                 ( SPI_DI ),
+    .SPI_SCK                ( SPI_SCK ),
+    .SPI_SS3                ( SPI_SS2 ),
+    .HSync                  ( ~sms_HSync ),
+    .VSync                  ( ~sms_VSync ),
+    .R                      ( color[3:0] ),
+    .G                      ( color[7:4] ),
+    .B                      ( color[11:8] ),
+    .VGA_HS                 ( SMS_VGA_HS ),
+    .VGA_VS                 ( SMS_VGA_VS ),
+    .VGA_R                  ( SMS_VGA_R ),
+    .VGA_G                  ( SMS_VGA_G ),
+    .VGA_B                  ( SMS_VGA_B ),
+    .osd_enable             ( )
+);
+
+mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(6)) mist_video_inst
+(
+    .clk_sys                ( memclk ),
+    .scanlines              ( status[11:10] ),
+    .rotate                 ( 2'b00 ),
+    .scandoubler_disable    ( 1'b1 ),
+    .ce_divider             ( status[19] ? 1'b1 : 1'b0 ),
+    .blend                  ( status[12] ),
+    .no_csync               ( 1'b1 ),
+
+    .SPI_SCK                ( SPI_SCK ),
+    .SPI_SS3                ( SPI_SS2 ),
+    .SPI_DI                 ( SPI_DI ),
+
+    .HSync                  ( HSync ),
+    .VSync                  ( VSync ),
+    .R                      ( R_O ),
+    .G                      ( G_O ),
+    .B                      ( B_O ),
+
+    .VGA_HS                 ( MSX_VGA_HS ),
+    .VGA_VS                 ( MSX_VGA_VS ),
+    .VGA_R                  ( MSX_VGA_R ),
+    .VGA_G                  ( MSX_VGA_G ),
+    .VGA_B                  ( MSX_VGA_B ),
+
+    .osd_enable             ( )
+);
+
+assign sms_pal = status[20];
+assign sms_gg = status[21];
+assign VGA_R  = status[19] ? SMS_VGA_R : MSX_VGA_R;
+assign VGA_G  = status[19] ? SMS_VGA_R : MSX_VGA_G;
+assign VGA_B  = status[19] ? SMS_VGA_R : MSX_VGA_B;
+assign VGA_HS = status[19] ? SMS_VGA_HS : MSX_VGA_HS;
+assign VGA_VS = status[19] ? SMS_VGA_VS : MSX_VGA_VS;
 assign AUDIO_L      = audio_li[0];
 assign AUDIO_R      = audio_ri[0];
 

@@ -190,7 +190,20 @@ entity emsx_top is
         btn_scan        : in    std_logic;
         caps_led_o      : out   std_logic;
         joy_deb         : inout std_logic;
-        DisBiDir        : in std_logic := '0';
+        DisBiDir        : in    std_logic := '0';
+        clkSMSVDP       : in    std_logic;
+        clkPIXSMS       : in    std_logic;
+        clkSYSSMS       : in    std_logic;
+        clkSMSSP        : in    std_logic;
+        colorSMSVDP     : out   std_logic_vector( 11 downto 0 );
+        sms_mask_column : out   std_logic;
+        sms_x           : in    std_logic_vector( 8  downto 0 );
+        sms_y           : in    std_logic_vector( 8  downto 0 );
+        sms_smode_M1    : out   std_logic;
+        sms_smode_M2    : out   std_logic;
+        sms_smode_M3    : out   std_logic;
+        sms_smode_M4    : out   std_logic;
+        sms_video_active: out   std_logic;
         EnAltMap        : in std_logic := '0'
     );
 end emsx_top;
@@ -694,34 +707,6 @@ architecture RTL of emsx_top is
          );
     end component;
 
---    component vdp_sms
---        port (
---            clk_sys         : in    std_logic;
---            ce_vdp          : in    std_logic;
---            ce_pix          : in    std_logic;
---            ce_sp           : in    std_logic;
---            gg              : in    std_logic;
---            sp64            : in    std_logic;
---            HL              : in    std_logic;
---            RD_n            : in    std_logic;
---            WR_n            : in    std_logic;
---            IRQ_n           : out   std_logic;
---            A               : in    std_logic_vector (  7 downto 0);
---            D_in            : in    std_logic_vector (  7 downto 0);
---            D_out           : out   std_logic_vector (  7 downto 0);
---            x               : in    std_logic_vector (  8 downto 0);
---            y               : in    std_logic_vector (  8 downto 0);
---            color           : out   std_logic_vector ( 11 downto 0);
---            mask_column     : out   std_logic;
---            smode_M1        : out   std_logic;
---            smode_M2        : out   std_logic;
---            smode_M3        : out   std_logic;
---            smode_M4        : out   std_logic;
---            reset_n         : in    std_logic
---        );
---    end component;
-
-
     component opl3 is
         generic(
             OPLCLK          : integer := 64000000                               -- opl_clk in Hz
@@ -1166,11 +1151,14 @@ architecture RTL of emsx_top is
     -- SN76489/Franky signals
     signal  sn76489_sound_s  : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  sn76489Req       : std_logic := '0';
+    signal  smsVDPReqWR      : std_logic := '0';
+    signal  smsVDPReqRD      : std_logic := '0';
     signal  sn76489NoIO      : std_logic := '1';
     signal  pFrankyVdpInt_n  : std_logic := '1';
     signal  pFrankyReadCnt   : std_logic := '0';
     signal  OldFrankyReadCnt : std_logic := '0';
     signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '0');
+    signal  franky_v_dout_s  : std_logic_vector(  7 downto 0 ) := (others => '0');
 
     -- MIDI signals
 --  signal  midi_o          : std_logic;
@@ -1189,16 +1177,40 @@ architecture RTL of emsx_top is
 begin
 
     -- Internal OPL3 On/Off toggle
+    -- Video Output toggle if using Franky Video
     process( clk21m )
     begin
         if( clk21m'event and clk21m = '1' )then
             -- OPL3 can be managed by the SCRLK key or by the CmtScro signal
+            -- In Full Franky, SCRLK changes video active
             opl3_enabled <= CmtScro;
+            sms_video_active <= not sn76489NoIO;
         end if;
     end process;
 
     clk21m_out <= clk21m;
     vga_status <= DisplayMode(1);
+
+    ----------------------------------------------------------------
+    -- Franky VDP Glue Logic
+    -- Linked to clkSYSSMS, otherwise it will corrupt everything
+    ----------------------------------------------------------------
+    process (clkSYSSMS)
+    begin
+        if( clkSYSSMS'event and clkSYSSMS = '1' )then
+            if ( ( adr(7 downto 1) = "1000100" or ( adr(7 downto 1) = "0100100" and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) ) )
+                 and CpuM1_n = '1' and pSltIorq_n = '0' and pSltRd_n = '0' ) then
+                smsVDPReqRD <= '1';
+                smsVDPReqWR <= '0';
+            elsif ( adr(7 downto 1) = "1000100"  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltWr_n = '0' ) then
+                smsVDPReqWR <=  '1';
+                smsVDPReqRD <= '0';
+            else
+                smsVDPReqRD <= '0';
+                smsVDPReqWR <= '0';
+            end if;
+        end if;
+    end process;
 
     ----------------------------------------------------------------
     -- Clock generator (21.48MHz > 3.58MHz)
@@ -1833,9 +1845,11 @@ begin
                 dlydbi <= systim_dbi;           
             elsif( mem = '0' and adr(  7 downto 1 ) = "1010010" )then                                       -- turboR PCM device
                 dlydbi <= tr_pcm_dbi;
+                    -- If I/O in 4x range, any switched IO selected and not forcing Franky on
             elsif( mem = '0' and adr(  7 downto 4 ) = "0100" and io40_n /= "11111111" and swioFranky = '0' ) or
+                    -- If I/O in 4x range, any switched IO selected and forcing Franky on but not 0x48 or 0x49
                  ( mem = '0' and adr(  7 downto 4 ) = "0100" and io40_n /= "11111111" and swioFranky = '1' and
-                   adr(  7 downto 1 ) /= "0100100" )                                            -- Switched I/O ports
+                   adr(  7 downto 1 ) /= "0100100" )                                                        -- Switched I/O ports
             then
                 dlydbi <= swio_dbi;
             elsif( mem = '0' and adr(  7 downto 0 ) = "10100111" and portF4_mode = '1' )then    -- Pause R800 (read only)
@@ -1855,11 +1869,18 @@ begin
             elsif( mem = '0' and adr(  7 downto 0 ) = "11101001" )then                          -- MIDI port E9h
                 dlydbi <= midi_dout_s;
             elsif( mem = '0' and adr(  7 downto 1 ) = "1000100" and use_franky_vdp_g )then      -- Franky ports 88-89
-                dlydbi <= franky_dout_s;
+                dlydbi <= franky_v_dout_s;            
             elsif( mem = '0' and adr(  7 downto 1 ) = "0100100" and use_franky_psg_g
-                   and ( io40_n = "11111111" or swioFranky = '1' ) )then                        -- Franky ports 48-49
-                dlydbi <= franky_dout_s;
-                pFrankyReadCnt <= '1';
+              -- will return franky related output IF Pana Switched IO, no Switched IO or Franky forced on 49 and 49
+              and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) )then               -- Franky ports 48-49
+                if ( use_franky_vdp_g ) then
+                    -- If VDP, no need to fake reading of counter, read from VDP
+                    dlydbi <= franky_v_dout_s;
+                else
+                    -- If only PSG, fake reading of counter
+                    dlydbi <= franky_dout_s;
+                    pFrankyReadCnt <= '1';
+                end if;
             else
                 dlydbi <= (others => '1');
             end if;
@@ -2169,13 +2190,12 @@ begin
     RtcReq  <=  req when( mem = '0' and adr(7 downto 1) = "1011010"                                                 )else '0';  -- I/O:B4-B5h   / RTC (RP-5C01)
     systim_req  <=  req when( mem = '0' and adr(7 downto 1) = "1110011"                                             )else '0';  -- I/O:E6-E7h   / System timer (S1990)
     swio_req    <=  req when( ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '0'                         ) or
-                              ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '1' and adr(  7 downto 1 ) /= "0100100") )
-                                                                                                                     else '0';  -- I/O:40-4Fh   / Switched I/O ports
+                     ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '1' and adr(  7 downto 1 ) /= "0100100") )else '0';  -- I/O:40-4Fh   / Switched I/O ports
     portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010"                                            )else '0';  -- I/O:F2h      / Port F2 device (ESP8266 BIOS)
     portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                            )else '0';  -- I/O:F4h      / Port F4 device
     tr_pcm_req  <=  req when( mem = '0' and adr(7 downto 1) = "1010010"                                             )else '0';  -- I/O:A4-A5h  / turboR PCM device
-    sn76489Req  <=  '1' when( mem = '0' and adr(7 downto 1) = "0100100" and pSltIorq_n = '0' and use_franky_psg_g
-                              and ( io40_n = "11111111" or swioFranky = '1' )                                       )else '0';  -- I/O:48-49h   / Franky SN76489
+    sn76489Req  <=  '1' when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
+                         and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                  )else '0';  -- I/O:48-49h   / Franky SN76489
 
     BusDir  <=  '1' when( pSltAdr(7 downto 2) = "100110"                                        )else  -- I/O:98-9Bh / VDP (V9938/V9958)
                 '1' when( pSltAdr(7 downto 2) = "101000"                                        )else  -- I/O:A0-A3h / PSG (AY-3-8910)
@@ -2195,7 +2215,7 @@ begin
                 '1' when( pSltAdr(7 downto 3) = "11000" and opl3_enabled = '1'                  )else  -- I/O:C0-C7h / OPL3
 --              '1' when( pSltAdr(7 downto 1) = "0111110"                                       )else  -- I/O:7C-7Dh / OPLL via OPL3
                 '1' when( pSltAdr(7 downto 1) = "0100100" and use_franky_psg_g                  )else  -- I/O:48-49h / Franky SN76489
-                '1' when( pSltAdr(7 downto 1) = "1000100" and use_franky_vdp_g                  )else  -- I/O:88-89h / Franky SN76489
+                '1' when( pSltAdr(7 downto 1) = "1000100" and use_franky_vdp_g                  )else  -- I/O:88-89h / Franky VDP
                 '1' when( pSltAdr(7 downto 0) = "11101001"                                      )else  -- I/O:E9h    / MIDI
                 '0';
 
@@ -2860,14 +2880,6 @@ begin
     ----------------------------------------------------------------
     -- Connect components
     ----------------------------------------------------------------
---  U00 : pll4x
---      port map(
---          inclk0   => pClk21m,                -- 21.48MHz external
---          c0       => clk21m,                 -- 21.48MHz internal
---          c1       => memclk,                 -- 85.92MHz = 21.48MHz x 4
---          e0       => pMemClk                 -- 85.92MHz external
---      );
-
     U00 : work.pll
         port map(
             inclk0   => pClk21m,
@@ -3160,6 +3172,37 @@ begin
                 adr_i       => adr,
                 db_i        => dbo,
                 db_o        => esp_dout_s
+            );
+    end generate;
+
+    smsvdp : if use_franky_vdp_g generate
+        usmsvdp : work.smsvdp
+            generic map(
+                MAX_SPPL => 7
+            )
+            port map(
+                clk_sys         => clkSYSSMS,
+                ce_vdp          => clkSMSVDP,
+                ce_pix          => clkPIXSMS,
+                ce_sp           => clkSMSSP,
+                gg              => '0',
+                sp64            => '0',
+                HL              => '0',
+                RD_n            => smsVDPReqRD,
+                WR_n            => smsVDPReqWR,
+                IRQ_n           => pFrankyVdpInt_n,
+                A               => adr( 7 downto 0 ),
+                D_in            => dbo,
+                D_out           => franky_v_dout_s,
+                x               => sms_x,
+                y               => sms_y,
+                color           => colorSMSVDP,
+                mask_column     => sms_mask_column,
+                smode_M1        => sms_smode_M1,
+                smode_M2        => sms_smode_M2,
+                smode_M3        => sms_smode_M3,
+                smode_M4        => sms_smode_M4,
+                reset_n         => (not reset)
             );
     end generate;
 
