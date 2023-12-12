@@ -574,7 +574,6 @@ parameter CONF_STR = {
     "OI,ZX Next Expansion,No,Yes;",                             // No SD, F12 pops up 0, do not try to use ZX Next Expansion
     "OJ,Video Out,MSX,Franky;",                                 // No SD, F12 pops up 0, MSX Video Out, status[19]
     "OK,Franky Video Type,NTSC,PAL;",                           // No SD, F12 pops up 0, NTSC, status[20]
-    "OL,Franky VDP,SMS,GG;",                                    // No SD, F12 pops up 0, SMS, status[21]
     "T0,Reset;"
 };
 
@@ -1112,7 +1111,6 @@ emsx_top emsx
         .sms_smode_M3    ( sms_smode_M3    ),
         .sms_smode_M4    ( sms_smode_M4    ),
         .sms_pal         ( sms_pal         ),
-        .sms_gg          ( sms_gg          ),
 
         // MC2P Exclusive
         .pll_locked      ( pll_locked    ),
@@ -1160,6 +1158,9 @@ emsx_top emsx
 wire  [ 5:0] R_O;
 wire  [ 5:0] G_O;
 wire  [ 5:0] B_O;
+wire  [ 3:0] R_O_SMS;
+wire  [ 3:0] G_O_SMS;
+wire  [ 3:0] B_O_SMS;
 wire         HSync, VSync;
 wire  [11:0] color;
 wire         sms_HSync, sms_VSync;
@@ -1175,15 +1176,14 @@ wire         sms_smode_M2;
 wire         sms_smode_M3;
 wire         sms_smode_M4;
 wire         sms_pal;
-wire         sms_gg;
 
 video
 (
     .clk         ( clk_sms ),
     .ce_pix      ( ce_pix ),
     .pal         ( sms_pal ),
-    .gg          ( sms_gg ),
-    .border      ( ~sms_gg ),
+    .gg          ( 1'b0 ),
+    .border      ( 1'b1 ),
     .mask_column ( sms_mask_column ),
     .x           ( sms_x ),
     .y           ( sms_y ),
@@ -1195,6 +1195,9 @@ video
     .VBlank      ( sms_VBlank )
 );
 
+assign R_O_SMS = color[3:0];
+assign G_O_SMS = color[7:4];
+assign B_O_SMS = color[11:8];
 
 mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(4)) mist_video_sms
 (
@@ -1209,9 +1212,9 @@ mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(4)) mist_video_sms
     .SPI_SS3                ( SPI_SS2 ),
     .HSync                  ( ~sms_HSync ),
     .VSync                  ( ~sms_VSync ),
-    .R                      ( color[3:0] ),
-    .G                      ( color[7:4] ),
-    .B                      ( color[11:8] ),
+    .R                      ( R_O_SMS ),
+    .G                      ( G_O_SMS ),
+    .B                      ( B_O_SMS ),
     .VGA_HS                 ( SMS_VGA_HS ),
     .VGA_VS                 ( SMS_VGA_VS ),
     .VGA_R                  ( SMS_VGA_R ),
@@ -1250,10 +1253,9 @@ mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(6)) mist_video_inst
 );
 
 assign sms_pal = status[20];
-assign sms_gg = status[21];
 assign VGA_R  = status[19] ? SMS_VGA_R : MSX_VGA_R;
-assign VGA_G  = status[19] ? SMS_VGA_R : MSX_VGA_G;
-assign VGA_B  = status[19] ? SMS_VGA_R : MSX_VGA_B;
+assign VGA_G  = status[19] ? SMS_VGA_G : MSX_VGA_G;
+assign VGA_B  = status[19] ? SMS_VGA_B : MSX_VGA_B;
 assign VGA_HS = status[19] ? SMS_VGA_HS : MSX_VGA_HS;
 assign VGA_VS = status[19] ? SMS_VGA_VS : MSX_VGA_VS;
 assign AUDIO_L      = audio_li[0];

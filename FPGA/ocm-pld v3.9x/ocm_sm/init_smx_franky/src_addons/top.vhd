@@ -566,7 +566,7 @@ architecture Behavior of top is
         ce_pix      => ce_pix,
         pal         => '0',
         gg          => '0',
-        border      => '0',
+        border      => '1',
         mask_column => sms_mask_column,
         x           => sms_x,
         y           => sms_y,

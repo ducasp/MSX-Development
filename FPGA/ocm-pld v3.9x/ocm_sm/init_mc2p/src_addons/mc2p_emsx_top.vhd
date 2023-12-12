@@ -208,7 +208,6 @@ entity emsx_top is
         sms_smode_M2    : out   std_logic;
         sms_smode_M3    : out   std_logic;
         sms_smode_M4    : out   std_logic;
-        sms_gg          : in    std_logic;
         sms_pal         : in    std_logic;
         pll_locked      : out   std_logic
     );
@@ -3192,7 +3191,7 @@ begin
                 ce_vdp          => clkSMSVDP,
                 ce_pix          => clkPIXSMS,
                 ce_sp           => clkSMSSP,
-                gg              => sms_gg,
+                gg              => '0',
                 sp64            => '0',
                 HL              => '0',
                 RD_n            => smsVDPReqRD,
