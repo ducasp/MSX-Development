@@ -314,9 +314,12 @@ architecture Behavior of top is
     signal btn_scan_s       : std_logic := '1';
     signal odd_line_s       : std_logic := '0';
     signal sms_odd_line_s   : std_logic := '0';
-    signal vga_r_out_s      : std_logic_vector(  4 downto 0 );
-    signal vga_g_out_s      : std_logic_vector(  4 downto 0 );
-    signal vga_b_out_s      : std_logic_vector(  4 downto 0 );
+    signal vga_r_out_s_21   : std_logic_vector(  4 downto 0 );
+    signal vga_g_out_s_21   : std_logic_vector(  4 downto 0 );
+    signal vga_b_out_s_21   : std_logic_vector(  4 downto 0 );
+    signal vga_r_out_s_54   : std_logic_vector(  4 downto 0 );
+    signal vga_g_out_s_54   : std_logic_vector(  4 downto 0 );
+    signal vga_b_out_s_54   : std_logic_vector(  4 downto 0 );
 
     -- mouse
     signal clock_div_q      : unsigned(  5 downto 0 ) := (others => '0');
@@ -543,9 +546,12 @@ architecture Behavior of top is
 
     -- VIDEO
 
-    vga_r_o         <= vga_r_out_s;
-    vga_g_o         <= vga_g_out_s;
-    vga_b_o         <= vga_b_out_s;
+    vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else vga_r_out_s_54;
+    vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else vga_g_out_s_54;
+    vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else vga_b_out_s_54;
+    vga_hsync_out_s <= vga_hsync_n_s when ( sms_active = '0' ) else SMS_VGA_HS;
+    vga_vsync_out_s <= vga_vsync_n_s when ( sms_active = '0' ) else SMS_VGA_VS;
+
     vga_hsync_n_o   <= vga_hsync_out_s;
     vga_vsync_n_o   <= vga_vsync_out_s;
 
@@ -929,76 +935,83 @@ architecture Behavior of top is
     );
 
     process( clk21m )
-        variable r_v : unsigned(  4 downto 0 );
-        variable g_v : unsigned(  4 downto 0 );
-        variable b_v : unsigned(  4 downto 0 );
+        variable r_v_21 : unsigned(  4 downto 0 );
+        variable g_v_21 : unsigned(  4 downto 0 );
+        variable b_v_21 : unsigned(  4 downto 0 );
     begin
         if rising_edge( clk21m )then
             if ( sms_active = '0' ) then
-                vga_hsync_out_s <= vga_hsync_n_s;
-                vga_vsync_out_s <= vga_vsync_n_s;
+
                 -- 100%
-                vga_r_out_s <= vga_r_s(  5 downto 1 );
-                vga_g_out_s <= vga_g_s(  5 downto 1 );
-                vga_b_out_s <= vga_b_s(  5 downto 1 );
+                vga_r_out_s_21 <= vga_r_s(  5 downto 1 );
+                vga_g_out_s_21 <= vga_g_s(  5 downto 1 );
+                vga_b_out_s_21 <= vga_b_s(  5 downto 1 );
 
                 if odd_line_s = '0' and vga_status = '1' then
 
                     if vga_scanlines = "11" then
                         -- 75%
-                        vga_r_out_s <=  "00" & vga_r_s(  5 downto 3 );
-                        vga_g_out_s <=  "00" & vga_g_s(  5 downto 3 );
-                        vga_b_out_s <=  "00" & vga_b_s(  5 downto 3 );
+                        vga_r_out_s_21 <=  "00" & vga_r_s(  5 downto 3 );
+                        vga_g_out_s_21 <=  "00" & vga_g_s(  5 downto 3 );
+                        vga_b_out_s_21 <=  "00" & vga_b_s(  5 downto 3 );
 
                     elsif vga_scanlines = "10" then
                         -- 50%
-                        vga_r_out_s <=  '0' & vga_r_s(  5 downto 2 );
-                        vga_g_out_s <=  '0' & vga_g_s(  5 downto 2 );
-                        vga_b_out_s <=  '0' & vga_b_s(  5 downto 2 );
+                        vga_r_out_s_21 <=  '0' & vga_r_s(  5 downto 2 );
+                        vga_g_out_s_21 <=  '0' & vga_g_s(  5 downto 2 );
+                        vga_b_out_s_21 <=  '0' & vga_b_s(  5 downto 2 );
 
                     elsif vga_scanlines = "01" then
                         -- 25%
-                        r_v := unsigned('0' & vga_r_s(  5 downto 2 )) + unsigned("00" & vga_r_s(  5 downto 3 ));
-                        g_v := unsigned('0' & vga_g_s(  5 downto 2 )) + unsigned("00" & vga_g_s(  5 downto 3 ));
-                        b_v := unsigned('0' & vga_b_s(  5 downto 2 )) + unsigned("00" & vga_b_s(  5 downto 3 ));
+                        r_v_21 := unsigned('0' & vga_r_s(  5 downto 2 )) + unsigned("00" & vga_r_s(  5 downto 3 ));
+                        g_v_21 := unsigned('0' & vga_g_s(  5 downto 2 )) + unsigned("00" & vga_g_s(  5 downto 3 ));
+                        b_v_21 := unsigned('0' & vga_b_s(  5 downto 2 )) + unsigned("00" & vga_b_s(  5 downto 3 ));
 
-                        vga_r_out_s <= std_logic_vector(r_v);
-                        vga_g_out_s <= std_logic_vector(g_v);
-                        vga_b_out_s <= std_logic_vector(b_v);
+                        vga_r_out_s_21 <= std_logic_vector(r_v_21);
+                        vga_g_out_s_21 <= std_logic_vector(g_v_21);
+                        vga_b_out_s_21 <= std_logic_vector(b_v_21);
 
                     end if;
                 end if;
-            else
-                vga_hsync_out_s <= SMS_VGA_HS;
-                vga_vsync_out_s <= SMS_VGA_VS;
+            end if;
+        end if;
+    end process;
+
+    process( clk_sms )
+        variable r_v_54 : unsigned(  4 downto 0 );
+        variable g_v_54 : unsigned(  4 downto 0 );
+        variable b_v_54 : unsigned(  4 downto 0 );
+    begin
+        if rising_edge( clk_sms )then
+            if ( sms_active = '1' ) then
                 -- 100%
-                vga_r_out_s <= SMS_VGA_R;
-                vga_g_out_s <= SMS_VGA_G;
-                vga_b_out_s <= SMS_VGA_B;
+                vga_r_out_s_54 <= SMS_VGA_R;
+                vga_g_out_s_54 <= SMS_VGA_G;
+                vga_b_out_s_54 <= SMS_VGA_B;
 
                 if sms_odd_line_s = '0' and vga_status = '1' then
 
                     if vga_scanlines = "11" then
                         -- 75%
-                        vga_r_out_s <=  "00" & SMS_VGA_R(  4 downto 2 );
-                        vga_g_out_s <=  "00" & SMS_VGA_G(  4 downto 2 );
-                        vga_b_out_s <=  "00" & SMS_VGA_B(  4 downto 2 );
+                        vga_r_out_s_54 <=  "00" & SMS_VGA_R(  4 downto 2 );
+                        vga_g_out_s_54 <=  "00" & SMS_VGA_G(  4 downto 2 );
+                        vga_b_out_s_54 <=  "00" & SMS_VGA_B(  4 downto 2 );
 
                     elsif vga_scanlines = "10" then
                         -- 50%
-                        vga_r_out_s <=  '0' & SMS_VGA_R(  4 downto 1 );
-                        vga_g_out_s <=  '0' & SMS_VGA_G(  4 downto 1 );
-                        vga_b_out_s <=  '0' & SMS_VGA_B(  4 downto 1 );
+                        vga_r_out_s_54 <=  '0' & SMS_VGA_R(  4 downto 1 );
+                        vga_g_out_s_54 <=  '0' & SMS_VGA_G(  4 downto 1 );
+                        vga_b_out_s_54 <=  '0' & SMS_VGA_B(  4 downto 1 );
 
                     elsif vga_scanlines = "01" then
                         -- 25%
-                        r_v := unsigned('0' & SMS_VGA_R(  4 downto 1 )) + unsigned("00" & SMS_VGA_R(  4 downto 2 ));
-                        g_v := unsigned('0' & SMS_VGA_G(  4 downto 1 )) + unsigned("00" & SMS_VGA_G(  4 downto 2 ));
-                        b_v := unsigned('0' & SMS_VGA_B(  4 downto 1 )) + unsigned("00" & SMS_VGA_B(  4 downto 2 ));
+                        r_v_54 := unsigned('0' & SMS_VGA_R(  4 downto 1 )) + unsigned("00" & SMS_VGA_R(  4 downto 2 ));
+                        g_v_54 := unsigned('0' & SMS_VGA_G(  4 downto 1 )) + unsigned("00" & SMS_VGA_G(  4 downto 2 ));
+                        b_v_54 := unsigned('0' & SMS_VGA_B(  4 downto 1 )) + unsigned("00" & SMS_VGA_B(  4 downto 2 ));
 
-                        vga_r_out_s <= std_logic_vector(r_v);
-                        vga_g_out_s <= std_logic_vector(g_v);
-                        vga_b_out_s <= std_logic_vector(b_v);
+                        vga_r_out_s_54 <= std_logic_vector(r_v_54);
+                        vga_g_out_s_54 <= std_logic_vector(g_v_54);
+                        vga_b_out_s_54 <= std_logic_vector(b_v_54);
 
                     end if;
                 end if;
