@@ -155,41 +155,39 @@ end entity;
 
 architecture Behavior of top is
 
-    component mist_video
+    component scandoublersmx
         generic (
-        OSD_COLOR    : std_logic_vector(2 downto 0) := "110";
-        OSD_X_OFFSET : std_logic_vector(9 downto 0) := (others => '0');
-        OSD_Y_OFFSET : std_logic_vector(9 downto 0) := (others => '0');
-        SD_HCNT_WIDTH: integer := 9;
+        OUT_COLOR_DEPTH:integer := 5;
+        HSCNT_WIDTH  : integer := 12;
+        HCNT_WIDTH   : integer := 9;
         COLOR_DEPTH  : integer := 6
         );
         port (
         clk_sys     : in std_logic;
+        bypass      : in std_logic;
 
-        SPI_SCK     : in std_logic;
-        SPI_SS3     : in std_logic;
-        SPI_DI      : in std_logic;
+        ce_divider  : in std_logic_vector(2 downto 0);
+        pixel_ena   : out std_logic;
 
         scanlines   : in std_logic_vector(1 downto 0);
-        ce_divider  : in std_logic := '0';
-        scandoubler_disable : in std_logic;
-        no_csync    : in std_logic;
-        rotate      : in std_logic_vector(1 downto 0);
-        blend       : in std_logic := '0';
 
-        HSync       : in std_logic;
-        VSync       : in std_logic;
-        R           : in std_logic_vector(COLOR_DEPTH-1 downto 0);
-        G           : in std_logic_vector(COLOR_DEPTH-1 downto 0);
-        B           : in std_logic_vector(COLOR_DEPTH-1 downto 0);
+        hb_in       : in std_logic;
+        vb_in       : in std_logic;
+        hs_in       : in std_logic;
+        vs_in       : in std_logic;
+        r_in        : in std_logic_vector(COLOR_DEPTH-1 downto 0);
+        g_in        : in std_logic_vector(COLOR_DEPTH-1 downto 0);
+        b_in        : in std_logic_vector(COLOR_DEPTH-1 downto 0);
 
-        VGA_HS      : out std_logic;
-        VGA_VS      : out std_logic;
-        VGA_R       : out std_logic_vector(4 downto 0);
-        VGA_G       : out std_logic_vector(4 downto 0);
-        VGA_B       : out std_logic_vector(4 downto 0)
+        hb_out      : out std_logic;
+        vb_out      : out std_logic;
+        hs_out      : out std_logic;
+        vs_out      : out std_logic;
+        r_out       : out std_logic_vector(OUT_COLOR_DEPTH-1 downto 0);
+        g_out       : out std_logic_vector(OUT_COLOR_DEPTH-1 downto 0);
+        b_out       : out std_logic_vector(OUT_COLOR_DEPTH-1 downto 0)
         );
-    end component mist_video;
+    end component scandoublersmx;
 
     component ps2mouse
     port(
@@ -249,9 +247,11 @@ architecture Behavior of top is
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
     signal clk_sms          : std_logic;
+    signal clk_sms_hdmi     : std_logic;
 
     -- Franky signals
     signal sms_active       : std_logic;
+    signal sms_active_o     : std_logic := '0';
     signal ce_vdp           : std_logic;
     signal ce_pix           : std_logic;
     signal ce_sp            : std_logic;
@@ -265,11 +265,20 @@ architecture Behavior of top is
     signal sms_smode_M2     : std_logic;
     signal sms_smode_M3     : std_logic;
     signal sms_smode_M4     : std_logic;
+    signal sms_r_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
+    signal sms_g_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
+    signal sms_b_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
+    signal sms_HBlank_o     : std_logic;
+    signal sms_VBlank_o     : std_logic;
+    signal sms_HSync_o      : std_logic;
+    signal sms_VSync_o      : std_logic;
     signal SMS_VGA_R        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_B        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_G        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_HS       : std_logic := '1';
     signal SMS_VGA_VS       : std_logic := '1';
+    signal SMS_VGA_HBlank   : std_logic := '1';
+    signal SMS_VGA_VBlank   : std_logic := '1';
     signal sms_HBlank       : std_logic;
     signal sms_VBlank       : std_logic;
     signal sms_HSync        : std_logic;
@@ -545,19 +554,26 @@ architecture Behavior of top is
     sdram_clk_o     <= clk_sdram;
 
     -- VIDEO
+    sms_r_o         <= SMS_VGA_R when ( vga_status = '1' ) else color( 3 downto 0 ) & color ( 0 );
+    sms_g_o         <= SMS_VGA_G when ( vga_status = '1' ) else color( 7 downto 4 ) & color ( 4 );
+    sms_b_o         <= SMS_VGA_B when ( vga_status = '1' ) else color(11 downto 8 ) & color ( 8 );
+    sms_HBlank_o    <= SMS_VGA_HBlank when ( vga_status = '1' ) else sms_HBlank;
+    sms_VBlank_o    <= SMS_VGA_VBlank when ( vga_status = '1' ) else sms_VBlank;
+    sms_HSync_o     <= SMS_VGA_HS when ( vga_status = '1' ) else sms_HSync;
+    sms_VSync_o     <= SMS_VGA_VS when ( vga_status = '1' ) else sms_VSync;
 
     vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else vga_r_out_s_54;
     vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else vga_g_out_s_54;
     vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else vga_b_out_s_54;
-    vga_hsync_out_s <= vga_hsync_n_s when ( sms_active = '0' ) else SMS_VGA_HS;
-    vga_vsync_out_s <= vga_vsync_n_s when ( sms_active = '0' ) else SMS_VGA_VS;
+    vga_hsync_out_s <= vga_hsync_n_s when ( sms_active = '0' ) else sms_HSync_o;
+    vga_vsync_out_s <= vga_vsync_n_s when ( sms_active = '0' ) else sms_VSync_o;
 
     vga_hsync_n_o   <= vga_hsync_out_s;
     vga_vsync_n_o   <= vga_vsync_out_s;
 
-    hdmi_pclk       <= clk21m;
-    hdmi_de         <= not blank_s;
-    hdmi_rst        <= power_on_reset_s;                        -- reset when '0'
+    hdmi_pclk       <= clk21m when ( sms_active = '0' ) else clk_sms;
+    hdmi_de         <= not blank_s when ( sms_active = '0' ) else not ( sms_HBlank_o or sms_VBlank_o );
+    hdmi_rst        <= power_on_reset_s;
 
     -- Franky
     video1 : work.video
@@ -578,32 +594,32 @@ architecture Behavior of top is
         VBlank      => sms_VBlank
     );
 
-    mist_video_sms : mist_video
+    vga_video_sms : scandoublersmx
     generic map
     (
-        SD_HCNT_WIDTH           => 10,
+        HCNT_WIDTH              => 10,
         COLOR_DEPTH             => 4
     )
     port map(
         clk_sys                => clk_sms,
+        bypass                 => '0',
+        ce_divider             => "010",
         scanlines              => "00",
-        scandoubler_disable    => '0',
-        rotate                 => "00",
-        SPI_DI                 => '1',
-        SPI_SCK                => '1',
-        SPI_SS3                => '1',
-        no_csync               => '1',
-        HSync                  => not sms_HSync,
-        VSync                  => not sms_VSync,
-        R                      => color( 3 downto 0 ),
-        G                      => color( 7 downto 4 ),
-        B                      => color(11 downto 8 ),
-        VGA_HS                 => SMS_VGA_HS,
-        VGA_VS                 => SMS_VGA_VS,
-        VGA_R                  => SMS_VGA_R,
-        VGA_G                  => SMS_VGA_G,
-        VGA_B                  => SMS_VGA_B
-        --osd_enable             => '0'
+        pixel_ena              => clk_sms_hdmi,
+        hs_in                  => not sms_HSync,
+        vs_in                  => not sms_VSync,
+        hb_in                  => sms_HBlank,
+        vb_in                  => sms_VBlank,
+        r_in                   => color( 3 downto 0 ),
+        g_in                   => color( 7 downto 4 ),
+        b_in                   => color(11 downto 8 ),
+        hb_out                 => SMS_VGA_HBlank,
+        vb_out                 => SMS_VGA_VBlank,
+        hs_out                 => SMS_VGA_HS,
+        vs_out                 => SMS_VGA_VS,
+        r_out                  => SMS_VGA_R,
+        g_out                  => SMS_VGA_G,
+        b_out                  => SMS_VGA_B
     );
 
     process ( clk_sms )
@@ -940,38 +956,35 @@ architecture Behavior of top is
         variable b_v_21 : unsigned(  4 downto 0 );
     begin
         if rising_edge( clk21m )then
-            if ( sms_active = '0' ) then
+            -- 100%
+            vga_r_out_s_21 <= vga_r_s(  5 downto 1 );
+            vga_g_out_s_21 <= vga_g_s(  5 downto 1 );
+            vga_b_out_s_21 <= vga_b_s(  5 downto 1 );
 
-                -- 100%
-                vga_r_out_s_21 <= vga_r_s(  5 downto 1 );
-                vga_g_out_s_21 <= vga_g_s(  5 downto 1 );
-                vga_b_out_s_21 <= vga_b_s(  5 downto 1 );
+            if odd_line_s = '0' and vga_status = '1' then
 
-                if odd_line_s = '0' and vga_status = '1' then
+                if vga_scanlines = "11" then
+                    -- 75%
+                    vga_r_out_s_21 <=  "00" & vga_r_s(  5 downto 3 );
+                    vga_g_out_s_21 <=  "00" & vga_g_s(  5 downto 3 );
+                    vga_b_out_s_21 <=  "00" & vga_b_s(  5 downto 3 );
 
-                    if vga_scanlines = "11" then
-                        -- 75%
-                        vga_r_out_s_21 <=  "00" & vga_r_s(  5 downto 3 );
-                        vga_g_out_s_21 <=  "00" & vga_g_s(  5 downto 3 );
-                        vga_b_out_s_21 <=  "00" & vga_b_s(  5 downto 3 );
+                elsif vga_scanlines = "10" then
+                    -- 50%
+                    vga_r_out_s_21 <=  '0' & vga_r_s(  5 downto 2 );
+                    vga_g_out_s_21 <=  '0' & vga_g_s(  5 downto 2 );
+                    vga_b_out_s_21 <=  '0' & vga_b_s(  5 downto 2 );
 
-                    elsif vga_scanlines = "10" then
-                        -- 50%
-                        vga_r_out_s_21 <=  '0' & vga_r_s(  5 downto 2 );
-                        vga_g_out_s_21 <=  '0' & vga_g_s(  5 downto 2 );
-                        vga_b_out_s_21 <=  '0' & vga_b_s(  5 downto 2 );
+                elsif vga_scanlines = "01" then
+                    -- 25%
+                    r_v_21 := unsigned('0' & vga_r_s(  5 downto 2 )) + unsigned("00" & vga_r_s(  5 downto 3 ));
+                    g_v_21 := unsigned('0' & vga_g_s(  5 downto 2 )) + unsigned("00" & vga_g_s(  5 downto 3 ));
+                    b_v_21 := unsigned('0' & vga_b_s(  5 downto 2 )) + unsigned("00" & vga_b_s(  5 downto 3 ));
 
-                    elsif vga_scanlines = "01" then
-                        -- 25%
-                        r_v_21 := unsigned('0' & vga_r_s(  5 downto 2 )) + unsigned("00" & vga_r_s(  5 downto 3 ));
-                        g_v_21 := unsigned('0' & vga_g_s(  5 downto 2 )) + unsigned("00" & vga_g_s(  5 downto 3 ));
-                        b_v_21 := unsigned('0' & vga_b_s(  5 downto 2 )) + unsigned("00" & vga_b_s(  5 downto 3 ));
+                    vga_r_out_s_21 <= std_logic_vector(r_v_21);
+                    vga_g_out_s_21 <= std_logic_vector(g_v_21);
+                    vga_b_out_s_21 <= std_logic_vector(b_v_21);
 
-                        vga_r_out_s_21 <= std_logic_vector(r_v_21);
-                        vga_g_out_s_21 <= std_logic_vector(g_v_21);
-                        vga_b_out_s_21 <= std_logic_vector(b_v_21);
-
-                    end if;
                 end if;
             end if;
         end if;
@@ -983,37 +996,35 @@ architecture Behavior of top is
         variable b_v_54 : unsigned(  4 downto 0 );
     begin
         if rising_edge( clk_sms )then
-            if ( sms_active = '1' ) then
-                -- 100%
-                vga_r_out_s_54 <= SMS_VGA_R;
-                vga_g_out_s_54 <= SMS_VGA_G;
-                vga_b_out_s_54 <= SMS_VGA_B;
+            -- 100%
+            vga_r_out_s_54 <= sms_r_o;
+            vga_g_out_s_54 <= sms_g_o;
+            vga_b_out_s_54 <= sms_b_o;
 
-                if sms_odd_line_s = '0' and vga_status = '1' then
+            if sms_odd_line_s = '0' and vga_status = '1' then
 
-                    if vga_scanlines = "11" then
-                        -- 75%
-                        vga_r_out_s_54 <=  "00" & SMS_VGA_R(  4 downto 2 );
-                        vga_g_out_s_54 <=  "00" & SMS_VGA_G(  4 downto 2 );
-                        vga_b_out_s_54 <=  "00" & SMS_VGA_B(  4 downto 2 );
+                if vga_scanlines = "11" then
+                    -- 75%
+                    vga_r_out_s_54 <=  "00" & sms_r_o(  4 downto 2 );
+                    vga_g_out_s_54 <=  "00" & sms_g_o(  4 downto 2 );
+                    vga_b_out_s_54 <=  "00" & sms_b_o(  4 downto 2 );
 
-                    elsif vga_scanlines = "10" then
-                        -- 50%
-                        vga_r_out_s_54 <=  '0' & SMS_VGA_R(  4 downto 1 );
-                        vga_g_out_s_54 <=  '0' & SMS_VGA_G(  4 downto 1 );
-                        vga_b_out_s_54 <=  '0' & SMS_VGA_B(  4 downto 1 );
+                elsif vga_scanlines = "10" then
+                    -- 50%
+                    vga_r_out_s_54 <=  '0' & sms_r_o(  4 downto 1 );
+                    vga_g_out_s_54 <=  '0' & sms_g_o(  4 downto 1 );
+                    vga_b_out_s_54 <=  '0' & sms_b_o(  4 downto 1 );
 
-                    elsif vga_scanlines = "01" then
-                        -- 25%
-                        r_v_54 := unsigned('0' & SMS_VGA_R(  4 downto 1 )) + unsigned("00" & SMS_VGA_R(  4 downto 2 ));
-                        g_v_54 := unsigned('0' & SMS_VGA_G(  4 downto 1 )) + unsigned("00" & SMS_VGA_G(  4 downto 2 ));
-                        b_v_54 := unsigned('0' & SMS_VGA_B(  4 downto 1 )) + unsigned("00" & SMS_VGA_B(  4 downto 2 ));
+                elsif vga_scanlines = "01" then
+                    -- 25%
+                    r_v_54 := unsigned('0' & sms_r_o(  4 downto 1 )) + unsigned("00" & sms_r_o(  4 downto 2 ));
+                    g_v_54 := unsigned('0' & sms_g_o(  4 downto 1 )) + unsigned("00" & sms_g_o(  4 downto 2 ));
+                    b_v_54 := unsigned('0' & sms_b_o(  4 downto 1 )) + unsigned("00" & sms_b_o(  4 downto 2 ));
 
-                        vga_r_out_s_54 <= std_logic_vector(r_v_54);
-                        vga_g_out_s_54 <= std_logic_vector(g_v_54);
-                        vga_b_out_s_54 <= std_logic_vector(b_v_54);
+                    vga_r_out_s_54 <= std_logic_vector(r_v_54);
+                    vga_g_out_s_54 <= std_logic_vector(g_v_54);
+                    vga_b_out_s_54 <= std_logic_vector(b_v_54);
 
-                    end if;
                 end if;
             end if;
         end if;

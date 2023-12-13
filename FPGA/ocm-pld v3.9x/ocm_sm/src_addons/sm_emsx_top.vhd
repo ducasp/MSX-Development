@@ -1160,6 +1160,14 @@ architecture RTL of emsx_top is
     signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '0');
     signal  franky_v_dout_s  : std_logic_vector(  7 downto 0 ) := (others => '0');
 
+    -- MSX / Franky video auto switch
+    signal  oldFrankyVdpInt_s: std_logic := '1';
+    signal  oldMSXVdpInt_s   : std_logic := '1';
+    signal  wtSwitchFranky_s : std_logic := '0';
+    signal  wtSwitchMSX_s    : std_logic := '0';
+    signal  smsvideo_active_s: std_logic := '0';
+    signal  VideoSWState_s   : std_logic_vector(  1 downto 0 ) := (others => '0');
+
     -- MIDI signals
 --  signal  midi_o          : std_logic;
 --  signal  midi_active_o   : std_logic;
@@ -1177,14 +1185,11 @@ architecture RTL of emsx_top is
 begin
 
     -- Internal OPL3 On/Off toggle
-    -- Video Output toggle if using Franky Video
     process( clk21m )
     begin
         if( clk21m'event and clk21m = '1' )then
             -- OPL3 can be managed by the SCRLK key or by the CmtScro signal
-            -- In Full Franky, SCRLK changes video active
             opl3_enabled <= CmtScro;
-            sms_video_active <= not sn76489NoIO;
         end if;
     end process;
 
@@ -1282,6 +1287,73 @@ begin
                     hybstartcnt <= hybstartcnt - 1;
                 end if;
             end if;
+        end if;
+    end process;
+
+    -- automatic video output selection
+    process( reset, clk21m, pFrankyVdpInt_n, pVdpInt_n )
+    begin
+        if( reset = '1' )then
+            sms_video_active  <= '0';
+            smsvideo_active_s <= '0';
+            oldFrankyVdpInt_s <= '1';
+            oldMSXVdpInt_s    <= '1';
+            wtSwitchFranky_s  <= '0';
+            wtSwitchMSX_s     <= '0';
+            VideoSWState_s    <= "00";
+        elsif( clk21m'event and clk21m = '1' )then
+            case VideoSWState_s(1 downto 0) is
+            -- Idle and no possible video switch detected
+            when "00" =>
+                if ( oldFrankyVdpInt_s = '1' and pFrankyVdpInt_n = '0' and smsvideo_active_s = '0') then
+                    wtSwitchFranky_s <= '1';
+                    VideoSWState_s    <= "01";
+                elsif ( oldMSXVdpInt_s = '1' and pVdpInt_n = '0' and smsvideo_active_s = '1') then
+                    wtSwitchMSX_s <= '0';
+                    VideoSWState_s    <= "01";
+                end if;
+            when "01" =>
+                if ( wtSwitchFranky_s = '1' ) then
+                    if ( oldFrankyVdpInt_s = '1' and pFrankyVdpInt_n = '0') then
+                        VideoSWState_s    <= "10";
+                    elsif ( oldMSXVdpInt_s = '1' and pVdpInt_n = '0') then
+                        wtSwitchFranky_s <= '0';
+                        wtSwitchMSX_s <= '0';
+                        VideoSWState_s    <= "00";
+                    end if;
+                elsif ( wtSwitchMSX_s = '1' ) then
+                    if ( oldFrankyVdpInt_s = '1' and pFrankyVdpInt_n = '0') then
+                        wtSwitchMSX_s <= '0';
+                        wtSwitchFranky_s <= '0';
+                        VideoSWState_s    <= "00";
+                    elsif ( oldMSXVdpInt_s = '1' and pVdpInt_n = '0') then
+                        VideoSWState_s    <= "10";
+                    end if;
+                else
+                    VideoSWState_s    <= "00";
+                    wtSwitchMSX_s <= '0';
+                    wtSwitchFranky_s <= '0';
+                end if;
+            when "10" =>
+                if ( oldFrankyVdpInt_s = '1' and pFrankyVdpInt_n = '0') then
+                    VideoSWState_s    <= "00";
+                    wtSwitchFranky_s <= '0';
+                    wtSwitchMSX_s <= '0';
+                    smsvideo_active_s <= '1';
+                elsif ( oldMSXVdpInt_s = '1' and pVdpInt_n = '0') then
+                    VideoSWState_s    <= "00";
+                    wtSwitchFranky_s <= '0';
+                    wtSwitchMSX_s <= '0';
+                    smsvideo_active_s <= '0';
+                end if;
+            when "11" =>
+                VideoSWState_s    <= "00";
+                wtSwitchMSX_s <= '0';
+                wtSwitchFranky_s <= '0';
+            end case;
+            oldFrankyVdpInt_s <= pFrankyVdpInt_n;
+            oldMSXVdpInt_s <= pVdpInt_n;
+            sms_video_active <= smsvideo_active_s;
         end if;
     end process;
 
