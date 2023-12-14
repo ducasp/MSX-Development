@@ -263,7 +263,7 @@ begin
                     Slot0Mode       <=  '1';                -- Prevent system crash using Reset Key
                     Mapper0_req     <=  '0';                -- Set Extra-Mapper state is Off
                     Mapper0_ack     <=  '0';                -- Prevent system crash using a toggle
-                    iPsg2_ena       <=  '0';                -- Internal PSG2 is Off
+                    iPsg2_ena       <=  '1';                -- Internal PSG2 is On
                 else
                     -- Warm Reset
                     io42_id212(6)   <=  Mapper_req;         -- Set Mapper state to last required
@@ -1026,7 +1026,7 @@ begin
                                 iSlt2_linear    <=  '0';
                                 Slot0_req       <=  '1';
                                 Mapper0_req     <=  '0';
-                                iPsg2_ena       <=  '0';
+                                iPsg2_ena       <=  '1';
                             -- NULL CODES
                             when others     =>
                                 io41_id212_n    <=  "11111111";                 -- Not available
