@@ -191,14 +191,14 @@ entity emsx_top is
         caps_led_o      : out   std_logic;
         joy_deb         : inout std_logic;
         DisBiDir        : in    std_logic := '0';
-        clkSMSVDP       : in    std_logic;
-        clkPIXSMS       : in    std_logic;
-        clkSYSSMS       : in    std_logic;
-        clkSMSSP        : in    std_logic;
-        colorSMSVDP     : out   std_logic_vector( 11 downto 0 );
+        clkSMSVDP       : in    std_logic := '0';
+        clkPIXSMS       : in    std_logic := '0';
+        clkSYSSMS       : in    std_logic := '0';
+        clkSMSSP        : in    std_logic := '0';
+        colorSMSVDP     : out   std_logic_vector( 11 downto 0 ) := "000000000000";
         sms_mask_column : out   std_logic;
-        sms_x           : in    std_logic_vector( 8  downto 0 );
-        sms_y           : in    std_logic_vector( 8  downto 0 );
+        sms_x           : in    std_logic_vector( 8  downto 0 ) := "000000000";
+        sms_y           : in    std_logic_vector( 8  downto 0 ) := "000000000";
         sms_smode_M1    : out   std_logic;
         sms_smode_M2    : out   std_logic;
         sms_smode_M3    : out   std_logic;
@@ -741,6 +741,38 @@ architecture RTL of emsx_top is
             af_speed        : out   std_logic_vector( 3 downto 0 )
         );
     end component;
+
+    -- Franky  VDP
+    component smsvdp is
+    generic (
+        MAX_SPPL : integer := 7
+    );
+        port (
+            clk_sys         : in  std_logic;
+            ce_vdp          : in  std_logic;
+            ce_pix          : in  std_logic;
+            ce_sp           : in  std_logic;
+            gg              : in  std_logic;
+            sp64            : in  std_logic;
+            HL              : in  std_logic;
+            RD_n            : in  std_logic;
+            WR_n            : in  std_logic;
+            IRQ_n           : out std_logic;
+            A               : in  std_logic_vector ( 7 downto 0 );
+            D_in            : in  std_logic_vector ( 7 downto 0 );
+            D_out           : out std_logic_vector ( 7 downto 0 );
+            x               : in  std_logic_vector ( 8 downto 0 );
+            y               : in  std_logic_vector ( 8 downto 0 );
+            color           : out std_logic_vector (11 downto 0 );
+            mask_column     : out std_logic;
+            smode_M1        : out std_logic;
+            smode_M2        : out std_logic;
+            smode_M3        : out std_logic;
+            smode_M4        : out std_logic;
+            reset_n         : in  std_logic
+        );
+    end component;
+
 
     -- Switched I/O ports
     signal  swio_req        : std_logic;
@@ -3247,8 +3279,8 @@ begin
             );
     end generate;
 
-    smsvdp : if use_franky_vdp_g generate
-        usmsvdp : work.smsvdp
+    sms_vdp : if use_franky_vdp_g generate
+        usmsvdp : smsvdp
             generic map(
                 MAX_SPPL => 7
             )
