@@ -6,7 +6,7 @@ set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 
 # Import pins and files and pin configuration
-source smx_franky_pin_and_files.qsf
+source smx_snd_pin_and_files.qsf
 
 # Classic Timing Assignments
 # ==========================
