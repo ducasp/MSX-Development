@@ -306,7 +306,7 @@ architecture Behavior of top is
         use_8gb_sdram_g         => true,
         use_wifi_g              => true,
         use_midi_g              => true,
-        use_dualpsg_g           => false,
+        use_dualpsg_g           => true,
         use_opl3_g              => true,
         use_franky_vdp_g        => false,
         use_franky_psg_g        => false
