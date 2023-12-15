@@ -18,6 +18,7 @@ set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_text12.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_vga.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_wait_control.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vencode.vhd
+set_global_assignment -name QIP_FILE src_addons/video/smsvdp.qip
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/scc/megaram.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/scc/scc_wave.vhd
 set_global_assignment -name VHDL_FILE src_addons/sound/psg/sm_psg.vhd
@@ -65,16 +66,17 @@ set_global_assignment -name VHDL_FILE src_addons/cpu/T800a.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/fifo.vhd
 set_global_assignment -name VHDL_FILE src_addons/peripheral/sm_wifi_lite.vhd
 set_global_assignment -name VHDL_FILE src_addons/sys/debounce.vhd
-set_global_assignment -name VHDL_FILE src_addons/sm_emsx_top.vhd
+set_global_assignment -name VHDL_FILE src_addons/sm_emsx_hbfranky_top.vhd
 set_global_assignment -name VHDL_FILE src_addons/top.vhd
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/autofire.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/iplrom_512k.v
 set_global_assignment -name VERILOG_FILE ../esemsx3/src/peripheral/megasd.v
-set_global_assignment -name VERILOG_FILE src_addons/peripheral/ps2_mouse.v
 set_global_assignment -name VERILOG_FILE src_addons/peripheral/sm_rtc.v
 set_global_assignment -name QIP_FILE src_addons/sound/jt89/hdl/jt89.qip
 set_global_assignment -name VERILOG_FILE ../esemsx3/src/sound/tr_pcm/tr_pcm.v
 set_global_assignment -name QIP_FILE src_addons/sys/pll.qip
+set_global_assignment -name QIP_FILE src_addons/sys/pll2.qip
+set_global_assignment -name VERILOG_FILE src_addons/sys/scandoubler-smx.v
 set_global_assignment -name VHDL_FILE src_addons/debounce_joy.vhd
 set_global_assignment -name SDC_FILE ocm_sm_constrains.sdc
 

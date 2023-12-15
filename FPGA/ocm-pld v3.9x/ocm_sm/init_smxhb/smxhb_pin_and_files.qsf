@@ -224,6 +224,7 @@ set_location_assignment PIN_B16 -to slot_RFSH_i
 set_location_assignment PIN_AB17 -to slot_INT_i
 set_location_assignment PIN_AA17 -to slot_WAIT_i
 set_location_assignment PIN_E9 -to sd_sw_i
+set_location_assignment PIN_AB14 -to is_expert_n
 
 # -----------------
 # start ENTITY(top)
@@ -361,6 +362,7 @@ set_location_assignment PIN_E9 -to sd_sw_i
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_WAIT_i
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_INT_i
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_RFSH_i
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to is_expert_n
     set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[4]
     set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[3]
     set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[2]

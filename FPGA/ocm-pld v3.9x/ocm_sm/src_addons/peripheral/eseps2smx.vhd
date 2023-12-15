@@ -100,6 +100,7 @@ entity eseps2smx is
 
     CmtScro  : inout std_logic;
     DisBiDir : in std_logic := '0';
+    HB_Model : in std_logic := '1';
     EnAltMap : in std_logic := '0'
     );
 end eseps2smx;
@@ -228,9 +229,15 @@ begin
             if Ps2Chg = '1' then
 
               KeyId := Ps2xE0 & Ps2Dat;
-              if Kmap = '1' then
+              -- Non Jap and not Expert Keyboard
+              if Kmap = '1' and ( DisBiDir = '0' or HB_Model = '1' )then
                 MtxSeq := MtxSettle;
                 MtxIdx <= "0" & (not Ps2Shif) & KeyId;
+              -- Expert Keyboard, returns expert map
+              elsif DisBiDir = '1' and HB_Model = '0' then
+                MtxSeq := MtxSettle;
+                MtxIdx <= "1" & (not Ps2Shif) & KeyId;
+              -- Jap and not Expert Keyboard
               else
                 MtxSeq := MtxRead;
                 MtxIdx <= "10" & KeyId;

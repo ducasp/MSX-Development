@@ -136,7 +136,10 @@ entity top is
 
         -- LED
         led_o               : out   std_logic := '0';
-        caps_led_o          : out   std_logic := '0'
+        caps_led_o          : out   std_logic := '0';
+
+        -- Model
+        is_expert_n         : in    std_logic
     );
 end entity;
 
@@ -364,6 +367,7 @@ architecture Behavior of top is
         caps_led_o              => caps_led_o,
         joy_deb                 => joy_deb,
         DisBiDir                => dip_i(9),
+        model_expert_n          => is_expert_n,
         EnAltMap                => dip_i(9)
     );
 

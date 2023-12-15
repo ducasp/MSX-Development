@@ -1,5 +1,5 @@
 --
--- sm_emsx_top.vhd
+-- sm_emsx_hbfranky_top.vhd
 --   ESE MSX-SYSTEM3 / MSX clone on a Cyclone FPGA (ALTERA)
 --   Revision 1.00
 --
@@ -51,6 +51,10 @@
 --
 -- OCM-PLD Pack v3.9.1a by Ducasp (2023.09.08)
 -- Bringing build up to speed with KdL 3.9.1
+-- Removing following features for HB boards when using Franky:
+--  - No PS/2 mouse support
+--  - No Turbo-R PCM
+--  - No Turbo-R MIDI OUT on Joystick port
 -- 
 ------------------------------------------------------------------------------------
 -- Setup for XTAL 50.00000MHz
@@ -64,11 +68,11 @@ library ieee;
 
 entity emsx_top is
     generic(
-        use_8gb_sdram_g : boolean   := false;
-        use_wifi_g      : boolean   := false;
+        use_8gb_sdram_g : boolean   := true;
+        use_wifi_g      : boolean   := true;
         use_midi_g      : boolean   := false;
         use_opl3_g      : boolean   := false;
-        use_dualpsg_g   : boolean   := false;
+        use_dualpsg_g   : boolean   := true;
         use_franky_vdp_g: boolean   := false;
         use_franky_psg_g: boolean   := false
     );
@@ -683,21 +687,6 @@ architecture RTL of emsx_top is
         );
     end component;
 
-    component tr_pcm                                                            -- 2019/11/29 t.hara added
-        port(
-            clk21m          : in    std_logic;
-            reset           : in    std_logic;
-            req             : in    std_logic;
-            ack             : out   std_logic;
-            wrt             : in    std_logic;
-            adr             : in    std_logic;
-            dbi             : out   std_logic_vector(  7 downto 0 );
-            dbo             : in    std_logic_vector(  7 downto 0 );
-            wave_in         : in    std_logic_vector(  7 downto 0 );
-            wave_out        : out   std_logic_vector(  7 downto 0 )
-        );
-    end component;
-
     component jt89 is
         port(
             rst             : in    std_logic;
@@ -706,27 +695,6 @@ architecture RTL of emsx_top is
             din             : in    std_logic_vector(  7 downto 0 );
             wr_n            : in    std_logic;
             sound           : out   std_logic_vector( 10 downto 0 )
-         );
-    end component;
-
-    component opl3 is
-        generic(
-            OPLCLK          : integer := 64000000                               -- opl_clk in Hz
-        );
-        port(
-            clk             : in    std_logic;
-            clk_opl         : in    std_logic;
-            rst_n           : in    std_logic;
-            irq_n           : out   std_logic;
-
-            addr            : in    std_logic_vector(  1 downto 0 );
-            dout            : out   std_logic_vector(  7 downto 0 );
-            din             : in    std_logic_vector(  7 downto 0 );
-            we              : in    std_logic;
-            mono            : in    std_logic;
-
-            sample_l        : out   std_logic_vector( 15 downto 0 );
-            sample_r        : out   std_logic_vector( 15 downto 0 )
          );
     end component;
 
@@ -1135,12 +1103,6 @@ architecture RTL of emsx_top is
     signal  portF4_req      : std_logic;
     signal  portF4_bit7     : std_logic;                                            -- 1=hard reset, 0=soft reset
 
-    -- turboR PCM device
-    signal  tr_pcm_req      : std_logic;
-    signal  tr_pcm_dbi      : std_logic_vector(  7 downto 0 );
-    signal  tr_pcm_wave_in  : std_logic_vector(  7 downto 0 );
-    signal  tr_pcm_wave_out : std_logic_vector(  7 downto 0 );
-
     -- Mixer
     signal  ff_prepsg       : std_logic_vector(  8 downto 0 );
     signal  ff_prepsg2      : std_logic_vector(  8 downto 0 );
@@ -1153,8 +1115,6 @@ architecture RTL of emsx_top is
     signal  ff_opll         : std_logic_vector( DACin'high + 2 downto DACin'low );
     signal  ff_psg_offset   : std_logic_vector( DACin'high + 2 downto DACin'low );
     signal  ff_scc_offset   : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_tr_pcm       : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_opl3         : std_logic_vector( DACin'high + 2 downto DACin'low );
     signal  ff_sn76489      : std_logic_vector( DACin'high + 2 downto DACin'low );
     signal  ff_pre_dacin    : std_logic_vector( DACin'high + 2 downto DACin'low );
     constant c_opll_offset  : std_logic_vector( DACin'high + 2 downto DACin'low ) := ( ff_pre_dacin'high => '1', others => '0' );
@@ -1175,13 +1135,6 @@ architecture RTL of emsx_top is
 --  signal  esp_tx_i        : std_logic;
 --  signal  esp_rx_o        : std_logic;
 
-    -- OPL3 signals
-    signal  opl3_dout_s     : std_logic_vector(  7 downto 0 ) := (others => '1');
-    signal  opl3_sound_s    : std_logic_vector( 15 downto 0 ) := (others => '0');
-    signal  opl3_ce         : std_logic := '0';
-    signal  opl3_enabled    : std_logic := '0';
-    signal  opl3_Int_n      : std_logic := '1';
-
     -- SN76489/Franky signals
     signal  sn76489_sound_s  : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  sn76489Req       : std_logic := '0';
@@ -1189,9 +1142,6 @@ architecture RTL of emsx_top is
     signal  smsVDPReqRD      : std_logic := '0';
     signal  sn76489NoIO      : std_logic := '1';
     signal  pFrankyVdpInt_n  : std_logic := '1';
-    signal  pFrankyReadCnt   : std_logic := '0';
-    signal  OldFrankyReadCnt : std_logic := '0';
-    signal  franky_dout_s    : std_logic_vector(  7 downto 0 ) := (others => '0');
     signal  franky_v_dout_s  : std_logic_vector(  7 downto 0 ) := (others => '0');
 
     -- MSX / Franky video auto switch
@@ -1201,11 +1151,6 @@ architecture RTL of emsx_top is
     signal  wtSwitchMSX_s    : std_logic := '0';
     signal  smsvideo_active_s: std_logic := '0';
     signal  VideoSWState_s   : std_logic_vector(  1 downto 0 ) := (others => '0');
-
-    -- MIDI signals
---  signal  midi_o          : std_logic;
---  signal  midi_active_o   : std_logic;
-    signal  midi_dout_s     : std_logic_vector(  7 downto 0 ) := (others => '1');
 
     -- Autofire,  Added by t.hara, 2021/Aug/6th
     signal  af_on_off_toggle: std_logic;
@@ -1217,15 +1162,6 @@ architecture RTL of emsx_top is
     signal  w_PpiPortB      : std_logic_vector(  7 downto 0 );
 
 begin
-
-    -- Internal OPL3 On/Off toggle
-    process( clk21m )
-    begin
-        if( clk21m'event and clk21m = '1' )then
-            -- OPL3 can be managed by the SCRLK key or by the CmtScro signal
-            opl3_enabled <= CmtScro;
-        end if;
-    end process;
 
     clk21m_out <= clk21m;
     vga_status <= DisplayMode(1);
@@ -1786,8 +1722,7 @@ begin
     pSltM1_n    <=  CpuM1_n;
     pSltRfsh_n  <=  CpuRfsh_n;
 
-    pSltInt_n   <=  '0' when( pVdpInt_n = '0' ) or ( pFrankyVdpInt_n = '0' and use_franky_vdp_g )
-                          or( opl3_Int_n = '0' and use_opl3_g and opl3_enabled = '1' )else
+    pSltInt_n   <=  '0' when( pVdpInt_n = '0' ) or ( pFrankyVdpInt_n = '0' and use_franky_vdp_g )else
                     'Z';
 
     pSltSltsl_n <=  '1' when( Scc1Type /= "00" )else
@@ -1921,7 +1856,6 @@ begin
                 iack <= '1';
             end if;
 
-            pFrankyReadCnt <= '0';
             -- input assignments for internal devices
             if( mem = '1' and ExpDec = '1' )then
                 dlydbi <= ExpDbi;
@@ -1949,8 +1883,6 @@ begin
                 dlydbi <= RtcDbi;           
             elsif( mem = '0' and adr(  7 downto 1 ) = "1110011" )then                                       -- System timer (S1990)
                 dlydbi <= systim_dbi;           
-            elsif( mem = '0' and adr(  7 downto 1 ) = "1010010" )then                                       -- turboR PCM device
-                dlydbi <= tr_pcm_dbi;
                     -- If I/O in 4x range, any switched IO selected and not forcing Franky on
             elsif( mem = '0' and adr(  7 downto 4 ) = "0100" and io40_n /= "11111111" and swioFranky = '0' ) or
                     -- If I/O in 4x range, any switched IO selected and forcing Franky on but not 0x48 or 0x49
@@ -1968,25 +1900,15 @@ begin
                 dlydbi <= portF4_bit7 & "1111111";
             elsif( mem = '0' and adr(  7 downto 1 ) = "0000011" )then                           -- ESP ports 06-07h
                 dlydbi <= esp_dout_s;
-            elsif( mem = '0' and adr(  7 downto 3 ) = "11000" and opl3_enabled = '1' )then      -- OPL3 ports C0-C3h / C4-C7h
-                dlydbi <= opl3_dout_s;
 --          elsif( mem = '0' and adr(  7 downto 1 ) = "0111110" )then                           -- OPLL ports 7C-7Dh via OPL3
 --              dlydbi <= opl3_dout_s;
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11101001" )then                          -- MIDI port E9h
-                dlydbi <= midi_dout_s;
             elsif( mem = '0' and adr(  7 downto 1 ) = "1000100" and use_franky_vdp_g )then      -- Franky ports 88-89
                 dlydbi <= franky_v_dout_s;            
             elsif( mem = '0' and adr(  7 downto 1 ) = "0100100" and use_franky_psg_g
               -- will return franky related output IF Pana Switched IO, no Switched IO or Franky forced on 49 and 49
               and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) )then               -- Franky ports 48-49
-                if ( use_franky_vdp_g ) then
-                    -- If VDP, no need to fake reading of counter, read from VDP
-                    dlydbi <= franky_v_dout_s;
-                else
-                    -- If only PSG, fake reading of counter
-                    dlydbi <= franky_dout_s;
-                    pFrankyReadCnt <= '1';
-                end if;
+                -- This to is for VDP only
+                dlydbi <= franky_v_dout_s;
             else
                 dlydbi <= (others => '1');
             end if;
@@ -2299,7 +2221,6 @@ begin
                      ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '1' and adr(  7 downto 1 ) /= "0100100") )else '0';  -- I/O:40-4Fh   / Switched I/O ports
     portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010"                                            )else '0';  -- I/O:F2h      / Port F2 device (ESP8266 BIOS)
     portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                            )else '0';  -- I/O:F4h      / Port F4 device
-    tr_pcm_req  <=  req when( mem = '0' and adr(7 downto 1) = "1010010"                                             )else '0';  -- I/O:A4-A5h  / turboR PCM device
     sn76489Req  <=  '1' when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
                          and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                  )else '0';  -- I/O:48-49h   / Franky SN76489
 
@@ -2316,13 +2237,10 @@ begin
                 '1' when( pSltAdr(7 downto 0) = "10100111" and portF4_mode = '1'                )else  -- I/O:A7h    / Pause R800 (read only)
                 '1' when( pSltAdr(7 downto 0) = "11110010"                                      )else  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
                 '1' when( pSltAdr(7 downto 0) = "11110100"                                      )else  -- I/O:F4h    / Port F4 device
-                '1' when( pSltAdr(7 downto 1) = "1010010"                                       )else  -- I/O:A4-A5h / turboR PCM device
                 '1' when( pSltAdr(7 downto 1) = "0000011"                                       )else  -- I/O:06-07h / ESP
-                '1' when( pSltAdr(7 downto 3) = "11000" and opl3_enabled = '1'                  )else  -- I/O:C0-C7h / OPL3
 --              '1' when( pSltAdr(7 downto 1) = "0111110"                                       )else  -- I/O:7C-7Dh / OPLL via OPL3
                 '1' when( pSltAdr(7 downto 1) = "0100100" and use_franky_psg_g                  )else  -- I/O:48-49h / Franky SN76489
                 '1' when( pSltAdr(7 downto 1) = "1000100" and use_franky_vdp_g                  )else  -- I/O:88-89h / Franky VDP
-                '1' when( pSltAdr(7 downto 0) = "11101001"                                      )else  -- I/O:E9h    / MIDI
                 '0';
 
     ----------------------------------------------------------------
@@ -2331,18 +2249,11 @@ begin
     -- vgmplay detects a Franky when just SN76489 is available
     ----------------------------------------------------------------
     process( clk21m )
-        variable R_temp : std_logic_vector(  7 downto 0 ) := "00000000";
     begin
         if( clk21m'event and clk21m = '1' )then
             if ( sn76489Req = '1' and pSltWr_n = '0' )then
                 sn76489NoIO <= '0';
             end if;
-
-            if( use_franky_psg_g and ( not use_franky_vdp_g ) and ( pFrankyReadCnt = '1' and OldFrankyReadCnt = '0' ) )then
-                R_temp := R_temp + '1';
-                franky_dout_s <= R_temp;
-            end if;
-            OldFrankyReadCnt <= pFrankyReadCnt;
         end if;
     end process;
 
@@ -2438,8 +2349,6 @@ begin
         variable chPsg      : std_logic_vector( ff_prepsg'range );
         variable chPsg2     : std_logic_vector( ff_prepsg2'range );
         variable chOpll     : std_logic_vector( ff_pre_dacin'range );
-        variable opl3_vol   : std_logic_vector(  2 downto  0 );
-        variable tr_pcm_vol : std_logic_vector(  2 downto  0 );
     begin
         if( clk21m'event and clk21m = '1' )then
 
@@ -2515,22 +2424,6 @@ begin
                 ff_opll <= c_opll_offset + (chOpll - chOpll( chOpll'high downto  3 ));
             end if;
 
-            -- amplitude ramp of the OPL3 (mixer level equivalences: off, 4, 7 and 10 out of 13)
-            opl3_vol    := not (opl3_enabled & opl3_enabled & opl3_enabled) or MstrVol;
-            case opl3_vol is
-                when "000" | "001"         =>
-                    ff_opl3(           11 downto  0 ) <= opl3_sound_s( 15 downto  4 );
-                    ff_opl3( ff_opl3'high downto 12 ) <= (others => opl3_sound_s(15));
-                when "010" | "011" | "100" =>
-                    ff_opl3(           10 downto  0 ) <= opl3_sound_s( 15 downto  5 );
-                    ff_opl3( ff_opl3'high downto 11 ) <= (others => opl3_sound_s(15));
-                when "101" | "110"         =>
-                    ff_opl3(            9 downto  0 ) <= opl3_sound_s( 15 downto  6 );
-                    ff_opl3( ff_opl3'high downto 10 ) <= (others => opl3_sound_s(15));
-                when others                =>
-                    ff_opl3                           <= (others => opl3_sound_s(15));
-            end case;
-
             -- OPLL via OPL3
 --          OpllAmp <= not opl3_sound_s(15) & opl3_sound_s( 14 downto 6 );
 
@@ -2549,21 +2442,6 @@ begin
                     ff_sn76489                           <= (others => sn76489_sound_s(15));
             end case;
 
-            -- amplitude ramp of the turboR PCM (mixer level equivalences: off, 4, 7 and 10 out of 13)
-            tr_pcm_vol  := MstrVol;
-            case tr_pcm_vol is
-                when "000" | "001"         =>
-                    ff_tr_pcm(             10 downto  0 ) <= tr_pcm_wave_out & "000";
-                    ff_tr_pcm( ff_tr_pcm'high downto 11 ) <= (others => tr_pcm_wave_out(7));
-                when "010" | "011" | "100" =>
-                    ff_tr_pcm(              9 downto  0 ) <= tr_pcm_wave_out(  7 downto  1 ) & "000";
-                    ff_tr_pcm( ff_tr_pcm'high downto 10 ) <= (others => tr_pcm_wave_out(7));
-                when "101" | "110"         =>
-                    ff_tr_pcm(              8 downto  0 ) <= tr_pcm_wave_out(  7 downto  2 ) & "000";
-                    ff_tr_pcm( ff_tr_pcm'high downto  9 ) <= (others => tr_pcm_wave_out(7));
-                when others                =>
-                    ff_tr_pcm                             <= (others => tr_pcm_wave_out(7));
-            end case;
         end if;
     end process;
 
@@ -2573,9 +2451,9 @@ begin
 
             -- ff_pre_dacin assignment
             if( sn76489NoIO = '0' ) then
-                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3 + ff_sn76489;
+                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_sn76489;
             else
-                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3;
+                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll;
             end if;
 
             -- amplitude limiter
@@ -3258,12 +3136,6 @@ begin
             pad_mode        => pPaddleMode
         );
 
-    U40 : tr_pcm
-        port map(clk21m, reset, tr_pcm_req, open, wrt, adr(0), tr_pcm_dbi, dbo,
-                        tr_pcm_wave_in, tr_pcm_wave_out);
-
-    tr_pcm_wave_in <= (others => '0');
-
     wifi : if use_wifi_g generate
         uwifi : work.wifi
             port map(
@@ -3315,23 +3187,6 @@ begin
 --  esp_tx_i <= pUsbP1;
 --  pUsbN1 <= esp_rx_o;
 
-    midi : if use_midi_g generate
-        umidi : work.midi
-            port map(
-                clk_i       => clk21m,
-                reset_i     => (not reset),
-                iorq_i      => pSltIorq_n,
-                wrt_i       => pSltWr_n,
-                rd_i        => pSltRd_n,
-                tx_i        => '0',
-                rx_o        => midi_o,              -- module output pin
-                adr_i       => adr,
-                db_i        => dbo,
-                db_o        => midi_dout_s,
-                tx_active_o => midi_active_o
-            );
-    end generate;
-
     franky_psg_u : if use_franky_psg_g generate
         sn76489_l : jt89
         port map(
@@ -3343,32 +3198,6 @@ begin
             sound               => sn76489_sound_s (15 downto 5)
         );
     end generate;
-
-    opl3_u : if use_opl3_g generate
-        opl3_1 : opl3
-        generic map(
-            OPLCLK              => 86000000             -- opl_clk in Hz
-        )
-        port map(
-            clk                 => clk21m,
-            clk_opl             => memclk,              -- 86MHz
-            rst_n               => (not reset),
-            irq_n               => opl3_Int_n,
-
-            addr                => adr(1 downto 0),     -- OPL and OPL2 uses adr(0) only
-            dout                => opl3_dout_s,
-            din                 => dbo,
-            we                  => opl3_ce,
-            mono                => '1',
-
-            sample_l            => opl3_sound_s,
-            sample_r            => open
-        );
-    end generate;
-
-    opl3_ce <= '1' when( adr(  7 downto 3 ) = "11000"   and pSltIorq_n = '0' and pSltWr_n = '0' )else   -- and opl3_enabled = '1' )else   -- OPL3 ports C0-C3h / C4-C7h
---             '1' when( adr(  7 downto 1 ) = "0111110" and pSltIorq_n = '0' and pSltWr_n = '0'                                   )else   -- OPLL ports 7C-7Dh via OPL3
-               '0';
 
     -- Added by t.hara, 2021/Aug/6th
     u_autofire: autofire

@@ -1,7 +1,7 @@
 --
 -- top.vhd
 -- SM-X (regular) / SM-X Mini TOP by Victor Trucco - Modified by KdL
--- SM-X (regular) / SM-X Mini w/ Franky by Ducasp
+-- SMX-HB w/ Franky - Modified by Ducasp
 --
 -- All rights reserved
 --
@@ -46,7 +46,7 @@ entity top is
 
         -- Buttons
         btn_n_i             : in    std_logic_vector(  2 downto 1 );
-        dip_i               : in    std_logic_vector(  8 downto 1 );
+        dip_i               : in    std_logic_vector( 12 downto 1 );
 
         -- SDRAM (H57V256)
         sdram_ad_o          : out   std_logic_vector( 12 downto 0 );
@@ -111,6 +111,7 @@ entity top is
         slot_D_io           : inout std_logic_vector(  7 downto 0 ) := (others => 'Z');
         slot_CS1_o          : inout std_logic := 'Z';
         slot_CS2_o          : inout std_logic := 'Z';
+        slot_CS12_o         : inout std_logic := 'Z';
         slot_CLOCK_o        : inout std_logic := 'Z';
         slot_M1_o           : inout std_logic := 'Z';
         slot_MERQ_o         : inout std_logic := 'Z';
@@ -129,27 +130,16 @@ entity top is
         slot_DATA_OE_o      : out   std_logic := 'Z';
         slot_DATA_DIR_o     : out   std_logic := 'Z';
 
-        -- HDMI video
-        hdmi_pclk           : out   std_logic := 'Z';
-        hdmi_de             : out   std_logic := 'Z';
-        hdmi_int            : in    std_logic := 'Z';
-        hdmi_rst            : out   std_logic := '1';
-
-        -- HDMI audio
-        aud_sck             : out   std_logic := 'Z';
-        aud_ws              : out   std_logic := 'Z';
-        aud_i2s             : out   std_logic := 'Z';
-
-        -- HDMI programming
-        hdmi_sda            : inout std_logic := 'Z';
-        hdmi_scl            : inout std_logic := 'Z';
-
         -- ESP
         esp_rx_o            : out   std_logic := 'Z';
         esp_tx_i            : in    std_logic := 'Z';
 
         -- LED
-        led_o               : out   std_logic := '0'
+        led_o               : out   std_logic := '0';
+        caps_led_o          : out   std_logic := '0';
+
+        -- Model
+        is_expert_n         : in    std_logic
     );
 end entity;
 
@@ -189,61 +179,7 @@ architecture Behavior of top is
         );
     end component scandoublersmx;
 
-    component ps2mouse
-    port(
-        clk                 : in    std_logic;                          -- bus clock
-        reset               : in    std_logic;                          -- reset
-
-        ps2mdat             : inout std_logic;                          -- mouse PS/2 data
-        ps2mclk             : inout std_logic;                          -- mouse PS/2 clk
-
-        zcount              : out   std_logic_vector(  7 downto 0 );    -- mouse Z counter
-        ycount              : out   std_logic_vector(  7 downto 0 );    -- mouse Y counter
-        xcount              : out   std_logic_vector(  7 downto 0 );    -- mouse X counter
-        mleft               : out   std_logic;                          -- left mouse button output
-        mthird              : out   std_logic;                          -- third (middle) mouse button output
-        mright              : out   std_logic;                          -- right mouse button output
-        mouse_data_out      : out   std_logic                           -- mouse has data to present
-    );
-    end component;
-
-    component hdmi_config is
-    port(
-        -- Host Side
-        iCLK                : in    std_logic;
-        iRST_N              : in    std_logic;
-
-        dvi_mode            : in    std_logic;
-        audio_96k           : in    std_logic;
-
-        -- I2C Side
-        I2C_SCL             : out   std_logic;
-        I2C_SDA             : inout std_logic
-    );
-    end component;
-
-    component i2s is
---  generic(
---      CLK_RATE            <= 50000000,
---      AUDIO_DW            <= 16,
---      AUDIO_RATE          <= 96000
---  )
-    port(
-        reset               : in    std_logic;
-        clk_sys             : in    std_logic;
-        half_rate           : in    std_logic;
-
-        sclk                : out   std_logic;
-        lrclk               : out   std_logic;
-        sdata               : out   std_logic;
-
-        left_chan           : in    std_logic_vector( 15 downto 0 );
-        right_chan          : in    std_logic_vector( 15 downto 0 )
-    );
-    end component;
-
     -- clocks
-    signal clk_hdmi         : std_logic;
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
     signal clk_sms          : std_logic;
@@ -254,16 +190,12 @@ architecture Behavior of top is
     signal ce_vdp           : std_logic;
     signal ce_pix           : std_logic;
     signal ce_sp            : std_logic;
-    signal ce_cpu_p         : std_logic;
-    signal ce_cpu_n         : std_logic;
     signal color            : std_logic_vector( 11 downto 0 );
     signal sms_x            : std_logic_vector( 8 downto 0 );
     signal sms_y            : std_logic_vector( 8 downto 0 );
     signal sms_mask_column  : std_logic;
     signal sms_smode_M1     : std_logic;
-    signal sms_smode_M2     : std_logic;
     signal sms_smode_M3     : std_logic;
-    signal sms_smode_M4     : std_logic;
     signal sms_r_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal sms_g_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal sms_b_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
@@ -284,6 +216,7 @@ architecture Behavior of top is
     signal sms_VSync        : std_logic;
 
     -- reset signal
+    signal btn_rst_s        : std_logic;                                            -- Hotbit Case Reset Button
     signal reset_s          : std_logic;                                            -- global reset
     signal power_on_reset_s : std_logic := '0';
 
@@ -300,9 +233,6 @@ architecture Behavior of top is
     signal vga_Vsync_out_s  : std_logic := '1';
     signal blank_s          : std_logic;
 
-    --audio
-    signal hdmi_snd_s       : std_logic_vector( 15 downto 0 ) := (others => '0');
-
     -- slot
     signal cpu_ioreq_s      : std_logic;
     signal cpu_mreq_s       : std_logic;
@@ -310,17 +240,16 @@ architecture Behavior of top is
     signal slot_SLOT1_s     : std_logic;
     signal slot_SLOT2_s     : std_logic;
     signal BusDir_s         : std_logic;
-
-    -- MIDI
-    signal midi_o_s         : std_logic := 'Z';
-    signal midi_active_s    : std_logic := 'Z';
-    signal joy2_up_s        : std_logic := 'Z';
+    signal clk_cpu_s        : std_logic;
 
     -- vga scanlines
     signal vga_status       : std_logic;
     signal vga_scanlines    : std_logic_vector(  1 downto 0 ) := "00";
     signal btn_scan_s       : std_logic := '1';
     signal odd_line_s       : std_logic := '0';
+    signal vga_r_out_s      : std_logic_vector(  4 downto 0 );
+    signal vga_g_out_s      : std_logic_vector(  4 downto 0 );
+    signal vga_b_out_s      : std_logic_vector(  4 downto 0 );
     signal sms_odd_line_s   : std_logic := '0';
     signal vga_r_out_s_21   : std_logic_vector(  4 downto 0 );
     signal vga_g_out_s_21   : std_logic_vector(  4 downto 0 );
@@ -329,41 +258,17 @@ architecture Behavior of top is
     signal vga_g_out_s_54   : std_logic_vector(  4 downto 0 );
     signal vga_b_out_s_54   : std_logic_vector(  4 downto 0 );
 
-    -- mouse
-    signal clock_div_q      : unsigned(  5 downto 0 ) := (others => '0');
-    signal mouse_x_s        : std_logic_vector(  7 downto 0 );
-    signal mouse_y_s        : std_logic_vector(  7 downto 0 );
-    signal mouse_bts_s      : std_logic_vector(  2 downto 0 );
-    signal mouse_wheel_s    : std_logic_vector(  7 downto 0 );
-    signal mouse_dat_s      : std_logic_vector(  3 downto 0 );
-    signal strA_s           : std_logic;
-    signal joymouse_s       : std_logic_vector(  5 downto 0 );
-    signal mouse_data_out   : std_logic;
-    signal mouse_idle       : std_logic := '1';
-    signal mouse_present    : std_logic := '0';
-    signal pad_emu_s        : std_logic := '0';
-    signal pad_mode_s       : std_logic := '0';
-    signal pad_data         : std_logic := '0';
-    signal joya_en          : std_logic := '1';
-    signal mouse_present_old: std_logic := '0';
-    signal pad_emu_old      : std_logic := '0';
-    signal clock_div_5      : std_logic := '0';
-    signal mouse_state      : std_logic_vector(  1 downto 0 ) := (others =>'0');
-    signal mouse_x_latch    : std_logic_vector(  7 downto 0 ) := (others =>'0');
-    signal mouse_y_latch    : std_logic_vector(  7 downto 0 ) := (others =>'0');
-    signal mouse_timeout    : std_logic_vector( 17 downto 0 ) := (others =>'0');
-    signal mouse_data_old   : std_logic := '0';
-    signal mouse_stra_old   : std_logic := '0';
+    -- Joysticks
+    signal joy1_s           : std_logic_vector(  5 downto 0 );
+    signal joy2_s           : std_logic_vector(  5 downto 0 );
 
-    -- paddle emulation using PS/2 mouse
-    type   paddle_states is ( STARTUP, PAD_WRK, PAD_MSX_SND_DATA1, PAD_MSX_SND_DATA2 );
-    signal paddle_state     : paddle_states := STARTUP;
-    signal oldstrA_s        : std_logic;
-    signal oldjoy1_p6_io    : std_logic;
-    signal oldmousedata     : std_logic := '0';
+    -- Debounced Joysticks
+    signal joy1_d_s         : std_logic_vector(  5 downto 0 );
+    signal joy2_d_s         : std_logic_vector(  5 downto 0 );
 
     -- misc
     signal blink_s          : std_logic;
+    signal joy_deb          : std_logic;
 
     begin
 
@@ -376,9 +281,9 @@ architecture Behavior of top is
     ocm: work.emsx_top
     generic map
     (
-        use_8gb_sdram_g         => false,
+        use_8gb_sdram_g         => true,
         use_wifi_g              => true,
-        use_midi_g              => true,
+        use_midi_g              => false,
         use_dualpsg_g           => true,
         use_opl3_g              => false,
         use_franky_vdp_g        => true,
@@ -410,26 +315,14 @@ architecture Behavior of top is
         pPs2Dat                 => ps2_data_io,
 
         -- Joystick ports (Port_A, Port_B)
---      pJoyA_in(5)             => joy1_p7_io,
---      pJoyA_in(4)             => joy1_p6_io,
---      pJoyA_in(3)             => joy1_right_io,
---      pJoyA_in(2)             => joy1_left_io,
---      pJoyA_in(1)             => joy1_down_io,
---      pJoyA_in(0)             => joy1_up_io,
-
-        pJoyA_in                => joymouse_s,
+        pJoyA_in                => joy1_s,
         pJoyA_out(1)            => joy1_p7_io,
         pJoyA_out(0)            => joy1_p6_io,
 
-        pJoyB_in(5)             => joy2_p7_io,
-        pJoyB_in(4)             => joy2_p6_io,
-        pJoyB_in(3)             => joy2_right_io,
-        pJoyB_in(2)             => joy2_left_io,
-        pJoyB_in(1)             => joy2_down_io,
-        pJoyB_in(0)             => joy2_up_s,
+        pJoyB_in                => joy2_s,
         pJoyB_out               => open,
 
-        pStrA                   => strA_s,                      -- joy1_p8_io,
+        pStrA                   => joy1_p8_io,
         pStrB                   => joy2_p8_io,
 
         -- SD/MMC slot ports
@@ -441,7 +334,7 @@ architecture Behavior of top is
         pSd_Dt(0)               => sd_miso_i,                   -- pin 7 Dataout
 
         -- DIP switch, Lamp ports
-        pDip                    => dip_i,
+        pDip                    => dip_i(8 downto 1),
         pLed(0)                 => blink_s,
 
         -- Video, Audio ports
@@ -456,8 +349,8 @@ architecture Behavior of top is
         pVideoVS_n              => vga_vsync_n_s,
 
         -- MSX cartridge slot ports
-        pCpuClk                 => slot_CLOCK_o,
-        pSltRst_n               => btn_n_i(1),
+        pCpuClk                 => clk_cpu_s,
+        pSltRst_n               => btn_rst_s,
 
         pSltAdr                 => slot_A_o,
         pSltDat                 => slot_D_io,
@@ -477,7 +370,7 @@ architecture Behavior of top is
         pSltSlts2_n             => slot_SLOT2_s,
         pSltCs1_n               => slot_CS1_o,
         pSltCs2_n               => slot_CS2_o,
-
+        pSltCs12_n              => slot_CS12_o,
         BusDir_o                => BusDir_s,
 
         -- Reserved ports
@@ -501,34 +394,27 @@ architecture Behavior of top is
         sms_x                   => sms_x,
         sms_y                   => sms_y,
         sms_smode_M1            => sms_smode_M1,
-        sms_smode_M2            => sms_smode_M2,
         sms_smode_M3            => sms_smode_M3,
-        sms_smode_M4            => sms_smode_M4,
         sms_video_active        => sms_active,
 
         -- SM-X, Multicore 2 and SX-2 ports
         clk21m_out              => clk21m,
-        clk_hdmi                => clk_hdmi,
         esp_rx_o                => esp_rx_o,
         esp_tx_i                => esp_tx_i,
-        pcm_o                   => hdmi_snd_s,
         blank_o                 => blank_s,
         ear_i                   => ear_i,
         mic_o                   => mic_o,
-        midi_o                  => midi_o_s,
-        midi_active_o           => midi_active_s,
         vga_status              => vga_status,
         vga_scanlines           => vga_scanlines,
         btn_scan                => btn_scan_s,
-        pPaddleEmu              => pad_emu_s,
-        pPaddleMode             => pad_mode_s
+        caps_led_o              => caps_led_o,
+        joy_deb                 => joy_deb,
+        DisBiDir                => dip_i(9),
+        model_expert_n          => is_expert_n,
+        EnAltMap                => dip_i(9)
     );
 
-    joy1_p8_io      <= strA_s;
-
-    joy2_up_s       <= joy2_up_io;
-    joy2_up_io      <= midi_o_s when( midi_active_s = '1' )else
-                       'Z';
+    slot_CLOCK_o    <= clk_cpu_s;
 
     slot_IOREQ_o    <= cpu_ioreq_s;
     slot_MERQ_o     <= cpu_mreq_s;
@@ -552,6 +438,12 @@ architecture Behavior of top is
 
     sdram_clk_o     <= clk_sdram;
 
+    joy1_s          <= joy1_d_s; -- when( joy_deb = '1' )else
+                       --( joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io );
+
+    joy2_s          <= joy2_d_s; -- when( joy_deb = '1' )else
+                       --( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
+
     -- VIDEO
     sms_r_o         <= SMS_VGA_R when ( vga_status = '1' ) else color( 3 downto 0 ) & color ( 0 );
     sms_g_o         <= SMS_VGA_G when ( vga_status = '1' ) else color( 7 downto 4 ) & color ( 4 );
@@ -569,10 +461,6 @@ architecture Behavior of top is
 
     vga_hsync_n_o   <= vga_hsync_out_s;
     vga_vsync_n_o   <= vga_vsync_out_s;
-
-    hdmi_pclk       <= clk21m when ( sms_active = '0' ) else clk_sms;
-    hdmi_de         <= not blank_s when ( sms_active = '0' ) else not ( sms_HBlank_o or sms_VBlank_o );
-    hdmi_rst        <= power_on_reset_s;
 
     -- Franky
     video1 : work.video
@@ -628,8 +516,6 @@ architecture Behavior of top is
             ce_sp <= clkd(0);
             ce_vdp <= '0';--div5
             ce_pix <= '0';--div10
-            ce_cpu_p <= '0';--div15
-            ce_cpu_n <= '0';--div15
             clkd := clkd + 1;
 
             if (clkd = "11101") then
@@ -638,302 +524,36 @@ architecture Behavior of top is
                 ce_pix <= '1';
             elsif (clkd = "11000") then
                 ce_vdp <= '1';
-                ce_cpu_p <= '1';
             elsif (clkd = "10011") then
                 ce_vdp <= '1';
                 ce_pix <= '1';
-            elsif (clkd = "10001") then
-                ce_cpu_n <= '1';
             elsif (clkd = "01110") then
                 ce_vdp <= '1';
             elsif (clkd = "01001") then
-                ce_cpu_p <= '1';
                 ce_vdp <= '1';
                 ce_pix <= '1';
             elsif (clkd = "00100") then
                 ce_vdp <= '1';
-            elsif (clkd = "00010") then
-                ce_cpu_n <= '1';
             end if;
         end if;
     end process;
-
-    -- HDMI configuration
-    hdmi_config1 : hdmi_config
-    port map(
-        iCLK        => clk21m,
-        iRST_N      => '1',
-
-        dvi_mode    => '0',
-        audio_96k   => '0',
-
-        I2C_SCL     => hdmi_scl,
-        I2C_SDA     => hdmi_sda
-    );
-
-    i2s1 : i2s
-    port map(
-        clk_sys     => clk21m,
-        reset       => not power_on_reset_s,                    -- reset when '1'
-
-        half_rate   => '0',
-
-        sclk        => aud_sck,
-        lrclk       => aud_ws,
-        sdata       => aud_i2s,
-
-        left_chan   => hdmi_snd_s,
-        right_chan  => hdmi_snd_s
-    );
 
     -- LED assignment
     led_o       <= not blink_s;
 
     ---------------------------------
-    -- mouse
+    -- Hotbit Case Reset
     ---------------------------------
 
-    process( clk21m )
-        variable port_a_disc_time  : std_logic_vector( 20 downto 0 ) := "000000000000000000000";
-    begin
-        if rising_edge( clk21m )then
-            clock_div_q <= clock_div_q + 1;
-            if ( ( mouse_present_old /= mouse_present ) or ( pad_emu_old /= pad_emu_s) ) then
-                port_a_disc_time := "011000011010100000000"; -- about 1s disconnected
-                joya_en <= '0';
-            end if;
-
-            if ( clock_div_q(5) /= clock_div_5 ) then
-                if ( port_a_disc_time /= 0 ) then
-                    port_a_disc_time := port_a_disc_time - 1;
-                else
-                    joya_en <= '1';
-                end if;
-            end if;
-
-            mouse_present_old   <= mouse_present;
-            pad_emu_old         <= pad_emu_s;
-            clock_div_5         <= clock_div_q(5);
-        end if;
-    end process;
-
-    mousectrl: ps2mouse
-    port map(
-        clk             => clock_div_q(5),                      -- need a slower clock to avoid loosing data
-        reset           => reset_s,                             -- reset
-
-        ps2mdat         => ps2_mouse_data_io,                   -- mouse PS/2 data
-        ps2mclk         => ps2_mouse_clk_io,                    -- mouse PS/2 clk
-
-        xcount          => mouse_x_s,                           -- mouse X counter
-        ycount          => mouse_y_s,                           -- mouse Y counter
-        zcount          => mouse_wheel_s,                       -- mouse Z counter
-        mleft           => mouse_bts_s(0),                      -- left mouse button output
-        mright          => mouse_bts_s(1),                      -- right mouse button output
-        mthird          => mouse_bts_s(2),                      -- third(middle) mouse button output
-        mouse_data_out  => mouse_data_out                       -- mouse has data top present
+    btnrst: entity work.debounce
+    generic map (
+        counter_size_g  => 16
+    )
+    port map (
+        clk_i               => clk21m,
+        button_i            => btn_n_i(1),
+        result_o            => btn_rst_s
     );
-
-    joymouse_s  <= mouse_bts_s(  1 downto 0 ) & mouse_dat_s                                                 when( mouse_present = '1' and pad_emu_s = '0' and joya_en = '1' )else
-                   joy1_p7_io & joy1_p6_io & '1' & '1' & ( mouse_bts_s(0) and mouse_bts_s(1) ) & pad_data   when( pad_emu_s = '1' and pad_mode_s = '0' and joya_en = '1' )else
-                   mouse_bts_s(  1 downto 0 ) & '1' & '1' & '1' & pad_data                                  when( pad_emu_s = '1' and pad_mode_s = '1' and joya_en = '1' )else
-                   joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io       when( joya_en = '1' )else
-                   "111111";
-
-    process( clk21m, reset_s )
-    begin
-        if ( reset_s = '1' )then
-            mouse_state <= "00";
-            mouse_present <= '0';
-            mouse_timeout <= "001100001101010000";
-            mouse_dat_s <= "0000";
-        elsif rising_edge( clk21m )then
-            mouse_data_old <= mouse_data_out;
-            mouse_stra_old <= strA_s;
-
-            if ( mouse_data_out = '1' )then
-                mouse_present <= '1';
-            elsif ( joy1_p7_io = '0' or joy1_p6_io = '0' )then
-                mouse_present <= '0';
-            end if;
-
-            if ( mouse_data_old = '0' and mouse_data_out = '1' )then
-                mouse_x_latch <= mouse_x_s;
-                mouse_y_latch <= mouse_y_s;
-            end if;
-
-            if ( mouse_present = '1' ) then
-                if ( mouse_timeout /= "000000000000000000" )then
-                    if ( mouse_timeout = "000000000000000001") then mouse_state <= "00"; end if;
-                    mouse_timeout <= mouse_timeout - 1;
-                end if;
-
-                if ( mouse_stra_old /= strA_s ) then
-                    mouse_timeout <= "001100001101010000";
-                    mouse_state <= mouse_state + 1;
-
-                    case mouse_state is
-                        when "00" =>
-                            mouse_dat_s <= mouse_x_latch(  7 downto 4 );
-                        when "01" =>
-                            mouse_dat_s <= mouse_x_latch(  3 downto 0 );
-                        when "10" =>
-                            mouse_dat_s <= mouse_y_latch(  7 downto 4 );
-                        when "11" =>
-                            mouse_dat_s <= mouse_y_latch(  3 downto 0 );
-                            mouse_x_latch <= "00000000";
-                            mouse_y_latch <= "00000000";
-                    end case;
-                end if;
-            end if;
-
-        end if;
-
-    end process;
-
-    ---------------------------------
-    -- paddle emulation over mouse
-    ---------------------------------
-
-    process( clk_sdram )
-        variable V_Paddle_Read  : std_logic_vector( 8 downto 0 ) := "011101100"; -- Center Position / 236
-        variable M_Paddle_Read  : std_logic_vector( 8 downto 0 ) := "001111100"; -- Center Position / 127
-        variable Shift_Register : std_logic_vector( 8 downto 0 ) := "000000000"; -- Cleared
-        variable Paddle_Pos     : unsigned( 8 downto 0) := (others => '0');
-        variable Temp_Mouse_X   : unsigned( 8 downto 0) := (others => '0');
-        variable Scaler12us     : integer range 0 to 1200;
-        variable MSXPaddleCount : unsigned( 8 downto 0) := (others => '0');
-    begin
-
-        if rising_edge( clk_sdram )then
-            -- We are here mostly to read X axis deltas
-            if mouse_data_out = '1' and oldmousedata = '0' then
-                -- so what matters to us is if X changed, otherwise no check to do
-                if mouse_x_s /= "00000000" then
-                    -- positive? move to the left, decrease position value
-                    if mouse_x_s(7) = '0' then
-                        Temp_Mouse_X := unsigned( "00"      & mouse_x_s( 6 downto 0 ) );
-     
-                        -- Update VAUS position
-                        Paddle_Pos := unsigned( V_Paddle_Read );
-                        if Paddle_Pos < Temp_Mouse_X then
-                            Paddle_Pos := "001101110";
-                        else
-                            Paddle_Pos := Paddle_Pos - Temp_Mouse_X;
-                        end if;
-                        if Paddle_Pos < 110 then
-                            Paddle_Pos := "001101110";
-                        end if;
-                        V_Paddle_Read := std_logic_vector( Paddle_Pos );
-
-                        -- Update MSX Paddle position
-                        Paddle_Pos := unsigned( M_Paddle_Read );
-                        if Paddle_Pos < Temp_Mouse_X then
-                            Paddle_Pos := "000000000";
-                        else
-                            Paddle_Pos := Paddle_Pos - Temp_Mouse_X;
-                        end if;
-                        M_Paddle_Read := std_logic_vector( Paddle_Pos );
-
-                    -- negative? move to the right, increase position value
-                    else
-                        Temp_Mouse_X := unsigned( "00"      & not( mouse_x_s( 6 downto 0 ) ) );
-                        -- negative value, after inverting it, add 1
-                        Temp_Mouse_X := Temp_Mouse_X + 1;
-
-                        -- Update VAUS position
-                        Paddle_Pos := unsigned( V_Paddle_Read );
-                        Paddle_Pos := Paddle_Pos + Temp_Mouse_X;
-                        if Paddle_Pos > 380 then
-                            Paddle_Pos := "101111100";
-                        end if;
-                        V_Paddle_Read := std_logic_vector( Paddle_Pos );
-
-                        -- Update MSX Paddle position
-                        Paddle_Pos := unsigned( M_Paddle_Read );
-                        Paddle_Pos := Paddle_Pos + Temp_Mouse_X;
-                        if Paddle_Pos > 275 and pad_mode_s = '1' then
-                            Paddle_Pos := "100010011";
-                        end if;
-                        M_Paddle_Read := std_logic_vector( Paddle_Pos );
-
-                    end if;
-                end if;
-            end if;
-
-            case paddle_state is
-                -- Will be here just once
-                when STARTUP =>
-                    -- "Open"/"Inactive"
-                    pad_data <= '1';
-                    V_Paddle_Read   := "011101100"; -- Center Position / 236
-                    M_Paddle_Read   := "001111100"; -- Center Position / 127
-                    Shift_Register  := "000000000"; -- Cleared
-                    paddle_state    <= PAD_WRK;     -- Next state
-
-                -- Will be here most of the time in VAUS Mode
-                -- In MSX mode, just waiting the trigger to time encode paddle read
-                when PAD_WRK =>
-                    if pad_mode_s = '0' then
-                        -- VAUS Mode, data has bit to be presented
-                        pad_data <= Shift_Register(8);
-                        -- Pin 8 from low to high, copy value to shift register in VAUS mode
-                        if strA_s = '1' and oldstrA_s = '0' then
-                            Shift_Register := V_Paddle_Read;
-                        -- Pin 6 from low to high, shift the shift register in VAUS mode
-                        elsif oldjoy1_p6_io = '0' and joy1_p6_io = '1' then
-                            Shift_Register := Shift_Register ( 7 downto 0 ) & '0';
-                        end if;
-                    else
-                        -- MSX Paddle mode, inactive until data is requested
-                        pad_data <= '0';
-                        -- Pin 8 from low to high, need to time encode the paddle read in MSX mode
-                        if strA_s = '1' and oldstrA_s = '0' then
-                            MSXPaddleCount := unsigned ( M_Paddle_Read );
-                            paddle_state <= PAD_MSX_SND_DATA1;
-                            pad_data <= '1';
-                            -- Adjust our scaler value, 1032 clk_sdram give us a little bit over 12us
-                            Scaler12us := 1032;
-                        end if;
-                    end if;
-
-                -- MSX Paddle Mode: start PWM encoding
-                when PAD_MSX_SND_DATA1 =>
-                    -- First we need to stop for 12us * paddle pos
-                    if MSXPaddleCount /= 0 then
-                        if Scaler12us /= 0 then
-                            Scaler12us := Scaler12us - 1;
-                        else
-                            Scaler12us := 1032;
-                            MSXPaddleCount := MSXPaddleCount - 1;
-                        end if;
-                    else
-                        Scaler12us := 1032;
-                        paddle_state <= PAD_MSX_SND_DATA2;
-                    end if;
-                
-                when PAD_MSX_SND_DATA2 =>
-                    -- Now wait more 12us, even for 0, we have extra 12us http://frs.badcoffee.info/hardware/PWM_devices.html
-                    -- R2 value * C value * 0,55 (HCT123) guarantees 12us minimum
-                    if Scaler12us /= 0 then
-                        Scaler12us := Scaler12us - 1;
-                    else
-                        paddle_state <= PAD_WRK;
-                    end if;
-
-                when others =>
-                    paddle_state <= STARTUP;
-            end case;
-            -- Update edge detection
-            oldstrA_s <= strA_s;
-            oldjoy1_p6_io <= joy1_p6_io;
-            oldmousedata <= mouse_data_out;
-            if joya_en /= '1' then
-                paddle_state <= STARTUP; -- Reset paddle to wait state while disconnecting
-            end if;
-        end if;
-
-    end process;
 
     ---------------------------------
     -- scanlines
@@ -1046,5 +666,19 @@ architecture Behavior of top is
             sms_odd_line_s <= not sms_odd_line_s;
         end if;
     end process;
+
+    debounce_joy1 : entity work.debounce_joy
+    port map(
+            clk_i       => clk_cpu_s,
+            joy_i       => joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io,
+            joy_o       => joy1_d_s
+    );
+
+    debounce_joy2 : entity work.debounce_joy
+    port map(
+            clk_i       => clk_cpu_s,
+            joy_i       => joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io,
+            joy_o       => joy2_d_s
+    );
 
 end architecture;
