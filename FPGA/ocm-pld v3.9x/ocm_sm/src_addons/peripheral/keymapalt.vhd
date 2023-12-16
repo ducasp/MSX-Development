@@ -654,7 +654,7 @@ begin
 process (clk) begin
   if (clk'event and clk = '1') then
     dbi1 <= rom101(conv_integer(adr(9 downto 0)));
-    dbi2 <= rom106(conv_integer(adr(8 downto 0)));
+    dbi2 <= rom106(conv_integer(adr(9 downto 0)));
   end if;
 end process;
 
