@@ -229,14 +229,14 @@ begin
             if Ps2Chg = '1' then
 
               KeyId := Ps2xE0 & Ps2Dat;
-              -- Non Jap and not Expert Keyboard
-              if Kmap = '1' and ( DisBiDir = '0' or HB_Model = '1' )then
+              -- Non Jap and PS2 Keyboard
+              if Kmap = '1' and EnAltMap = '0' then
                 MtxSeq := MtxSettle;
                 MtxIdx <= "0" & (not Ps2Shif) & KeyId;
-              -- Expert Keyboard, returns expert map
-              elsif DisBiDir = '1' and HB_Model = '0' then
+              -- Expert or Hotbit Keyboard, returns right map
+              elsif Kmap = '1' and EnAltMap = '1' then
                 MtxSeq := MtxSettle;
-                MtxIdx <= "1" & (not Ps2Shif) & KeyId;
+                MtxIdx <= (not HB_Model) & (not Ps2Shif) & KeyId;
               -- Jap and not Expert Keyboard
               else
                 MtxSeq := MtxRead;
@@ -279,7 +279,11 @@ begin
             KeyWe <= '1';
             iKeyCol <= oKeyCol;
             iKeyCol(conv_integer(MtxPtr(6 downto 4))) <= '0';
-            MtxIdx <= "0" & Ps2Shif & KeyId;
+            if ( EnAltMap = '0' ) then
+                MtxIdx <= "0" & Ps2Shif & KeyId;
+            else
+                MtxIdx <= (not HB_Model) & Ps2Shif & KeyId;
+            end if;
 
           when MtxRead =>
             MtxSeq := MtxWrite;
