@@ -1,52 +1,81 @@
-# OCM-PLD v3.9d
+# OCM-PLD v3.9.1plus
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
-# Novidades em relação a v3.9c
+# Tabelinha Marota pra escolha de Versão
 
-- Melhorias do KdL na controladora de SDRAM permitindo que coisas como a VRAM
-  de 1MB funcionem com o controlador do Victor Trucco
+| Versão do Firmware | OPL3 Mono | OPL3 Estéreo | SN76489 | SMS VDP | PS/2 Mouse -> MSX Mouse | Paddle usando Mouse PS/2 | 2x PSG | MIDI Out | Turbo-R PCM | Segunda Mapper 4MB |
+| :----------------- | :-------: | :----------: | :-----: | :-----: | :---------------------: | :----------------------: | :----: | :------: | :---------: | :----------------: |
+| MC2P               | Sim       | Sim          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2           | Sim       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2 Franky    | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2 Snd       | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X Mini          | Sim       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X Mini Franky   | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X Mini Snd      | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X HB            | Não       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Sim    | Não      | Não         | Não                |
+| SM-X HB Snd        | Não       | Não          | Sim     | Não     | Sim                     | Não                      | Sim    | Sim      | Sim         | Não                |
 
-- Correção no z80 para que Lilly's Saga funcione adequadamente
+NOTA: NUNCA, JAMAIS PENSE EM USAR MC2P SE NÃO TEM UM MC2P, SM-X SE SEU
+DISPOSITIVO NÃO É SM-X, ETC... A Tabelinha é para auxiliar na escolha de qual
+versão para seu dispositivo tem as características que quer. Se seu dispositivo
+não tem uma característica ou a combinação que quer, NÃO USE UM FIRMWARE DE
+OUTRO DISPOSITIVO, IRÁ BRICAR SEU DISPOSITIVO E SÓ IRÁ VOLTAR A FUNCIONAR SE
+USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
+
+# Novidades em relação a v3.9d
+
+- Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
+  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está ausente
+  já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
+  podem não funcionar com o novo controlador a menos que faça algumas mudanças
+  propostas no hardware.
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9d é uma extensão da OCM v3.9 do KdL. O que essa versão tem de
-diferente:
+OCM-PLD v3.9.1plus é uma extensão da OCM v3.9.1 do KdL. O que essa versão tem
+de diferente:
 
 - Novos dispositivos suportados:
 
-    - SMX-HB: É um dispositivo geração "1.75". Seu FPGA tem cerca de 1/3 menos
-      células como resultado da falta de components. Seu uso principal é de
-      substituir a placa princial de um Hotbit, tendo (praticamente) toda a
-      experiência OCM-SM. Por ter um teclado próprio de MSX, tem suas
-      peculiaridades:
+    - SMX-HB, SMX-HB EX e SMX-HB MINI: É um dispositivo geração "1.75". Seu
+      FPGA tem cerca de 1/3 menos células como resultado da falta de
+      componentes. Seu uso principal é de substituir a placa princial de um
+      Hotbit (HB) ou Expert (HB EX), tendo (praticamente) toda a experiência
+      OCM-SM. A versão MINI é como os SM-X originais, funcionando sozinha com
+      teclado PS/2 e com gabinete próprio. Por ter um teclado próprio de MSX
+      (HB e EX apenas), tem suas peculiaridades (algumas não se aplicam ao HB
+      MINI que usa apenas teclados PS/2):
 
         - Permite o debounce das portas de joystick ser desligado, talvez possa
         ajudar com problemas que algumas pessoas estavam tendo com paddles.
         Para desligar o debounce use o comando SETSMART -89 , para religar use
         SETSMART -8A , ao desligar e religar a placa, o padrão é debounce
         ligado. NOTA: temporariamente essa opção está indisponível e o debounce
-        está permanentemente ativado independente da seleção.
+        está permanentemente ativado independente da seleção. (HB,EX e HB MINI)
 
         - Suporte a um terceiro mapa de teclados, então tem o mapa da versão
-        (us/br/fr/es), japonês e um para o teclado do Hotbit. O teclado do
-        Hotbit não segue o padrão dos teclados de PC portanto seu mapa é bem
-        diferente dos teclados PS/2. A chave DIP 9 em OFF é o padrão, uso do
-        mapa Hotbit, configurada em ON irá usar o mapa da versão do firmware,
-        útil quando quiser conectar um teclado PS/2 externo.
+        (us/br/fr/es/it) e japonês se usar PS/2 e um para o teclado do Hotbit
+        ou Expert. Os teclados do Hotbit/Expert não seguem o padrão dos
+        teclados de PC portanto seu mapa é bem diferente dos teclados PS/2. A
+        chave DIP 9 em OFF é o padrão, uso do mapa Hotbit/Expert, configurada
+        em ON irá usar o mapa da versão do firmware, útil quando quiser
+        conectar um teclado PS/2 externo. (HB MINI usar a DIP 9 em ON)
 
         - Correção: a tecla Select não estava funcionando na versão 3.7.1 que
-        as placas foram enviadas, agora funciona.
+        as placas foram enviadas, agora funciona. (HB)
 
         - Melhoria: SELECT + CIMA e SELECT + BAIXO substitui Page Up e Page
         Down, sendo possível ativar o disparo automático usando apenas teclas
         do Hotbit. Também temos SELECT + F1 a F4 sbustituindo F9 a F12, sendo
-        possível utilizar a maioria dos atalhos de teclados do OCM.
+        possível utilizar a maioria dos atalhos de teclados do OCM. (HB)
 
         - Ausente: não há suporte a OPL3, não cabe no FPGA do SMX-HB. Também
-        não foi possível suportar emulação de paddle na versão frankysnd pela
-        mesma razão.
+        não foi possível suportar emulação de paddle nas versões franky/snd
+        pela mesma razão. No firmware HB, a versão Franky também abre mão do
+        mouse PS/2 emulando mouse MSX, Turbo-R MIDI como saída pela porta 2 de
+        joystick e Turbo-R PCM. (HB, EX e HB MINI)
 
     - Multicore 2+: parecido com o MiSTER, porém com um FPGA menor que o mesmo(
     mais que o dobro dos OCM segunda geração, mas cerca da metade do MiSTER) e
@@ -117,7 +146,8 @@ diferente:
 - Para dispositivos/firmwares suportando OPL3:
 
     - Correção: Arrumei a OPL3, tinha dois problemas que faziam OPL3 não
-      funcionar com a última versão do VGMPlay:
+      funcionar com a última versão do VGMPlay (OCM do KdL a partir da 3.9.1
+      também tem essas correções):
 
         - IRQ estava desconectado, então os temporizadores programados não
           geravam interrupção, e com apenas a interrupção do VDP, a música 
@@ -133,11 +163,12 @@ diferente:
       e não ter a escala correta nos temporizadores causava o mal funcionamento
       do mesmo...
 
-    - Correção para dispositivos segunda geração: originalmente a OPL3 estava
-      apenas com um canal conectado, descartando qualquer som tocando apenas no
-      canal desconectado. Imagino que a razão disso é que ao conectar e mixar
-      ambos canais, o uso de recursos FPGA vão além do que os FPGA de segunda
-      geração tem disponível (o sequenciador de cada canal usa vários registros
+    - Correção para dispositivos segunda geração (OCM do KdL a partir da 3.9.1
+      também tem essa correção): originalmente a OPL3 estava apenas com um
+      canal conectado, descartando qualquer som tocando apenas no canal
+      desconectado. A razão disso é que ao conectar e mixar ambos canais, o uso
+      de recursos de memória do FPGA vão além do que os FPGA de segunda geração
+      tem disponível (o sequenciador de cada canal usa vários registros
       e ao ter um canal conectado apenas, o Quartus simplesmente corta esses
       registradores já que a saída não é conectada a nada). Fiz um pequeno
       truque para resolver essa situação, permitindo que todo o conteúdo seja
@@ -148,7 +179,12 @@ diferente:
     - Melhoria pro MC2+: como o MC2+ tem um FPGA enorme, a OPL3 funciona em
       estéreo real. Permiti que a OPL3 possa ser usada em MONO pelo OSD.
 
-- Para dispositivos/firmwares suportando SN76489 e 2xPSG:
+    - Novidade (OCM do KdL a partir da 3.9.1 também tem): Segundo PSG nas
+      portas 0x10-0x13. Também permite que os registradores do segundo PSG
+      sejam lidos. Diferente do build KdL, aqui o segundo PSG está ativado
+      por padrão.
+
+- Para firmwares suportando Franky SN76489 apenas:
 
     - Novidade: suporte parcial a uma "Franky" embutida. Esse suporte parcial
       é suficiente para que SG1000, COL4MMM (usando as versões COM\Franky),
@@ -172,67 +208,59 @@ diferente:
         ao fazer isso qualquer programa que dependa dessas portas para ler
         informações do OCM não irá obter a informação correta.
 
-    - Novidade: Segundo PSG nas porta 0x10-0x13. Também permite que os
-      regsitradores do segundo PSG sejam lidos.
+- Para firmwares suportando Franky VDP:
+
+        - VDP do Master System embutido. A troca de vídeo é automática, assim
+          que o VDP do Franky gera interrupções o vídeo dele é mostrado. Quando
+          esse VDP para de gerar interrupções, o vídeo do MSX será mostrado.
 
 - Para todos dispositivos / firmwares:
 
-    - Melhoria: Victor Trucco fez melhorias no controlador de SDRAM que agora é
-      capaz de trabalhar com diferentes chips. Alguns SM-X mini e SMX-HB usam
-      chips que precisam dessa melhoria pra funcionar. O KdL gentilmente ajudou
-      trabalhando no código do Victor Trucco e extrapolando ele para alguns
-      cenários não cobertos, agora o controlador é compatível com o mapa de RAM
-      da OCM 3.9, obrigado KdL! :)
+    - Melhoria (OCM do KdL a partir da 3.9.1 também tem): Victor Trucco e KdL
+      melhoraram o controlador de SDRAM que agora é capaz de trabalhar com
+      diferentes chips. Alguns SM-X mini e SMX-HB usam chips que precisam dessa
+      melhoria pra funcionar. MC2P, SX2 e SM-X padrão podem ativar uma segunda
+      mapper com mais 4MB (essa mapper foi feita pelo KdL).
 
     - Novidade: Emulação de Paddle usando um mouse PS/2. Para habilitar o modo
-      VAUS (Arkanoid/Taito) use SETSMART -8E, to habilitar o modo MSX use
+      VAUS (Arkanoid/Taito) use SETSMART -8E, para habilitar o modo MSX use
       SETSMART -8F, para desabilitar (padrão) use SETSMART -8D. Note que um
       paddle MSX apenas funciona corretamente se o Z80 estiver a 3.58MHz, como
-      um veradeiro paddle MSX em um MSX com CPU turbo. A única exceção é o
-      firmware para SMX-HB com som Franky, já que não há espaço no FPGA para o
-      SN76489, o segundo PSG e o paddle.
+      um verdadeiro paddle MSX em um MSX com CPU turbo. A única exceção é nos
+      firmwares para SMX-HB Snd/Franky, já que não há espaço no FPGA para o
+      SN76489, o segundo PSG e o paddle juntos.
 
-    - Correção: Não era possível mover apenas um ponto no eixo X. Também
-      adicionei quatro níveis de sensibilidade que podem ser alternados com o
-      clique do terceiro botão do mouse (se seu mouse não for compatível com o
-      padrão intellimouse / três botões, a sensibilidade estará fixa próximo ao
-      que era originalmente).
+    - Correção (OCM do KdL a partir da 3.9.1 também tem): Não era possível
+      mover apenas um ponto no eixo X.
 
-    - Correção: a emulação de Mouse MSX não funcionava muito bem se um controle
-      SEGA de quatro ou oito botões estivesse conectado com um Joymega. Agora o
-      mouse é detectado adequadamente, porém, o controle só retoma o uso da
-      porta de Joystick se apertar os botões A, B, C ou START (ou 1 e 2 em 
-      controles de 2 botões).
+    - Correção (OCM do KdL a partir da 3.9.1 também tem): a emulação de Mouse
+      MSX não funcionava muito bem se um controle SEGA de quatro ou oito botões
+      estivesse conectado com um Joymega. Agora o mouse é detectado
+      adequadamente, porém, o controle só retoma o uso da porta de Joystick se
+      apertar os botões A, B, C ou START (ou 1 e 2 em controles de 2 botões).
 
-    - Correção: ao mudar de controle para mouse e vice versa, agora a porta de
-      controles é "desconectada" por 1 segundo. Em um MSX real não é possível
-      mudar de controle para mouse (e vice versa) sem desconectar o mesmo da
-      porta, HIDTEST e jogos/programas que usem a HIDLIB dependem desse evento
-      de desconexão e posterior conexão para detectar a troca de dispositivo.
+    - Correção (OCM do KdL a partir da 3.9.1 também tem): ao mudar de controle
+      para mouse e vice versa, agora a porta de controles é "desconectada" por
+      1 segundo. Em um MSX real não é possível mudar de controle para mouse (e
+      vice versa) sem desconectar o mesmo da porta, HIDTEST e jogos/programas
+      que usem a HIDLIB dependem desse evento de desconexão e posterior conexão
+      para detectar a troca de dispositivo.
 
-    - Melhoria: a emulação de mouse MSX do MC2+ foi portada para todos. É uma
-      forma melhor que contam com time-out para retornar sozinho ao primeiro
-      estado após algum tempo sem leitura, assim como um mouse MSX real.
+    - Melhoria (OCM do KdL a partir da 3.9.1 também tem): a emulação de mouse
+      MSX do MC2+ foi portada para todos. É uma forma melhor que conta com time
+      -out para retornar sozinho ao primeiro estado após algum tempo sem
+      leitura, assim como um mouse MSX real.
 
-    - Correção: havia um bug no z80 causando alguns problemas ao tentar jogar
-      Lilly's Saga, correção feita pelo Hara-san
+    - Correção (OCM do KdL a partir da 3.9.1 também tem): havia um bug no z80
+      causando alguns problemas ao tentar jogar Lilly's Saga, correção feita
+      pelo Hara-san.
 
-- Futuro, dispositivos que terão um build Franky Completo:
+Todo código fonte e binários alterados em relação ao OCM 3.9.1:
+(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-    - Ausente: salvo pelo MC2+, o FPGA nos dispositivos OCM segunda geração não
-      tem espaço suficiente para ter OPL3 junto com o VDP e PSG do Franky, logo
-      esse build não terá suporte a OPL3. O MC2+ terá também a OPL3 junto com o
-      Franky completo.
-
-    - Novidade: ainda está em desenvolvimente, por favor aguarde, logo teremos
-      o Franky com VDP e PSG :P
-
-Todo código fonte e binários alterados em relação ao OCM 3.9:
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
-
-Todo código fonte do OCM 3.9 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
-Todo código adcional pode ser reutilizado, re-escrito, trabalhos derivados
+Todo código adicional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9, verifique a licença do mesmo.
+Para o código original do OCM 3.9.1, verifique a licença do mesmo.

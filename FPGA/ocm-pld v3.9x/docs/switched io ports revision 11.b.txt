@@ -18,9 +18,11 @@ SM-X HB Hotbit Keyboard shortcuts:
 New Smart Commands:
     - 89: turn off SMX-HB joystick port debounce (non joystick devices might
           not play nice with debounce on depending on how fast they transition
-          states). Doesn't affect SM-X/SM-X Mini/SX2.
+          states). Doesn't affect SM-X/SM-X Mini/SX2. Currently debounce is not
+	  turned off, checking if this will be deprecated.
     - 8A: turn on SMX-HB joystick port debounce (default). Doesn't affect SM-X
-          /SM-X Mini/SX2.
+          /SM-X Mini/SX2. Currently debounce is not turned off, checking if
+          this will be deprecated.
     - 8B: regular function of I/O 48 and 49 when switched I/O is selected
           (default).
     - 8C: I/O ports 48 and 49 are redirect to SN76489 / Emulated Franky PSG non
@@ -64,9 +66,12 @@ Atalhos do teclado Hotbit do SM-X HB:
 Novos comandos Smart:
     - 89: desliga o debounce da porta de controles do SMX-HB (dispositivos que
           não são controles podem não funcionar bem com o debounce dependendo
-          da velocidade que alternam estados). Não afeta SM-X/SM-X Mini/SX2/MC2+.
+          da velocidade que alternam estados). Não afeta SM-X/SM-X Mini/SX2/
+          MC2+. No momento debounce não pode ser desabilitado, verificando se
+          esse comando será removido.
     - 8A: liga o debounce da porta de controles do SMX-HB (padrão). Não afeta
-          SM-X/SM-X Mini/SX2/MC2+.
+          SM-X/SM-X Mini/SX2/MC2+. No momento debounce não pode ser
+          desabilitado, verificando se esse comando será removido.
     - 8B: funcionamento padrão das portas de I/O 48 e 49 (padrão).
     - 8C: portas de I/O 48 e 49 são reservadas apeanas para o SN76489 / Franky
           PSG, independente do funcionamento da I/O chaveada (apenas para os

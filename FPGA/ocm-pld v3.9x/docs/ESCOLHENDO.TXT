@@ -2,6 +2,26 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
+| Versão do Firmware | OPL3 Mono | OPL3 Estéreo | SN76489 | SMS VDP | PS/2 Mouse -> MSX Mouse | Paddle usando Mouse PS/2 | 2x PSG | MIDI Out | Turbo-R PCM | Segunda Mapper 4MB |
+| :----------------- | :-------: | :----------: | :-----: | :-----: | :---------------------: | :----------------------: | :----: | :------: | :---------: | :----------------: |
+| MC2P               | Sim       | Sim          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2           | Sim       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2 Franky    | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X/SX2 Snd       | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Sim                |
+| SM-X Mini          | Sim       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X Mini Franky   | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X Mini Snd      | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X HB            | Não       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
+| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Sim    | Não      | Não         | Não                |
+| SM-X HB Snd        | Não       | Não          | Sim     | Não     | Sim                     | Não                      | Sim    | Sim      | Sim         | Não                |
+
+NOTA: NUNCA, JAMAIS PENSE EM USAR MC2P SE NÃO TEM UM MC2P, SM-X SE SEU
+DISPOSITIVO NÃO É SM-X, ETC... A Tabelinha é para auxiliar na escolha de qual
+versão para seu dispositivo tem as características que quer. Se seu dispositivo
+não tem uma característica ou a combinação que quer, NÃO USE UM FIRMWARE DE
+OUTRO DISPOSITIVO, IRÁ BRICAR SEU DISPOSITIVO E SÓ IRÁ VOLTAR A FUNCIONAR SE
+USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
+
 IMPORTANTE! LEIA TUDO E SEJA CUIDADOSO! NÃO É DIVERTIDO BRICAR SEU MSX FPGA!
 NÃO É TÃO SIMPLES RESTAURAR ELE USANDO JIC / USB BLASTER JÁ QUE IRÁ PRECISAR DO
 USB BLASTER, INSTALAR O QUARTUS PARA USAR O PROGRAMMER, E NO CASO DO SMX-HB A
@@ -41,28 +61,20 @@ Como escolher um firmware? (exceto MC2+, MC2+ tem um único firmware)
 1 - Obviamente irá baixar os arquivos para seu dispositivo.(ex.: tenho um SM-X,
 então pego arquivos das pastas que começam com smx_)
 
-2 - Próximo passo é entender se quer a versão simples ou a versão com som da
-Franky. Se não tem uma Franky ou Playsoniq, a versão Franky é pra você. Caso
-tenha uma das duas, a versão Franky irá causar conflitos, então é melhor ir
-para a versão simples. NOTA: donos de SMX-HB tem um fator extra a considerar,
-a versão com som da Franky não suporta emulação de Paddle Arkanoid ou MSX com
-mouse PS/2. Caso pretenda usar Paddles emulados, a versão simples é a única
-opção.
+2 - Próximo passo é olhar a tabelinha para escolher a versão que tem aquilo que
+você deseja, ou o mais próximo disso. Em alguns dipositivos você abre mão de
+certas funcionalidades para ter outras, então escolha de acordo com isso. Não
+se preoucupe, caso queira usar uma funcionalidade depois que a versão utilizada
+não tenha, basta atualizar usando o firmware de uma versão que tenha essa
+funcionalidade.
 
-3 - (FUTURO, NÃO NO MOMENTO) Seu dispositivo de segunda geração tem suporte a
-versão Franky completa. Se no item anterior escolheria a versão com som Franky,
-parece que a escolha da versão Franky completa (que suporta o VDM do Master
-System) é certa... Nem sempre... Infelizmente não é possível ter o VDP / CRAM /
-VRAM do Master System junto com a OPL3. Então, se gosta do VGMPLAY e toca VGMs
-da OPL3 ou tem outros usos para a OPL3, pode preferir usar a versão som Franky.
-
-4 - EITA! A pasta tem 16 arquivos diferentes!!! Não tenho idéia do que
+3 - EITA! A pasta tem 20 arquivos diferentes!!! Não tenho idéia do que
 escolher...
 
     - Não se preoucupe, primeiro, vamos diminuir para quatro arquivos, isso é
-    feito através do mapa do seu teclado PS/2, Francês, Espanhol, Brasileiro ou
-    Estados Unidos. IMPORTANTE: SD-BIOS não altera o mapa do teclado, então é
-    importante escolher o correto :)
+    feito através do mapa do seu teclado PS/2, Francês, Espanhol, Brasileiro,
+    Italiano ou Estados Unidos. IMPORTANTE: SD-BIOS não altera o mapa do
+    teclado, então é importante escolher o correto :)
     - Agora, vamos diminuir para dois arquivos. Você prefere a barra invertida
     como barra invertida ou como o símbolo do Yene (MSX's Japoneses)? Baseado 
     nisso, escolhe backslash ou yen. Se utilizar SD-BIOS, isto não é relevante
@@ -74,20 +86,21 @@ escolher...
     posição de 2048 MB de memória irá usar o Kernel MSX Dos 2. Single EPBIOS
     utiliza apenas o Kernel MSX Dos 2. Se usar SD-BIOS, então isso não é
     relevante já que a SD-BIOS irár sobrepujar essa escolha. Se você usa uma
-    interface external com Nextor, lembre de utilizar o Kernel MSX Dos 2 (ou
-    usando Single EPBIOS ou configurando a Mapper para 2048MB / Escolhendo o
-    Kernel MSX Dos 2 se usar Dual EPBIOS) já que há um bug que deve ser
-    corrigido no OCM 3.9.1 que previne um dispositivo Nextor de funcionar caso
-    o SD interno seja iniciado com o Kernel Nextor.
+    interface external com Nextor, pode ser necessário utilizar o Kernel MSX
+    Dos 2 (ou usando Single EPBIOS ou configurando a Mapper para 2048MB /
+    Escolhendo o Kernel MSX Dos 2 se usar Dual EPBIOS) já que há um bug que
+    algumas versões do Kernel Nextor não permitem dispositivos com versões
+    diferentes. O Kernel do OCM já tem essa correção, então pode não ser mais
+    necessário o uso do Kernel MSX Dos 2 para usar com outras interfaces.
 
-5 - Agora já tem seu arquivo de firmware, apenas use ele :)
+4 - Agora já tem seu arquivo de firmware, apenas use ele :)
 
-Todo código fonte e binários alterados em relação ao OCM 3.9:
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+Todo código fonte e binários alterados em relação ao OCM 3.9.1:
+(c)2023 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-Todo código fonte do OCM 3.9 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
 Todo código adcional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9, verifique a licença do mesmo.
+Para o código original do OCM 3.9.1, verifique a licença do mesmo.

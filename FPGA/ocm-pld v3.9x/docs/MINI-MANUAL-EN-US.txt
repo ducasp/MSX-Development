@@ -1,4 +1,4 @@
-                          ***** OCM-PLD v3.9.1a *****
+                         ***** OCM-PLD v3.9.1plus *****
 
 Brought to you by DucaSP ( https://github.com/ducasp )
 
@@ -17,9 +17,9 @@ Just do it if you feel like it :)
         - Second PSG
         - Autofire by HrA!
         - Wi-Fi BIOS
-    - SMX-HB / HB MINI SPECIFICS
+    - SMX-HB / HB EX  / HB MINI SPECIFICS
         - Make sure that you have the right Keyboard Type Set!
-        - Alternatives for keys unavailable on built-in keyboard
+        - Alternatives for keys unavailable on MSX keyboards
         - Joystick Debounce
         - Alternative access to some resources using unmodified case
         - JTAG Programming
@@ -78,11 +78,10 @@ the above mentioned manuals and videos. :)
                             - MSX Mouse emulation -
 
 There are fixes for its behavior as it was moving on 2 pixels increment minimum
-on previous OCM-PLD. Also now it is possible and setting different
-sensibilities.
+on previous OCM-PLD.
 
 Applies to:
-            ALL DEVICES AND BUILDS
+            ALL DEVICES AND BUILDS EXCEPT SMX-HB Franky
 
 How to use:
             SM-X, HB Mini and SM-X Mini needs a PS/2 splitter adapter, that
@@ -103,11 +102,6 @@ and then the real Joystick port 1 will be connected back. MC2+ Exclusive: any
 direction, X, Y, Z and Mode buttons also switch back the Joystick port to its
 regular function.
 
-            Mouse emulation will start with a sensibility close to what the
-original OCM-PLD had. Clicking the third mouse button on an mouse that is
-compatible with Intellimouse protocol will cycle through four different
-sensibility settings.
-
                   - VAUS or MSX Standard Paddle emulation -
 
 This is a new feature that allows using a PS/2 mouse horizontal movement to
@@ -124,7 +118,7 @@ correct, which is expected and occurs with real MSX Standard Paddles attached
 to the Joystick Port as well.
 
 Applies to:
-            ALL DEVICES, ALL BUILDS EXCEPT SMX-HB FRANKYSND BUILD
+            ALL DEVICES, ALL BUILDS EXCEPT SMX-HB FRANKY/SND BUILD
 
 How to use:
             Paddle emulation is off by default. For MC2+ the only way to set it
@@ -152,7 +146,7 @@ hack that modifies the incoming channel programming on the fly to play on both
 channels. Only on MC2+, full stereo rendering/sequencing is now available.
 
 Applies to:
-            ALL DEVICES EXCEPT SMX-HB AND HB MINI, ALL BUILDS
+            ALL DEVICES EXCEPT SMX-HB AND HB MINI, ALL BUILDS EXCEPT FRANKY
 
 How to use:
             OPL3 emulation is off by default, except on MC2+ that it is on by
@@ -185,7 +179,7 @@ SN76489 is available. Having that chip also allows to play VGM sound-tracks
 using that chip using VGMPLAY and other software that detects a Franky.
 
 Applies to:
-            ALL DEVICES, FRANKYSND BUILDS
+            ALL DEVICES, FRANKY/SND BUILDS
 
 How to use:
             Franky design unfortunately choses to use I/O ports 0x48 and 0x49
@@ -199,11 +193,9 @@ and there will be a conflict. Due to that I've implemented a protection that
 won't allow SN76489 to access the MSX BUS when the internal Switched I/O device
 is selected.
 
-            OCM devices need to move the MSX and other BIOSs from flash memory
-or SD-Card to the memory space reserved for that. As such, they have a module
-that runs when you power-up your device, and that module will leave the OCM
-switched I/O device selected upon boot, effectively disabling SN76489. There
-are a few possibilities to have it enabled back:
+            Some software (SSMS, old versions of COL4MM, old versions of OCM
+utilities) might leave a switched I/O device selected. There are a few ways to
+disable switched I/O and re-enable access to the SSG:
 
     - Use software that automatically disables switched I/O before trying to
       detect/use a SN76489 on a Franky device. Using COL4MMM games in COM
@@ -219,11 +211,10 @@ are a few possibilities to have it enabled back:
       SETSMART -8C will reserve those ports exclusively for FRANKYSND
       SETSMART -8B will restore normal functionality of those ports
 
-            If you plan to use SN76489 on Sofa Run, the best option is to
-create a .BAT file called ENFRANKY.BAT that will run SETSMART -8C and other
-.BAT called DIFRANKY.BAT that will run SETSMART -8B, so you can execute those
-before/after running Franky compatible software. Another possibility is to have
-a VGM song using SN76489 played briefly.
+            If you plan to use SN76489 on Sofa Run or use SSMS, the best option
+is to create a .BAT file called ENFRANKY.BAT that will run SETSMART -8C and
+other .BAT called DIFRANKY.BAT that will run SETSMART -8B, so you can execute
+those before/after running Franky compatible software.
 
 IMPORTANT: notice that I/O ports 0x48 and 0x49 are used by OCM to read a few
 statuses like Machine Type, and some OCM software might not report the correct
@@ -235,10 +226,14 @@ shouldn't cause any malfunction though.
 A second PSG is a feature that can be used by some patches like the one that
 upgrades Maze of Galious to MSX2 graphics and improved sound track, also by
 VGMPLAY or any other software compatible with it. This implementation allows
-PSG registers to be read back making easy to detect the second PSG.
+PSG registers to be read back making easy to detect the second PSG. It is on
+by default and it can be disabled if you wanna use the second PSG of an
+external cartridge, disable the external slot through the dip switches, send
+the command SETSMART -54, then enable the external slot through the dip
+switches and push the RESET button.
 
 Applies to:
-            ALL DEVICES, FRANKYSND BUILDS
+            ALL DEVICES, ALL VERSIONS
 
 How to use:
             No special set-up or commands are needed. Second PSG is always
@@ -280,13 +275,12 @@ testing and also helping programming some parts of it. The Wi-Fi BIOS is not
 present on the default BIOS package that are part of the PLD files for 2nd GEN
 devices (and MC2+ doesn't have built-in BIOS capability). The only way to use
 it is by having a SD-Card (or in case of MC2+, it can be SD-Card image as well)
-that the first file added to its file system is the SD-BIOS (usually named
-OCM-BIOS.DAT). That SD-BIOS can be replaced at any time by copying over a new
-one, as long you always overwrite it (so you do not delete it). If the SD-BIOS
-has the Wi-Fi BIOS built-in you have to take out the loading of ESP8266.COM
-from your autoexec.bat (and perhaps take out RAMHLPR.COM, WAITWIFI.COM and
-SNTP.COM as well), and almost anything you would need to use CFG8266 can be
-done on the Wi-Fi BIOS set-up menu, except for:
+where the root folder has a SD-BIOS file named OCM-BIOS.DAT. That SD-BIOS can
+be used as long as the file is not fragmented. If the SD-BIOS has the Wi-Fi
+BIOS built-in you have to take out the loading of ESP8266.COM from your
+autoexec.bat (and perhaps take out RAMHLPR.COM, WAITWIFI.COM and SNTP.COM as
+well), and almost anything you would need to use CFG8266 can be done on the
+Wi-Fi BIOS set-up menu, except for:
     - ESP Firmware Update
     - Certificates Update
     - Manual setting of fixed TCP-IP IP Address
@@ -297,12 +291,13 @@ Applies to:
 How to use:
             You will need to have you SD-Card or SD-Card image (MC2+) created
 properly, following the recommendations for a SD for OCM devices, and make sure
-that OCM-BIOS.DAT is the first file added to the card after it is formatted.
-The best way to ensure this is to use KdL's OCM-SDBIOS Pack. To have that pack
-you need to contact KdL, just click the OCM-SDBIOS Pack link at his page:
+that an OCM-BIOS.DAT file is on the root folder and is not fragmented. The best
+ way to ensure this is to use KdL's OCM-SDBIOS Pack. To have that pack you need
+to contact KdL, just click the OCM-SDBIOS Pack link at his page:
 http://gnogni.altervista.org/index.html
             I've created an UNAPI Installation package that has proper
-instructions and some SD-BIOS examples, you can download it at:
+instructions and some SD-BIOS examples, in that case ignore instructions that
+OCM-BIOS.DAT needs to be the first file, you can download it at:
 https://github.com/ducasp/MSX-Development/releases/tag/SMXWiFiPack_v1.2
             Finally, there is an YouTube video talking about creating a SD-Card
 using SD-Bios with KdL's OCM-SDBIOS Pack link, even though it doesn't mention
@@ -323,21 +318,23 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
     - Configure the Wi-Fi BIOS to update clock and date during boot (way faster
       than using SNTP.COM on AUTOEXEC.BAT)
 
-                     ***** SMX-HB / HB MINI SPECIFICS *****
+                 ***** SMX-HB / EX / HB MINI SPECIFICS *****
 
-            SMX-HB / HB MINI have their own peculiarities, for some reasons:
+            SMX-HB / EX / HB MINI have their own peculiarities:
 
     1 - Due to the electronic components shortage and to make it affordable, it
         uses a FPGA that has about 1/3 less capacity than the 2nd GEN OCM
         devices. As such, at this moment it is not possible to have OPL3 on it,
-        as it uses quite a big amount of FPGA logic units and registers.
+        as it uses quite a big amount of FPGA logic units and registers. Also
+        due to that Franky version doesn't emulate MSX mouse using PS/2 mouse,
+        paddles and Turbo-R MIDI Out and PCM.
 
     2 - As it is a board to be fitted inside a real MSX computer (Hotbit) case
         and use that computer case built-in keyboard instead of a PC-AT PS/2
         keyboard (which can still be used if you solder a PS/2 connector on its
         GPIO port and disable "internal" keyboard), most of the times keys that
         are used for shortcuts or enabling disabling devices are not available
-        to the user. (HB ONLY, HB MINI uses PS/2 Keyboards and needs PS/2
+        to the user. (HB / EX ONLY, HB MINI uses PS/2 Keyboards and needs PS/2
         splitter to use mouses, like SM-X / SM-X Mini)
 
     3 - Due to its Joystick port connections being overly sensitive, debouncing
@@ -348,23 +345,23 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
     4 - Being built in a computer case, not everything is easily accessible. SD
         -Card slot, DIP-Switches and Scanline generator button are not
         accessible when the case is closed unless the user opts to cut the case
-        to make them accessible. (HB ONLY)
+        to make them accessible. (HB / EX ONLY)
 
     5 - JTAG access to the FPGA/Flash Memory is not possible unless you take
         off the FPGA module board. Due to that, the FPGA board won't receive
         power from the case power supply and USB Blaster is not able to provide
-        enough power to it. (HB ONLY)
+        enough power to it. (HB / EX ONLY)
 
            - Make sure that you have the right Keyboard Type Set! -
 
-            Most users are going to use Hotbit case built-in keyboard. In that
-case, make sure that DIP SWITCH position 9 is set to OFF, as this will set OCM
-to use a specific keyboard map and a specific keyboard interface that is best
-suited for it. Failure to do so might cause wrong keys as well as getting the
-keyboard to freeze. If you want to use an external PS/2 keyboard, please seek
-guidance with Victor Trucco or your board seller on how to make the connections
-and configure the board for it. After those steps are taken, you will flick the
-DIP SWITCH position 9 to ON. Failure to do so, like with built-in keyboard, may
+            Most users are going to use Hotbit / Expert keyboard. In that case,
+make sure that DIP SWITCH position 9 is set to OFF, as this will set OCM to use
+a specific keyboard map and a specific keyboard interface that is best suited
+for it. Failure to do so might cause wrong keys as well as getting the keyboard
+to freeze. If you want to use an external PS/2 keyboard, please seek guidance
+with Victor Trucco or your board seller on how to make the connections and
+configure the board for it. After those steps are taken, you will flick the DIP
+SWITCH position 9 to ON. Failure to do so, like with built-in keyboard, may
 cause wrong keys mapping. HB MINI USERS SHOULD HAVE DIP 9 ALWAYS SET TO ON!
 
           - Alternatives for keys unavailable on built-in keyboard -
@@ -385,15 +382,8 @@ a filter, so it will only consider that a Joystick port signal status changed
 some time. If the time period to check for stability is too low, then it is not
 really effective, and if it is too high it might cause noticeable input lag and
 incompatibility with devices that use joystick port as a communication port,
-like JoyNet, Serial Comm. Adapters, VAUS Paddle, etc. Since the usage of such
-devices is not common, SMX-HB has joystick ports with Debounce enabled by
-default, and the stability period check was tuned by Victor Trucco and should
-be good enough to not affect non-joystick devices. Just in case you find that
-a device is not working properly, you can try to turn off debounce. Notice that
-after a power-cycle it will be restored to the default status (ON).
-
-    - Disable Debounce: send SETSMART -89
-    - Re-enable Debounce: power cycle or send SETSMART -8A
+like JoyNet, Serial Comm. Adapters, VAUS Paddle, etc. At this moment debounce
+can't be disabled.
 
          - Alternative access to some resources using unmodified case -
 
@@ -431,7 +421,7 @@ the software/command line again to set it back after powering down.
       SSL, do not open multiple connections to download files. Your mileage may
       vary with other FTP software as OBSOFTP is a really simple FTP server.
 
-      ADVANCE USERS: you may get extra performance using SOFA FTP, but it is
+      ADVANCED USERS: you may get extra performance using SOFA FTP, but it is
       not as easy and intuitive to use, on the other hand, it has a feature to
       keep folders synchronized. But it requires you have a FTP server on your
       computer / network and that server must have some specific features, so
@@ -544,18 +534,19 @@ some things need to be different for this device... :)
 
     - MEGA SD / SD-Card: MC2+ doesn't have OCM-PLD saved in flash memory, and
       as such, it is not possible to have MSX-BIOS along with OCM-PLD like
-      other devices have. Due to that, it is mandatory to have a SD-BIOS as the
-      first file placed in your SD-Card (or SD-Card image) file system. Failure
-      to do so will cause a black screen as no BIOS is loaded. Your SD-Card or
-      image file needs to follow the same recommendations for all OCM devices
-      (FAT16 up to 4GB, etc.) and have a SD-BIOS as well. There is a link to an
-      YouTube video in the EDITOR NOTES section that can help you with that.
-      Other than that, if you are using a SD-Card only for MSX, make sure to
-      copy the .MCP file to it (and if you want it to be auto-loaded, rename it
-      to CORE.MCP). If you are using an image file, your SD-Card can be
-      formated using FAT16, FAT32 or FATX (but the image must be from a FAT16
-      formatted SD-Card), and the .MCP, .INI and .IMG files can be in any
-      folder you wish.
+      other devices have. Due to that, it is mandatory to have a SD-BIOS in a
+      file named OCM-BIOS.DAT placed in your SD-Card (or SD-Card image) file
+      system root. Failure to do so will cause a black screen as no BIOS is
+      loaded. Your SD-Card or image file needs to follow the same
+      recommendations for all OCM devices (FAT16 up to 4GB, etc.) and have a
+      SD-BIOS as well.
+      There is a link to an YouTube video in the EDITOR NOTES section that can
+      help you with that. Other than that, if you are using a SD-Card only for
+      MSX, make sure to copy the .MCP file to it (and if you want it to be
+      auto-loaded, rename it to CORE.MCP). If you are using an image file, your
+      SD-Card can be formated using FAT16, FAT32 or FATX (but the image must be
+      from a FAT16 formatted SD-Card), and the .MCP, .INI and .IMG files can be
+      in any folder you wish.
 
     - Joystick ports: MC2+ uses SEGA standard Joystick port that accepts Master
       System 2 buttons joysticks (work as a 2 buttons MSX joystick), Mega Drive

@@ -1,4 +1,4 @@
-Refer to dip-sw user manual v3.9-type2.pdf for DIP switches 1 to 8.
+Refer to dip-sw user manual v3.9.1-type2.pdf for DIP switches 1 to 8.
 
 Currently, of all extra 4 DIP switches available on SMX-HB, only position 9 is
 being used.
@@ -11,7 +11,7 @@ being used.
       keyboard when it is OFF will cause PS/2 keyboard to not work properly.
       NOTE: HB MINI experience is better with DIP 9 set to ON!
 
-O manual v3.9-type2.pdf deve ser usado para as chaves de 1 a 8.
+O manual v3.9.1-type2.pdf deve ser usado para as chaves de 1 a 8.
 
 Atualmente, de todas as 4 chaves extras disponíveis no SMX-HB, apenas a 9 está
 sendo utilizada.
