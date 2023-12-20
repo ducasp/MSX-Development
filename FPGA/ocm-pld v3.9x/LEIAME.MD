@@ -17,12 +17,12 @@
 | SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Sim    | Não      | Não         | Não                |
 | SM-X HB Snd        | Não       | Não          | Sim     | Não     | Sim                     | Não                      | Sim    | Sim      | Sim         | Não                |
 
-NOTE: NEVER, EVER THINK ABOUT USING MC2P IF YOU DON'T HAVE MC2P, SM-X IF YOUR
-DEVICE IS OTHER THAN SM-X, ETC... Cheat Sheet is only to help you choose what
-version for your device has the features you want. If your device doesn't have
-a feature or the combination of features you want, DO NOT USE THE FIRMWARE OF
-OTHER DEVICE, IT WILL BRICK YOUR DEVICE AND YOU WILL ONLY BE ABLE TO RECOVER IT
-USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
+NOTA: NUNCA, JAMAIS PENSE EM USAR MC2P SE NÃO TEM UM MC2P, SM-X SE SEU
+DISPOSITIVO NÃO É SM-X, ETC... A Tabelinha é para auxiliar na escolha de qual
+versão para seu dispositivo tem as características que quer. Se seu dispositivo
+não tem uma característica ou a combinação que quer, NÃO USE UM FIRMWARE DE
+OUTRO DISPOSITIVO, IRÁ BRICAR SEU DISPOSITIVO E SÓ IRÁ VOLTAR A FUNCIONAR SE
+USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
 
 # Novidades em relação a v3.9d
 
