@@ -1,6 +1,28 @@
-# OCM-PLD v3.9.1a
+# OCM-PLD v3.9.1plus
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
+# Version Selection Cheat Sheet
+
+| Firmware Version | OPL3 Mono | OPL3 Stereo | SN76489 | SMS VDP | PS/2 Mouse as MSX Mouse | Paddle using PS/2 Mouse | 2x PSG | MIDI Out | Turbo-R PCM | Second 4MB Mapper |
+| :--------------- | :-------: | :---------: | :-----: | :-----: | :---------------------: | :---------------------: | :----: | :------: | :---------: | :---------------: |
+| MC2P             | Yes       | Yes         | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2         | Yes       | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2 Franky  | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2 Snd     | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X Mini        | Yes       | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X Mini Franky | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X Mini Snd    | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X HB          | No        | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | Yes    | No       | No          | No                |
+| SM-X HB Snd      | No        | No          | Yes     | No      | Yes                     | No                      | Yes    | Yes      | Yes         | No                |
+
+NOTE: NEVER, EVER THINK ABOUT USING MC2P IF YOU DON'T HAVE MC2P, SM-X IF YOUR
+DEVICE IS OTHER THAN SM-X, ETC... Cheat Sheet is only to help you choose what
+version for your device has the features you want. If your device doesn't have
+a feature or the combination of features you want, DO NOT USE THE FIRMWARE OF
+OTHER DEVICE, IT WILL BRICK YOUR DEVICE AND YOU WILL ONLY BE ABLE TO RECOVER IT
+USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
 
 # New in relation to v3.9d
 
@@ -11,33 +33,34 @@
 
 # Release notes
 
-OCM-PLD v3.9.1a is an extension on KdL OCM release v3.9.1. What this extension
-brings to the table:
+OCM-PLD v3.9.1plusa is an extension on KdL OCM release v3.9.1. What this
+extension brings to the table:
 
 - New supported devices:
 
-    - SMX-HB and SMX-HB MINI: It is a 1.75gen device. Its FPGA has about 1/3
-      less logic cells as result of components shortage. It is meant to replace
-      the motherboard of Hotbit MSX Computers (HB), adding (almost) the full
-      OCM-SM experience. As being a device with real MSX Keyboard (HB ONLY), it
-      has its own needs (some doesn't apply to HB MINI that uses only PS/2
-      keyboards:
+    - SMX-HB, SMX-HB EX and SMX-HB MINI: It is a 1.75gen device. Its FPGA has
+      about 1/3 less logic cells as result of components shortage. It is meant
+      to replace the motherboard of Hotbit / Expert MSX Computers (HB / HB EX),
+      adding (almost) the full OCM-SM experience. HB MINI is like the original
+      SM-X in the fact it uses PS/2 keyboards and has its own case. As being a
+      device with real MSX Keyboard (HB and EX ONLY), it has its own needs
+      (some doesn't apply to HB MINI that uses only PS/2 keyboards):
 
         - I've allowed Joystick port debounce to be disabled, this perhaps can
         alleviate the issues some users were having with paddles. To turn off
         Joystick port debounce use the command SETSMART -89 , to turn it back
         on use SETSMART -8A , power cycle will restore default, on. NOTE: this
         option at this moment is not available and debounce is always active no
-        matter the selection with SETSMART. (HB and HB MINI)
+        matter the selection with SETSMART. (HB, EX and HB MINI)
 
         - I've added support to a third keyboard map table, so you have the one
-        from the build (us/br/fr/es), japanese and one for the built-in MSX
-        keyboard Hotbit has. Built-in keyboard of Hotbit is not standard and
-        its map is very peculiar and PS/2 keyboards have a different mapping.
-        DIP switch 9 set to OFF is the default, using the internal mapping, if
-        set to ON it will use the mapping the firmware was built-in, that is
-        handy when you want to use an external PS/2 keyboard. (HB MINI always
-        should have DIP 9 set to on)
+        from the build (us/br/fr/es/it) and japanese if using PS/2 and one for
+        the MSX keyboard Hotbit/Expert have. Hotbit and Expert keyboards are
+        not standard and their mapping are very peculiar as PS/2 keyboards have
+        a different mapping. DIP switch 9 set to OFF is the default, using the
+        MSX Keyboard mapping, if set to ON it will use the mapping the firmware
+        has built-in, that is handy when you want to use an external PS/2
+        keyboard. (HB MINI always should have DIP 9 set to on)
 
         - Fix: Select key was not working on original 3.7.1 based release, it
         works now. (HB)
@@ -48,8 +71,10 @@ brings to the table:
         making it possible to use most of the keyboard shortcuts. (HB)
 
         - Missing: it doesn't support OPL3 as it won't fit on the FPGA used. It
-          doesn't support paddle emulation on frankysnd version for due to the
-          same reason. (HB and HB MINI)
+          doesn't support paddle emulation on franky/snd version due to the
+          same reason. In HB firmware, Franky version also doesn't have the
+          following features: PS/2 mouse as MSX mouse, Turbo-R MIDI out through
+          joystick port 2 and Turbo-R PCM. (HB, EX and HB MINI)
 
     - Multicore 2+: it is like a MiSTER device, but with less FPGA capacity (
     more than double of second gen devices, but about half of MiSTER) and also
@@ -117,7 +142,8 @@ brings to the table:
 - For devices/builds supporting OPL3:
 
     - Fix: I've fixed OPL3, it had two issues that prevented it to work with
-      the latest VGMPlay version:
+      the latest VGMPlay version (KdL's OCM 3.9.1 or newer also incorporates
+      those fixes):
 
         - IRQ was not connected, so timers programmed wouldn't trigger,
           instead only the VDP interrupt, to slow, so music would play darn
@@ -131,18 +157,23 @@ brings to the table:
       interrupt, not having IRQ and not having the proper scaler for timer
       caused its timing to be slow, darn slow...
 
-    - Fix for second gen devices: I've fixed OPL3 sound rendering as it was
-      discarding all information that is on right output channel only,
-      unfortunately we do not have enough FPGA resources to run the sequencer
-      for two channels, but a clever trick allows all songs content to be
-      properly played in MONO glory :P Try as an example Doom soundtrack track
-      3 before updating and after updating it. :)
+    - Fix for second gen devices (KdL's OCM 3.9.1 or newer also incorporates
+      those fixes): I've fixed OPL3 sound rendering as it was discarding all
+      information that is on right output channel only, unfortunately we do not
+      have enough FPGA resources to run the sequencer for two channels, but a
+      clever trick allows all songs content to be properly played in MONO glory
+      :P Try as an example Doom soundtrack track 3 before updating and after
+      updating it. :)
 
     - Improvement for Multicore 2+: since MC2+ has a really large FPGA, OPL3
       works in real stereo mode since it can acommodate the extra registers
       needed for it that do not fit on regular second gen devices.
 
-- For devices supporting SN76489 / Second PSG:
+    - Extra (KdL's OCM 3.9.1 or newer also incorporates this): Second PSG on
+      ports 0x10 to 0x13. It also allows the PSG registers to be read back.
+      Unlike KdL's build, this one has the second PSG enabled as standard.
+
+- For firmwares supporting Franky's SN76489 only:
 
     - Extra: I've added partial support to a built-in Franky. That partial
       support is good enough to work with SG1000, COL4MMM (using COM\Franky
@@ -166,54 +197,50 @@ brings to the table:
         any program relying on reading OCM information on those ports won't
         get it.
 
-    - Extra: Second PSG on ports 0x10 to 0x13. It also allows the PSG registers
-      to be read back.
+- For firmwares with Franky VDP:
+
+        - Sega Master System VDP embedded. Video switch is automatic, as soon
+          as Franky VDP generates interrupts its video output is shown. When
+          that VDP stops generating interruptions, MSX video is shown.
 
 - For all devices:
 
-    - Improved: Victor Trucco made improvements on the SDRAM controller so it
-      is able to work with different chips. Some SM-X mini and SMX-HB use chips
-      that need this to work. KdL kindly worked on that code from Victor Trucco
-      to extrapolate it to uncovered scenarios, making it aware of OCM 3.9
-      SD-RAM usage, thanks KdL! :)
+    - Improved (KdL's OCM 3.9.1 or newer also incorporates this): Victor Trucco
+      and KdL made improvements on the SDRAM controller so it is able to work
+      with different chips. Some SM-X mini and SMX-HB use chips that need this
+      to work. MC2P, SX2 and standard SM-X can activate a second 4MB memory
+      mapper (this mapper was implemented by KdL).
 
     - Extra: I've added Paddle emulation when using a PS/2 mouse. To enable
       VAUS (Arkanoid/Taito) Paddle emulation use SETSMART -8E, to enable MSX
       standard paddle emulation use SETSMART -8F, to disable it (default) use
       SETSMART -8D. Note that MSX Standard paddle only works properly if Z80
       clock is 3.58MHz, like a real MSX Standard paddle on a MSX machine with
-      turbo CPU. Supported on all builds except SMX-HB with Franky sound.
+      turbo CPU. Supported on all builds except SMX-HB Snd/Franky.
 
-    - Fix: I've fixed mouse emulation. It was not possible to move a single
-      pixel on X axis, now it is. Also, four different levels of sensibility
-      are available by clicking the third mouse button (if your mouse is not an
-      intellimouse compatible mouse w/ 3 buttons, sensibility will be fixed 
-      almost the same as before)
+    - Fix (KdL's OCM 3.9.1 or newer also incorporates this): I've fixed mouse
+      emulation. It was not possible to move a single pixel on X axis.
 
-    - Fix: Mouse emulation would not work nice if you had an eight button mega
-      drive joystick connected with joymega. Now it detects properly
+    - Fix (KdL's OCM 3.9.1 or newer also incorporates this): Mouse emulation
+      would not work nice if you had an eight button mega drive joystick
+      connected with joymega. Now it detects properly.
 
-    - Fix: When switching from mouse to joystick or joystick to mouse, joystick
-      port is "disconnected" for 1 second. On a real MSX it is not possible to
-      change from joystick to mouse without disconnecting each one so HIDTEST
-      and software that uses HIDLIB to detect rely on the device being
-      disconnected for a while to detect its removal and then be able to see
-      the new device being connected
+    - Fix (KdL's OCM 3.9.1 or newer also incorporates this): When switching
+      from mouse to joystick or joystick to mouse, joystick port is
+      "disconnected" for 1 second. On a real MSX it is not possible to change
+      from joystick to mouse without disconnecting each one so HIDTEST and
+      software that uses HIDLIB to detect rely on the device being disconnected
+      for a while to detect its removal and then be able to see the new device
+      being connected.
 
-    - Improvement: ported the Multicore 2+ Mouse emulation to all devices. It
-      is a better approach as it has a time-out to return to the first state
-      after a few time without communication, like a real MSX mouse.
+    - Improvement (KdL's OCM 3.9.1 or newer also incorporates this): ported the
+      Multicore 2+ Mouse emulation to all devices. It is a better approach as
+      it has a time-out to return to the first state after a few time without
+      communication, like a real MSX mouse.
 
-    - Fix: there was a bug in z80 implementation causing issues while playing
-      Lilly's Saga, fix provided by Hara-san
-
-- Future, devices that have full franky build:
-
-    - Missing: FPGA in those devices can't fit OPL3 along with Franky VDP and
-      PSG, so that build won't have OPL3 support. Exception will be MC2+ that
-      can have it all.
-
-    - Extra: this is a WIP, please wait, but it will have Franky VDP :P
+    - Fix (KdL's OCM 3.9.1 or newer also incorporates this): there was a bug in
+      z80 implementation causing issues while playing Lilly's Saga, fix
+      provided by Hara-san.
 
 All source code and binaries that changed in relation to OCM 3.9.1:
 (c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com

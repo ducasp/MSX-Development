@@ -1,13 +1,13 @@
-OCM-PLD Pack v3.9.1a
-====================
+OCM-PLD Pack v3.9.1plus
+=======================
 
-Author:  KdL (3.9.1 for 1st Gen and 2nd Gen) Ducasp (3.9.1a 2nd Gen only)
-Update:  2023.09.08
+Author:  KdL (3.9.1 for 1st Gen and 2nd Gen) Ducasp (3.9.1plus 2nd Gen only)
+Update:  2023.12.20
 
 This package includes a set of custom firmware to update the following machines.
 
-1st Gen  =>  1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 and SX-1 Mini/Mini+, use KdL pack.
-2nd Gen  =>  SM-X (regular) and SX-2. [!] SM-X Mini is no longer supported by KdL.
+1st Gen  =>  Please download KdL pack, not found here.
+2nd Gen  =>  SM-X (regular), SM-X (mini), SM-X HB (all types), MC2P and SX-2.
 
 Ducasp extra support:
 

@@ -103,19 +103,28 @@
 -------------------------------------------------------------------------------------------------------------------
 --
 
-v3.9.1x Ducasp's Unofficial Release \_______________________________________________________________________________
+v3.9.1plus Ducasp's Unofficial Release \___________________________________________________________________________
 
-v3.9.1a [2023.09.08] [Ducasp Updates!]
+v3.9.1plus [2023.12.20] [Ducasp Updates!]
 
 - Up to speed with KdL 3.9.1 REPACK.
+- Now we have three flavors: regular (no extension), Franky (franky extension) and Sound (snd extension). Regular
+  only has the emulated paddle over PS/2 mouse and the changes in the below items. Franky adds Sega Master System
+  PSG and VDP working as Franky add-on built-in (setsmart -8c will reserve I/O addresses that switched I/O might
+  use for Franky usage, will work too if no switched I/O is selected) at the expense of not having OPL3. Sound has
+  Sega Master System PSG working as Franky (but not the VDP, setsmart works the same) and keeps OPL3, so if OPL3
+  is important for you you can use the extra SMS PSG on VGMPLAY, COL4MMM (disk version) and SG1000 emulator.
+- Grabbed some updates from 3.9.2 alpha (lfantoniosi VDP updates, latest bios with latest Nextor, new IPL module
+  that doesn't use flash memory in MC2P build).
 - Reverted back to old mouse handling (no sensitivity change) as it was not working with all PS/2 mouses, it only
   has the fix to allow 1 pixel movement on X axis, like original OCM 3.9.1 mouse. Should return that feature once
   I get more mouses to test and be able to get it working with mouses that did not work with it.
 - Using 3.9.0 PS2 controller, I think that most people with SM-X / SX2 already have a keyboard that works, and they
   do not have know-how / time / will to update their hardware with the proposed hardware changes, and without it
-  there is a risk that some keyboards might not work nice with the new PS2 controller. I've opted to keep the old
+  there is a risk that some keyboards might not work nice with the new PS2 controller (mine and most worked fine,
+  so while I'm being conservative, KdL and Hara updates should be good for most people). I've opted to keep the old
   controller for now (I might be wrong on my understanding of the PS2 new controller requiring the hardware changes
-  though, but I think for now I would rather play safe)
+  though, but I think for now I would rather play safe).
 
 ________________________________
 v3.x KdL/HRA's Official Release \__________________________________________________________________________________
