@@ -298,7 +298,11 @@ begin
 				when x"00" | x"01" | x"02" | x"04" | x"08" | x"10" | x"20" | x"40" | x"80" =>
 					collide <= '0';	
 				when others =>
+					if ( y<192 or (y<224 and smode_M1='1') or (y<240 and smode_M3='1') or y(8) = '1' ) then
 					collide <= '1';
+					else
+						collide <= '0';
+					end if;
 				end case;
 			end if;
 		end if;
