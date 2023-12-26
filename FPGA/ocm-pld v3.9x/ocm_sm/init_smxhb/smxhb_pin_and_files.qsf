@@ -252,108 +252,6 @@ set_location_assignment PIN_AB14 -to is_expert_n
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_p6_io
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_left_io
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_down_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[2]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[3]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[4]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[5]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[6]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[7]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[8]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[9]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[10]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[11]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ad_o[12]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[2]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[3]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[4]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[5]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[6]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[7]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[8]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[9]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[10]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[11]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[12]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[13]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[14]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_da_io[15]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ba_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ba_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_dqm_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_dqm_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_ras_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_cas_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_we_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_cs_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_cke_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to sdram_clk_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[4]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[3]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[2]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_b_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_g_o[4]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_g_o[3]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_g_o[2]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_g_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_g_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_r_o[4]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_r_o[3]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_r_o[2]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_r_o[1]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to vga_r_o[0]
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to vga_vsync_n_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to vga_hsync_n_o
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_down_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_left_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_p6_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_p7_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_p8_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_right_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy1_up_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_down_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_left_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_p6_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_p7_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_p8_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_right_io
-    set_instance_assignment -name CURRENT_STRENGTH_NEW 8MA -to joy2_up_io
-    set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to dac_l_o
-    set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to dac_r_o
-
-# end ENTITY(top)
-# ---------------
-
-# -----------------
-# start ENTITY(top)
-
-    # Fitter Assignments
-    # ==================
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_clk_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_data_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_mouse_clk_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_mouse_data_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to sd_miso_i
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_up_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_right_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_p8_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_p7_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_p6_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_left_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy2_down_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_up_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_right_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_p8_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_p7_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_p6_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_left_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to joy1_down_io
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to hdmi_scl
-    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to hdmi_sda
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_RD_o
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_WR_o
     set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_M1_o
@@ -384,6 +282,5 @@ set_location_assignment PIN_AB14 -to is_expert_n
     set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to dac_r_o
     set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to dac_l_o
     set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to dac_r_o
-
 # end ENTITY(top)
 # ---------------
