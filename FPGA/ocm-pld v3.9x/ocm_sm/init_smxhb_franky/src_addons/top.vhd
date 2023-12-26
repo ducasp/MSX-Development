@@ -272,12 +272,6 @@ architecture Behavior of top is
 
     begin
 
-    U00 : work.pll2
-        port map(
-            inclk0   => clock_50_i,
-            c0       => clk_sms                 -- 54MHz internal
-        );
-
     ocm: work.emsx_top
     generic map
     (

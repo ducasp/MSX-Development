@@ -180,7 +180,6 @@ entity emsx_top is
 
         -- SM-X, Multicore 2 and SX-2 ports
         clk21m_out      : out   std_logic;
-        clk_hdmi        : out   std_logic;
         esp_rx_o        : out   std_logic := 'Z';
         esp_tx_i        : in    std_logic := 'Z';
         pcm_o           : out   std_logic_vector( 15 downto 0 );
@@ -197,7 +196,7 @@ entity emsx_top is
         DisBiDir        : in    std_logic := '0';
         clkSMSVDP       : in    std_logic := '0';
         clkPIXSMS       : in    std_logic := '0';
-        clkSYSSMS       : in    std_logic := '0';
+        clkSYSSMS       : out   std_logic;
         clkSMSSP        : in    std_logic := '0';
         colorSMSVDP     : out   std_logic_vector( 11 downto 0 ) := "000000000000";
         sms_mask_column : out   std_logic;
@@ -214,16 +213,6 @@ entity emsx_top is
 end emsx_top;
 
 architecture RTL of emsx_top is
-
-    -- Clock generator ( Altera specific component )
-    component pll4x
-        port(
-            inclk0  : in    std_logic := '0';   -- 21.48MHz input to PLL    (external I/O pin, from crystal oscillator)
-            c0      : out   std_logic;          -- 21.48MHz output from PLL (internal LEs, for VDP, internal-bus, etc.)
-            c1      : out   std_logic;          -- 85.92MHz output from PLL (internal LEs, for SDRAM)
-            e0      : out   std_logic           -- 85.92MHz output from PLL (external I/O pin, for SDRAM)
-        );
-    end component;
 
     -- CPU
     component t800a
@@ -1126,8 +1115,8 @@ architecture RTL of emsx_top is
 --  signal  ff_lpf_div      : std_logic_vector( 3 downto 0 );                       -- sccic
 --  signal  w_lpf2ena       : std_logic;                                            -- sccic
 
-    -- HDMI signals
-    signal  clk_hdmi_s      : std_logic;
+    -- SMS signals
+    signal  clk_sms_s       : std_logic;
 
     -- ESP signals
     signal  esp_dout_s      : std_logic_vector(  7 downto 0 ) := (others => '1');
@@ -1168,11 +1157,11 @@ begin
 
     ----------------------------------------------------------------
     -- Franky VDP Glue Logic
-    -- Linked to clkSYSSMS, otherwise it will corrupt everything
+    -- Linked to clk_sms_s, otherwise it will corrupt everything
     ----------------------------------------------------------------
-    process (clkSYSSMS)
+    process (clk_sms_s)
     begin
-        if( clkSYSSMS'event and clkSYSSMS = '1' )then
+        if( clk_sms_s'event and clk_sms_s = '1' )then
             if ( ( adr(7 downto 1) = "1000100" or ( adr(7 downto 1) = "0100100" and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) ) )
                  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltRd_n = '0' ) then
                 smsVDPReqRD <= '1';
@@ -2870,10 +2859,10 @@ begin
             c0       => clk21m,                 -- 21.48MHz internal
             c1       => memclk,                 -- 85.92MHz = 21.48MHz x 4
             c2       => pMemClk,                -- 85.92MHz external
-            c3       => clk_hdmi_s              -- 107.40MHz = 21.48MHz x 5
+            c3       => clk_sms_s               -- 53.6931
         );
 
-    clk_hdmi <= clk_hdmi_s;
+    clkSYSSMS <= clk_sms_s;
 
     U01 : t800a
         port map(
@@ -3159,7 +3148,7 @@ begin
                 MAX_SPPL => 7
             )
             port map(
-                clk_sys         => clkSYSSMS,
+                clk_sys         => clk_sms_s,
                 ce_vdp          => clkSMSVDP,
                 ce_pix          => clkPIXSMS,
                 ce_sp           => clkSMSSP,

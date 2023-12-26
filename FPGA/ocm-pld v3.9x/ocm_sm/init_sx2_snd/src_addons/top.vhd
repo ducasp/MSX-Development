@@ -209,7 +209,6 @@ architecture Behavior of top is
     end component;
 
     -- clocks
-    signal clk_hdmi         : std_logic;
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
 
@@ -290,15 +289,6 @@ architecture Behavior of top is
     signal blink_s          : std_logic;
 
     begin
-
---  U00 : work.pll
---  port map(
---      inclk0   => clock_50_i,
---      c0       => clk21m,                                     -- 21.48MHz internal
---      c1       => memclk,                                     -- 85.92MHz = 21.48MHz x 4
---      c2       => pMemClk,                                    -- 85.92MHz external
---      c3       => clk_hdmi                                    -- 107.40MHz = 21.48MHz x 5
---  );
 
     ocm: work.emsx_top
     generic map
@@ -420,7 +410,6 @@ architecture Behavior of top is
 
         -- SM-X, Multicore 2 and SX-2 ports
         clk21m_out              => clk21m,
-        clk_hdmi                => clk_hdmi,
         esp_rx_o                => esp_rx_o,
         esp_tx_i                => esp_tx_i,
         pcm_o                   => hdmi_snd_s,
