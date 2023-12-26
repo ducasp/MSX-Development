@@ -610,12 +610,6 @@ wire        mouse_strobe;
 wire [63:0] rtc;
 wire sd_sclk_o_s, sd_cs_n_o_s, sd_mosi_o_s, sd_miso_i_s;
 
-pll2 pll2
-(
-    .inclk0(clock_50_i),
-    .c0(clk_sms)
-);
-
 reg ce_cpu_p;
 reg ce_cpu_n;
 reg ce_vdp;
@@ -1224,7 +1218,7 @@ mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(4)) mist_video_sms
     .osd_enable             ( )
 );
 
-mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(6)) mist_video_inst
+mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(5)) mist_video_inst
 (
     .clk_sys                ( memclk ),
     .scanlines              ( status[11:10] ),
@@ -1240,9 +1234,9 @@ mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(6)) mist_video_inst
 
     .HSync                  ( HSync ),
     .VSync                  ( VSync ),
-    .R                      ( R_O ),
-    .G                      ( G_O ),
-    .B                      ( B_O ),
+    .R                      ( R_O[5:1] ),
+    .G                      ( G_O[5:1] ),
+    .B                      ( B_O[5:1] ),
 
     .VGA_HS                 ( MSX_VGA_HS ),
     .VGA_VS                 ( MSX_VGA_VS ),

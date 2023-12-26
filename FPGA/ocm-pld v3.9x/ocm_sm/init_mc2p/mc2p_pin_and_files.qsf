@@ -78,7 +78,6 @@ set_global_assignment -name VERILOG_FILE ../esemsx3/src/sound/tr_pcm/tr_pcm.v
 set_global_assignment -name QIP_FILE src_addons/sound/jt89/hdl/jt89.qip
 set_global_assignment -name QIP_FILE src_addons/sound/opl3/opl3.qip
 set_global_assignment -name QIP_FILE src_addons/sys/pll.qip
-set_global_assignment -name QIP_FILE src_addons/sys/pll2.qip
 set_global_assignment -name QIP_FILE src_addons/sys/mc2p.qip
 set_global_assignment -name SDC_FILE ocm_sm_constrains.sdc
 
