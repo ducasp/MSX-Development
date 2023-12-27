@@ -1127,8 +1127,8 @@ architecture RTL of emsx_top is
     -- SN76489/Franky signals
     signal  sn76489_sound_s  : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  sn76489Req       : std_logic := '0';
-    signal  smsVDPReqWR      : std_logic := '0';
-    signal  smsVDPReqRD      : std_logic := '0';
+    signal  smsVDPReqWR_n    : std_logic := '1';
+    signal  smsVDPReqRD_n    : std_logic := '1';
     signal  sn76489NoIO      : std_logic := '1';
     signal  pFrankyVdpInt_n  : std_logic := '1';
     signal  franky_v_dout_s  : std_logic_vector(  7 downto 0 ) := (others => '0');
@@ -1164,14 +1164,14 @@ begin
         if( clk_sms_s'event and clk_sms_s = '1' )then
             if ( ( adr(7 downto 1) = "1000100" or ( adr(7 downto 1) = "0100100" and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) ) )
                  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltRd_n = '0' ) then
-                smsVDPReqRD <= '1';
-                smsVDPReqWR <= '0';
+                smsVDPReqRD_n <= '0';
+                smsVDPReqWR_n <= '1';
             elsif ( adr(7 downto 1) = "1000100"  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltWr_n = '0' ) then
-                smsVDPReqWR <=  '1';
-                smsVDPReqRD <= '0';
+                smsVDPReqWR_n <= '0';
+                smsVDPReqRD_n <= '1';
             else
-                smsVDPReqRD <= '0';
-                smsVDPReqWR <= '0';
+                smsVDPReqRD_n <= '1';
+                smsVDPReqWR_n <= '1';
             end if;
         end if;
     end process;
@@ -3155,8 +3155,8 @@ begin
                 gg              => '0',
                 sp64            => '0',
                 HL              => '0',
-                RD_n            => smsVDPReqRD,
-                WR_n            => smsVDPReqWR,
+                RD_n            => smsVDPReqRD_n,
+                WR_n            => smsVDPReqWR_n,
                 IRQ_n           => pFrankyVdpInt_n,
                 A               => adr( 7 downto 0 ),
                 D_in            => dbo,
