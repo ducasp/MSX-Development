@@ -1,0 +1,103 @@
+# FIRMWARE
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+
+# Version Selection Cheat Sheet
+
+| Firmware Version | OPL3 Mono | OPL3 Stereo | SN76489 | SMS VDP | PS/2 Mouse as MSX Mouse | Paddle using PS/2 Mouse | 2x PSG | MIDI Out | Turbo-R PCM | Second 4MB Mapper |
+| :--------------- | :-------: | :---------: | :-----: | :-----: | :---------------------: | :---------------------: | :----: | :------: | :---------: | :---------------: |
+| MC2P             | Yes       | Yes         | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2         | Yes       | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2 Franky  | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X/SX2 Snd     | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | Yes               |
+| SM-X Mini        | Yes       | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X Mini Franky | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X Mini Snd    | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X HB          | No        | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
+| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | Yes    | No       | No          | No                |
+| SM-X HB Snd      | No        | No          | Yes     | No      | Yes                     | No                      | Yes    | Yes      | Yes         | No                |
+
+NOTE: NEVER, EVER THINK ABOUT USING MC2P IF YOU DON'T HAVE MC2P, SM-X IF YOUR
+DEVICE IS OTHER THAN SM-X, ETC... Cheat Sheet is only to help you choose what
+version for your device has the features you want. If your device doesn't have
+a feature or the combination of features you want, DO NOT USE THE FIRMWARE OF
+OTHER DEVICE, IT WILL BRICK YOUR DEVICE AND YOU WILL ONLY BE ABLE TO RECOVER IT
+USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
+
+IMPORTANT! READ THIS AND BE CAREFUL! BRICKING YOUR 2nd GEN FPGA MSX ISN'T FUN!
+IT IS A PAIN TO RESTORE IT USING JIC / USB BLASTER AS YOU WILL NEED TO CONNECT
+IT TO AN USB BLASTER TO RESTORE IT. YOU HAVE BEEN WARNED! REALLY!
+
+ONLY USE SMXFLASH.COM to update your 2nd Gen FPGA MSX (SM-X, SMX-HB, SM-X Mini,
+SX2). DO NOT USE SMXFLASH IN A MULTICORE 2+, AS FOR IT THE CORE IS A MCP FILE
+AND YOU JUST NEED TO SUBSTITUTE THE OLD MCP FILE. ONLY USE A FIRMWARE THAT IS
+MEANT TO YOUR DEVICE. EACH DEVICE USE A DIFFERENT SET OF CONNECTIONS, SOME USE
+DIFFERENT FPGAs, SO DO NOT EVER THINK OF USING A 1ST GEN PLD FILE OR A 2ND GEN
+PLD FILE THAT DOESN'T CARRY YOUR DEVICE NAME IN THE PACKAGE.
+
+The version of SMXFLASH.COM that is sent along with the firmware files also
+works on NEXTOR. Older versions of SMXFLASH.COM requires MSX DOS 2 Kernel to be
+loaded. Why would you use other version? I have no idea. Read this fully and
+be carefull to not have any issues. Command line to update (again, except for
+MC2+ where you just replace the .MCP file for the new one):
+
+SMXFLASH OCM_SM.PLD
+
+Wait until it quits to the dos prompt telling it is done. If there is an error
+message after it started erasing or writing, try again until it works, as if
+you power it down with an unfinished update, it will BRICK and you will need
+to use an USB Blaster and JIC file to restore it, like said above, a pain!
+
+Also, be aware that if power fails during update, you are most likely to end up
+with a bricked unit and you will need to use an USB Blaster and JIC file to
+restore it, again, a pain!
+
+How to choose the firmware? (except for MC2+ that has a single firmware)
+
+1 - Obviously, you will download the one for your device. (i.e.: I have a SM-X,
+so I get firmware files from folders that start with smx_)
+
+2 - Next step is to look at the version table to choose the version that has
+what you want to use, or the closest to it. In some devices you will need to
+not have some features in order to have other, so choose according to that. Do
+not worry, if later you wanna a feature that the version chosen doesn't have it
+, you can always update the firmware again with a version that has the feature.
+
+3 - WOW! That folder contains 20 different firmware files!!! I have no idea how
+to choose from...
+
+    - Do not worry, first, let's get down to four different files, you do this
+    by figuring out your PS/2 Keyboard Layout, French, Spanish, Brazilian,
+    Italian or US. IMPORTANT: SD-BIOS DO NOT CHANGE Keyboard Layout, so it is
+    important to choose the correct one :)
+    - Now, you have four different versions, let's get down to two. Do you
+    prefer backslash symbol to be shown as a real backslash or do you prefer a
+    it to be shown as the yen symbol like japanese MSX's? Based on that, choose
+    yen or backslash. If you use SD-BIOS, then this is not relevant as the
+    SD-BIOS will override whatever is flashed in that regards
+    - Finally, you will have SINGLE EPBIOS or DUAL EPBIOS. On DUAL EPBIOS, if
+    you do not use a SD-BIOS, you can easily switch between Nextor or MSX Dos 2
+    kernel by flicking dip-switch 7. In the position for 4096 MB Mapper it will
+    use Nextor Kernel (this change needs turning the device off and then on to
+    take effect), in the position for 2048 MB Mapper it will use MSX Dos 2
+    Kernel. Single EPBIOS use only MSX Dos 2 Kernel. If you use SD-BIOS, then
+    this is not relevant as the SD-BIOS will override whatever is flashed in
+    that regards. If you use an external interface with Nextor, you might need
+    to use MSX Dos 2 Kernel (by either having Single EPBIOS or setting Mapper
+    size to 2048MB / Choosing MSX Dos 2 Kernel if having Dual EPBIOS) as there
+    is a bug in some Nextor Kernel version that doesn't allow devices with a 
+    different Nextor Kernel version in it. OCM Nextor Kernel already has the
+    fix for this, so it might not be necessary using MSX Dos 2 Kernel to use it
+    with different interfaces.
+
+4 - Now you have your firmware file, just use it :)
+
+All source code and binaries that changed in relation to OCM 3.9.1:
+(c)2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+
+All source code from OCM 3.9.1 originally is a work of many people, including
+KdL and Hara-san that are really huge contributors to it!
+
+All code can be re-used, re-written, derivative work can be sold, as long as the
+source code of changes is made public as well.
+Regarding original OCM 3.9.1 code, check its own licence.

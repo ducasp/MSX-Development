@@ -138,24 +138,24 @@
 -- JP:    推測されています。8ドット、つまり32クロックのどうさをメモリ
 -- JP:    の帯域から推測すると、以下のようになります。
 -- JP:
--- JP:   　　ドット　：<=0=><=1=><=2=><=3=><=4=><=5=><=6=><=7=>
+-- JP:     ドット ：<=0=><=1=><=2=><=3=><=4=><=5=><=6=><=7=>
 -- JP:   通常アクセス： A0   A1   A2   A3   A4  (A5)  A6  (A7)
 -- JP: インターリーブ： B0   B1   B2   B3
 -- JP:
 -- JP:    - 描画中
--- JP:   　　・A0～A3 (B0～B3)
+-- JP:     ・A0～A3 (B0～B3)
 -- JP:        画面描画のために使用。B0～B3はインターリーブで同時に
 -- JP:        読み出せるデータで、GRAPHIC6,7でしか使わない。
--- JP:   　　・A4     スプライトY座標検査
--- JP:   　　・A6     VRAM R/W or VDPコマンド (2回に一回ずつ、交互に割り当てる)
+-- JP:     ・A4     スプライトY座標検査
+-- JP:     ・A6     VRAM R/W or VDPコマンド (2回に一回ずつ、交互に割り当てる)
 -- JP:
 -- JP:     - 非描画中(スプライト準備中)
--- JP:    　　・A0     スプライトX座標リード
--- JP:    　　・A1     スプライトパターン番号リード
--- JP:    　　・A2     スプライトパターン左リード
--- JP:    　　・A3     スプライトパターン右リード
--- JP:    　　・A4     スプライトカラーリード
--- JP:    　　・A6     VRAM R/W or VDPコマンド (2回に一回ずつ、交互に割り当てる)
+-- JP:      ・A0     スプライトX座標リード
+-- JP:      ・A1     スプライトパターン番号リード
+-- JP:      ・A2     スプライトパターン左リード
+-- JP:      ・A3     スプライトパターン右リード
+-- JP:      ・A4     スプライトカラーリード
+-- JP:      ・A6     VRAM R/W or VDPコマンド (2回に一回ずつ、交互に割り当てる)
 -- JP:
 -- JP:   A5とA7のスロットは実際には使用することもできるのですが、
 -- JP:   これを使ってしまうと実機よりも帯域が増えてしまうので、
@@ -224,7 +224,8 @@ ENTITY VDP_SPRITE IS
         -- JP: 描画する事もできるので、このビットが必要
         SPCOLOROUT                  : OUT   STD_LOGIC;
         -- OUTPUT COLOR
-        SPCOLORCODE                 : OUT   STD_LOGIC_VECTOR(  3 DOWNTO 0 )
+        SPCOLORCODE                 : OUT   STD_LOGIC_VECTOR(  3 DOWNTO 0 );
+        REG_R9_Y_DOTS               : IN    STD_LOGIC
     );
 END VDP_SPRITE;
 
@@ -343,6 +344,7 @@ ARCHITECTURE RTL OF VDP_SPRITE IS
     SIGNAL W_SP_OFF                 : STD_LOGIC;
     SIGNAL W_SP_OVERMAP             : STD_LOGIC;
     SIGNAL W_ACTIVE                 : STD_LOGIC;
+    SIGNAL SPWINDOW_Y               : STD_LOGIC;
 BEGIN
 
     PVDPS0RESETACK          <= FF_VDPS0RESETACK;
@@ -359,7 +361,7 @@ BEGIN
             FF_SP_EN <= '0';
         ELSIF( CLK21M'EVENT AND CLK21M = '1' )THEN
             IF( DOTSTATE = "01" AND DOTCOUNTERX = 0 )THEN
-                FF_SP_EN <= (NOT REG_R8_SP_OFF) AND W_ACTIVE;
+                FF_SP_EN <= W_ACTIVE;
             END IF;
         END IF;
     END PROCESS;
@@ -506,7 +508,7 @@ BEGIN
                     END IF;
                 WHEN SPSTATE_YTEST_DRAW =>
                     IF( DOTCOUNTERX = 256+8 )THEN
-                        SPVRAMACCESSING <= FF_SP_EN;
+                        SPVRAMACCESSING <= (NOT REG_R8_SP_OFF) AND FF_SP_EN;
                     END IF;
                 WHEN SPSTATE_PREPARE =>
                     IF( SPPREPAREEND = '1' )THEN
@@ -541,6 +543,23 @@ BEGIN
 
     -- [Y_TEST]表示中のラインか否か
     W_ACTIVE        <=  BWINDOW_Y;
+
+    -----------------------------------------------------------------------------
+    -- [SPWINDOW_Y]
+    -----------------------------------------------------------------------------
+    PROCESS( RESET, CLK21M )
+    BEGIN
+        IF( RESET = '1' )THEN
+            SPWINDOW_Y <= '0';
+        ELSIF( CLK21M'EVENT AND CLK21M = '1' )THEN
+            IF (DOTCOUNTERYP = 0) THEN
+                SPWINDOW_Y <= '1';
+            ELSIF( (REG_R9_Y_DOTS = '0' AND DOTCOUNTERYP = 192) OR
+                (REG_R9_Y_DOTS = '1' AND DOTCOUNTERYP = 212) )THEN
+                SPWINDOW_Y <= '0';
+            END IF;
+        END IF;
+    END PROCESS;
 
     -----------------------------------------------------------------------------
     -- [Y_TEST]Yテストステートでないことを示す信号
@@ -638,7 +657,7 @@ BEGIN
                 IF( DOTCOUNTERX = 0 )THEN
                     -- INITIALIZE
                 ELSIF( EIGHTDOTSTATE = "110" )THEN
-                    IF( FF_Y_TEST_EN = '1' AND W_TARGET_SP_EN = '1' AND W_SP_OVERMAP = '1' AND W_SP_OFF = '0' )THEN
+                    IF( SPWINDOW_Y = '1' AND FF_Y_TEST_EN = '1' AND W_TARGET_SP_EN = '1' AND W_SP_OVERMAP = '1' AND W_SP_OFF = '0' )THEN
                         FF_SP_OVERMAP <= '1';
                     END IF;
                 END IF;
@@ -662,7 +681,7 @@ BEGIN
                 ELSIF( EIGHTDOTSTATE = "110" )THEN
                     -- JP: 調査をあきらめたスプライト番号が格納される。OVERMAPとは限らない。
                     -- JP: しかし、すでに OVERMAP で値が確定している場合は更新しない。
-                    IF( FF_Y_TEST_EN = '1' AND W_TARGET_SP_EN = '1' AND W_SP_OVERMAP = '1' AND W_SP_OFF = '0' AND FF_SP_OVERMAP = '0' )THEN
+                    IF( SPWINDOW_Y = '1' AND FF_Y_TEST_EN = '1' AND W_TARGET_SP_EN = '1' AND W_SP_OVERMAP = '1' AND W_SP_OFF = '0' AND FF_SP_OVERMAP = '0' )THEN
                         FF_SP_OVERMAP_NUM <= FF_Y_TEST_SP_NUM;
                     END IF;
                 END IF;
@@ -803,7 +822,7 @@ BEGIN
                                 END IF;
                             WHEN "111" =>
                                 SPPREPARELOCALPLANENUM <= SPPREPARELOCALPLANENUM + 1;
-                                IF( SPPREPARELOCALPLANENUM = 7 ) THEN
+                                IF( (SPPREPARELOCALPLANENUM = 7) OR ((SPPREPARELOCALPLANENUM = 3 AND SPMODE2='0')) ) THEN
                                     SPPREPAREEND <= '1';
                                 END IF;
                             WHEN OTHERS =>
@@ -914,7 +933,7 @@ BEGIN
                             ELSIF( (SPLINEBUFDRAWDATA_OUT(7) = '1') AND (SPINFORAMIC_OUT = '0') ) THEN
                                 SPLINEBUFDRAWCOLOR <= SPLINEBUFDRAWDATA_OUT;
                                 -- JP: スプライトが衝突。
-                                -- SPRITE COLISION OCCURED
+                                -- SPRITE COLLISION OCCURED
                                 VDPS0SPCOLLISIONINCIDENCEV := '1';
                                 VDPS3S4SPCOLLISIONXV := SPDRAWX + 12;
                                 -- NOTE: DRAWING LINE IS PREVIOUS LINE.
@@ -924,12 +943,12 @@ BEGIN
                         --
                         IF( DOTCOUNTERX = 0 ) THEN
                             SPPREDRAWLOCALPLANENUM <= (OTHERS => '0');
-                            SPPREDRAWEND <= '0';
+                            SPPREDRAWEND <= REG_R8_SP_OFF;
                             LASTCC0LOCALPLANENUMV := (OTHERS => '0');
                             SPCC0FOUNDV := '0';
                         ELSIF( DOTCOUNTERX(4 DOWNTO 0) = 0 ) THEN
                             SPPREDRAWLOCALPLANENUM <= SPPREDRAWLOCALPLANENUM + 1;
-                            IF( SPPREDRAWLOCALPLANENUM = 7 ) THEN
+                            IF( (SPPREDRAWLOCALPLANENUM = 7) OR (SPPREDRAWLOCALPLANENUM = 3 AND SPMODE2 = '0') ) THEN
                                 SPPREDRAWEND <= '1';
                             END IF;
                         END IF;
@@ -1024,4 +1043,3 @@ BEGIN
     END PROCESS;
 
 END RTL;
-

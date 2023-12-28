@@ -100,6 +100,7 @@ entity eseps2smx is
 
     CmtScro  : inout std_logic;
     DisBiDir : in std_logic := '0';
+    HB_Model : in std_logic := '1';
     EnAltMap : in std_logic := '0'
     );
 end eseps2smx;
@@ -228,9 +229,15 @@ begin
             if Ps2Chg = '1' then
 
               KeyId := Ps2xE0 & Ps2Dat;
-              if Kmap = '1' then
+              -- Non Jap and PS2 Keyboard
+              if Kmap = '1' and EnAltMap = '0' then
                 MtxSeq := MtxSettle;
                 MtxIdx <= "0" & (not Ps2Shif) & KeyId;
+              -- Expert or Hotbit Keyboard, returns right map
+              elsif Kmap = '1' and EnAltMap = '1' then
+                MtxSeq := MtxSettle;
+                MtxIdx <= (not HB_Model) & (not Ps2Shif) & KeyId;
+              -- Jap and not Expert Keyboard
               else
                 MtxSeq := MtxRead;
                 MtxIdx <= "10" & KeyId;
@@ -272,7 +279,11 @@ begin
             KeyWe <= '1';
             iKeyCol <= oKeyCol;
             iKeyCol(conv_integer(MtxPtr(6 downto 4))) <= '0';
-            MtxIdx <= "0" & Ps2Shif & KeyId;
+            if ( EnAltMap = '0' ) then
+                MtxIdx <= "0" & Ps2Shif & KeyId;
+            else
+                MtxIdx <= (not HB_Model) & Ps2Shif & KeyId;
+            end if;
 
           when MtxRead =>
             MtxSeq := MtxWrite;

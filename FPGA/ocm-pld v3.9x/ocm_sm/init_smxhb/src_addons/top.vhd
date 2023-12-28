@@ -114,7 +114,7 @@ entity top is
         slot_CS12_o         : inout std_logic := 'Z';
         slot_CLOCK_o        : inout std_logic := 'Z';
         slot_M1_o           : inout std_logic := 'Z';
-        slot_MREQ_o         : inout std_logic := 'Z';
+        slot_MERQ_o         : inout std_logic := 'Z';
         slot_IOREQ_o        : inout std_logic := 'Z';
         slot_RD_o           : inout std_logic := 'Z';
         slot_WR_o           : inout std_logic := 'Z';
@@ -136,7 +136,10 @@ entity top is
 
         -- LED
         led_o               : out   std_logic := '0';
-        caps_led_o          : out   std_logic := '0'
+        caps_led_o          : out   std_logic := '0';
+
+        -- Model
+        is_expert_n         : in    std_logic
     );
 end entity;
 
@@ -168,7 +171,6 @@ architecture Behavior of top is
     signal btn_rst_s        : std_logic;                                            -- Hotbit Case Reset Button
     signal reset_s          : std_logic;                                            -- global reset
     signal power_on_reset_s : std_logic := '0';
-    signal slow_s           : std_logic_vector( 20 downto 0 ) := (others => '1');
 
     -- DIPs
     signal dip_s            : std_logic_vector(  7 downto 0 ) := "00100001";        -- caution! inverted bits (0 = enabled)
@@ -254,9 +256,10 @@ architecture Behavior of top is
     ocm: work.emsx_top
     generic map
     (
+        use_8gb_sdram_g         => true,
         use_wifi_g              => true,
         use_midi_g              => true,
-        use_dualpsg_g           => false,
+        use_dualpsg_g           => true,
         use_opl3_g              => false,
         use_franky_vdp_g        => false,
         use_franky_psg_g        => false
@@ -268,19 +271,19 @@ architecture Behavior of top is
         reset                   => reset_s,
         power_on_reset          => power_on_reset_s,
 
-        -- SD-RAM ports
-        pMemClk                 => clk_sdram,                   -- SD-RAM Clock
-        pMemCke                 => sdram_cke_o,                 -- SD-RAM Clock enable
-        pMemCs_n                => sdram_cs_o,                  -- SD-RAM Chip select
-        pMemRas_n               => sdram_ras_o,                 -- SD-RAM Row/RAS
-        pMemCas_n               => sdram_cas_o,                 -- SD-RAM /CAS
-        pMemWe_n                => sdram_we_o,                  -- SD-RAM /WE
-        pMemUdq                 => sdram_dqm_o(1),              -- SD-RAM UDQM
-        pMemLdq                 => sdram_dqm_o(0),              -- SD-RAM LDQM
-        pMemBa1                 => sdram_ba_o(1),               -- SD-RAM Bank select address 1
-        pMemBa0                 => sdram_ba_o(0),               -- SD-RAM Bank select address 0
-        pMemAdr                 => sdram_ad_o,                  -- SD-RAM Address
-        pMemDat                 => sdram_da_io,                 -- SD-RAM Data
+        -- SDRAM ports
+        pMemClk                 => clk_sdram,                   -- SDRAM Clock
+        pMemCke                 => sdram_cke_o,                 -- SDRAM Clock enable
+        pMemCs_n                => sdram_cs_o,                  -- SDRAM Chip select
+        pMemRas_n               => sdram_ras_o,                 -- SDRAM Row/RAS
+        pMemCas_n               => sdram_cas_o,                 -- SDRAM /CAS
+        pMemWe_n                => sdram_we_o,                  -- SDRAM /WE
+        pMemUdq                 => sdram_dqm_o(1),              -- SDRAM UDQM
+        pMemLdq                 => sdram_dqm_o(0),              -- SDRAM LDQM
+        pMemBa1                 => sdram_ba_o(1),               -- SDRAM Bank select address 1
+        pMemBa0                 => sdram_ba_o(0),               -- SDRAM Bank select address 0
+        pMemAdr                 => sdram_ad_o,                  -- SDRAM Address
+        pMemDat                 => sdram_da_io,                 -- SDRAM Data
 
         -- PS/2 keyboard ports
         pPs2Clk                 => ps2_clk_io,
@@ -371,6 +374,7 @@ architecture Behavior of top is
         caps_led_o              => caps_led_o,
         joy_deb                 => joy_deb,
         DisBiDir                => dip_i(9),
+        model_expert_n          => is_expert_n,
         EnAltMap                => dip_i(9),
         pPaddleEmu              => pad_emu_s,
         pPaddleMode             => pad_mode_s
@@ -385,7 +389,7 @@ architecture Behavior of top is
                        'Z';
 
     slot_IOREQ_o    <= cpu_ioreq_s;
-    slot_MREQ_o     <= cpu_mreq_s;
+    slot_MERQ_o     <= cpu_mreq_s;
     slot_RD_o       <= cpu_rd_s;
     slot_SLOT1_o    <= slot_SLOT1_s;
     slot_SLOT2_o    <= slot_SLOT2_s;

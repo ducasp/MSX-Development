@@ -560,9 +560,9 @@ parameter CONF_STR = {
     "I1,IMG/VHD,Load Image...;",
     "OAB,Scanlines,Off,25%,50%,75%;",                           // No SD, F12 pops up 00, Off
     "OC,Blend,Off,On;",                                         // No SD, F12 pops up 0, Off
-    "O1,Scandoubler,On,Off;",                                   // No SD, F12 pops up 0, On
+    "O1,Scandoubler,On,Off;",                                   // No SD, F12 pops up 0, On, status[1]
     "O8,RGB/Comp or LED/CRT,1st,2nd;",                          // No SD, F12 pops up 0, RGB or LED (invert if status 1 = 0)
-    "O2,CPU Clock,Normal,Turbo;",                               // No SD, F12 pops up 0, Normal
+    "O2,CPU Clock,Normal,Turbo;",                               // No SD, F12 pops up 0, Normal, status[2]
     "O3,Slot1,MegaSCC+ 1MB,External;",                          // No SD, F12 pops up 0, MegaSCC+
     "O45,Slot2,MegaSCC+ 2MB,External,MegaRAM 2MB,MegaRAM 1MB;", // No SD, F12 pops up 00, inverts 5 to have 00 = MEGASCC+
     "O6,RAM,4096kB,2048kB;",                                    // No SD, F12 pops up 0, 4096
@@ -572,6 +572,7 @@ parameter CONF_STR = {
     "OD,OPL3 stereo,Yes,No;",                                   // No SD, F12 pops up 0, mono off, stereo yes
     "OGH,Paddle using mouse,No,Vaus,MSX;",                      // No SD, F12 pops up 00, paddle emulation off
     "OI,ZX Next Expansion,No,Yes;",                             // No SD, F12 pops up 0, do not try to use ZX Next Expansion
+    "OK,Franky Video Type,NTSC,PAL;",                           // No SD, F12 pops up 0, MSX Video Out, status[19]
     "T0,Reset;"
 };
 
@@ -579,6 +580,7 @@ parameter CONF_STR = {
 
 wire        pll_locked;
 wire        clk_sys;
+wire        clk_sms;
 wire        memclk;
 
 //////////////////   MC2P I/O   ///////////////////
@@ -607,6 +609,45 @@ wire  [7:0] mouse_flags;
 wire        mouse_strobe;
 wire [63:0] rtc;
 wire sd_sclk_o_s, sd_cs_n_o_s, sd_mosi_o_s, sd_miso_i_s;
+
+reg ce_cpu_p;
+reg ce_cpu_n;
+reg ce_vdp;
+reg ce_pix;
+reg ce_sp;
+always @(negedge clk_sms) begin
+    reg [4:0] clkd;
+
+    ce_sp <= clkd[0];
+    ce_vdp <= 0;//div5
+    ce_pix <= 0;//div10
+    ce_cpu_p <= 0;//div15
+    ce_cpu_n <= 0;//div15
+    clkd <= clkd + 1'd1;
+    if (clkd==29) begin
+        clkd <= 0;
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==24) begin
+        ce_vdp <= 1;
+        ce_cpu_p <= 1;
+    end else if (clkd==19) begin
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==17) begin
+        ce_cpu_n <= 1;
+    end else if (clkd==14) begin
+        ce_vdp <= 1;
+    end else if (clkd==9) begin
+        ce_cpu_p <= 1;
+        ce_vdp <= 1;
+        ce_pix <= 1;
+    end else if (clkd==4) begin
+        ce_vdp <= 1;
+    end else if (clkd==2) begin
+        ce_cpu_n <= 1;
+    end
+end
 
 sd_card sd_card
 (
@@ -988,148 +1029,230 @@ assign      SDRAM_CLK = clk_sdram;
 emsx_top emsx
 (
         // Clock, Reset ports
-        .pClk21m         ( clock_50_i    ),
-        .pExtClk         ( 1'b0          ),
+        .pClk21m         ( clock_50_i     ),
+        .pExtClk         ( 1'b0           ),
 
-        // SD-RAM ports
-        .pMemClk         ( memclk        ),
-        .pSdrClk         ( clk_sdram     ),
-        .pMemCke         ( SDRAM_CKE     ),
-        .pMemCs_n        ( SDRAM_nCS     ),
-        .pMemRas_n       ( SDRAM_nRAS    ),
-        .pMemCas_n       ( SDRAM_nCAS    ),
-        .pMemWe_n        ( SDRAM_nWE     ),
-        .pMemUdq         ( SDRAM_DQMH    ),
-        .pMemLdq         ( SDRAM_DQML    ),
-        .pMemBa0         ( SDRAM_BA[0]   ),
-        .pMemBa1         ( SDRAM_BA[1]   ),
-        .pMemAdr         ( SDRAM_A       ),
-        .pMemDat         ( SDRAM_DQ      ),
+        // SDRAM ports
+        .pMemClk         ( memclk         ),
+        .pSdrClk         ( clk_sdram      ),
+        .pMemCke         ( SDRAM_CKE      ),
+        .pMemCs_n        ( SDRAM_nCS      ),
+        .pMemRas_n       ( SDRAM_nRAS     ),
+        .pMemCas_n       ( SDRAM_nCAS     ),
+        .pMemWe_n        ( SDRAM_nWE      ),
+        .pMemUdq         ( SDRAM_DQMH     ),
+        .pMemLdq         ( SDRAM_DQML     ),
+        .pMemBa0         ( SDRAM_BA[0]    ),
+        .pMemBa1         ( SDRAM_BA[1]    ),
+        .pMemAdr         ( SDRAM_A        ),
+        .pMemDat         ( SDRAM_DQ       ),
 
         // PS/2 keyboard ports
-        .pPs2Clk         ( ps2_clk_io    ),
-        .pPs2Dat         ( ps2_data_io   ),
+        .pPs2Clk         ( ps2_clk_io     ),
+        .pPs2Dat         ( ps2_data_io    ),
 
         // Joystick ports (Port_A, Port_B)
         .pJoyA_in        ( {msx_joya[5:4],
                             msx_joya[0],
                             msx_joya[1],
                             msx_joya[2],
-                            msx_joya[3]} ),
-        .pStra           ( msx_stra      ),
+                            msx_joya[3]}  ),
+        .pStra           ( msx_stra       ),
         // WARNING!!! Unlike SM-X / OCM this
         // is not bi-dir, so it is 1 or 0.
         // This is needed as it is not connected
         // externally to receive a pull-up, unlike
         // on SM-X or OCM.
-        .pJoyA_out       ( msx_joy1_out  ),
+        .pJoyA_out       ( msx_joy1_out   ),
         .pJoyB_in        ( {msx_joyb[5:4],
                             msx_joyb[0],
                             msx_joyb[1],
                             msx_joyb[2],
-                            msx_joyb[3]} ),
-        .pStrb           ( msx_strb      ),
+                            msx_joyb[3]}  ),
+        .pStrb           ( msx_strb       ),
 
         // SD/MMC slot ports
-        .pSd_Ck          ( Sd_Ck         ),
-        .pSd_Cm          ( Sd_Cm         ),
-        .pSd_Dt          ( Sd_Dt         ),
+        .pSd_Ck          ( Sd_Ck          ),
+        .pSd_Cm          ( Sd_Cm          ),
+        .pSd_Dt          ( Sd_Dt          ),
 
         // DIP switch, Lamp ports
-        .pDip            ( dipsw         ),
-        .pLed            ( leds          ),
+        .pDip            ( dipsw          ),
+        .pLed            ( leds           ),
 
         // Video, Audio/CMT ports
-        .pDac_VR         ( R_O           ), // RGB_Red / Svideo_C
-        .pDac_VG         ( G_O           ), // RGB_Grn / Svideo_Y
-        .pDac_VB         ( B_O           ), // RGB_Blu / CompositeVideo
-        .pVideoHS_n      ( HSync         ), // HSync(RGB15K, VGA31K)
-        .pVideoVS_n      ( VSync         ), // VSync(RGB15K, VGA31K)
+        .pDac_VR         ( R_O            ), // RGB_Red / Svideo_C
+        .pDac_VG         ( G_O            ), // RGB_Grn / Svideo_Y
+        .pDac_VB         ( B_O            ), // RGB_Blu / CompositeVideo
+        .pVideoHS_n      ( HSync          ), // HSync(RGB15K, VGA31K)
+        .pVideoVS_n      ( VSync          ), // VSync(RGB15K, VGA31K)
 
-        .pDac_SL         ( audio_l       ),
-        .pDac_SR         ( audio_r       ),
+        .pDac_SL         ( audio_l        ),
+        .pDac_SR         ( audio_r        ),
+
+        // Franky VDP
+        .clkSYSSMS       ( clk_sms        ),
+        .clkSMSVDP       ( ce_vdp         ),
+        .clkPIXSMS       ( ce_pix         ),
+        .clkSMSSP        ( ce_sp          ),
+        .colorSMSVDP     ( color          ),
+        .sms_mask_column ( sms_mask_column),
+        .sms_x           ( sms_x          ),
+        .sms_y           ( sms_y          ),
+        .sms_smode_M1    ( sms_smode_M1   ),
+        .sms_smode_M2    ( sms_smode_M2   ),
+        .sms_smode_M3    ( sms_smode_M3   ),
+        .sms_smode_M4    ( sms_smode_M4   ),
+        .sms_pal         ( sms_pal        ),
+        .sms_video_active( smsvideo_active),
 
         // MC2P Exclusive
-        .pll_locked      ( pll_locked    ),
-        .osd_o           ( osd_s         ),
-        .opl3_enabled    ( ~status[7]    ),
-        .opl3_mono       ( status[13]    ),
+        .pll_locked      ( pll_locked     ),
+        .osd_o           ( osd_s          ),
+        .opl3_enabled    ( ~status[7]     ),
+        .opl3_mono       ( status[13]     ),
         .EnAltMap        ( { status[14],
-                             status[15]} ),
+                             status[15]}  ),
 
         // Slots
-        .pCpuClk         ( slot_CLOCK_o  ),
-        .pSltRst_n       ( ~reset        ),
+        .pCpuClk         ( slot_CLOCK_o   ),
+        .pSltRst_n       ( ~reset         ),
 
-        .pSltAdr         ( ext_cart_a    ),
-        .pSltDat         ( sram_data_io  ),
+        .pSltAdr         ( ext_cart_a     ),
+        .pSltDat         ( sram_data_io   ),
 
-        .pSltMerq_n      ( slot_MREQ_o   ),
-        .pSltIorq_n      ( slot_IOREQ_o  ),
-        .pSltRd_n        ( slot_RD_o     ),
-        .pSltWr_n        ( slot_WR_o     ),
+        .pSltMerq_n      ( slot_MERQ_o    ),
+        .pSltIorq_n      ( slot_IOREQ_o   ),
+        .pSltRd_n        ( slot_RD_o      ),
+        .pSltWr_n        ( slot_WR_o      ),
 
-        .pSltRfsh_n      ( slot_RFSH_i   ),
-        .pSltWait_n      ( slot_WAIT_i   ),
-        .pSltInt_n       ( GPIO[27]      ),
-        .pSltM1_n        ( slot_M1_o     ),
+        .pSltRfsh_n      ( slot_RFSH_i    ),
+        .pSltWait_n      ( slot_WAIT_i    ),
+        .pSltInt_n       ( GPIO[27]       ),
+        .pSltM1_n        ( slot_M1_o      ),
 
-        .pSltBdir_n      ( slot_BUSDIR_i ),
-        .pSltSltsl_n     ( slot_SLOT1_o  ),
-        .pSltSlts2_n     ( slot_SLOT2_o  ),
-        .pSltCs1_n       ( slot_CS1_o    ),
-        .pSltCs2_n       ( slot_CS2_o    ),
-        .pSltCs12_n      ( slot_CS12_o   ),
+        .pSltBdir_n      ( slot_BUSDIR_i  ),
+        .pSltSltsl_n     ( slot_SLOT1_o   ),
+        .pSltSlts2_n     ( slot_SLOT2_o   ),
+        .pSltCs1_n       ( slot_CS1_o     ),
+        .pSltCs2_n       ( slot_CS2_o     ),
+        .pSltCs12_n      ( slot_CS12_o    ),
 
         // SM-X
-        .clk21m_out      ( clk_sys       ),
-        .esp_rx_o        ( esp_rx_o      ),
-        .esp_tx_i        ( esp_tx_i      ),
-        .ear_i           ( ear_i         ),
-        .mic_o           ( mic_o         ),
-        .midi_o          ( midi_o_s      ),
-        .midi_active_o   ( midi_active_s )
+        .clk21m_out      ( clk_sys        ),
+        .esp_rx_o        ( esp_rx_o       ),
+        .esp_tx_i        ( esp_tx_i       ),
+        .ear_i           ( ear_i          ),
+        .mic_o           ( mic_o          ),
+        .midi_o          ( midi_o_s       ),
+        .midi_active_o   ( midi_active_s  )
 );
-
-
 
 //////////////////   VIDEO   //////////////////
-wire  [5:0] R_O;
-wire  [5:0] G_O;
-wire  [5:0] B_O;
-wire        HSync, VSync, CSync;
+wire  [ 5:0] R_O;
+wire  [ 5:0] G_O;
+wire  [ 5:0] B_O;
+wire  [ 3:0] R_O_SMS;
+wire  [ 3:0] G_O_SMS;
+wire  [ 3:0] B_O_SMS;
+wire         HSync, VSync;
+wire  [11:0] color;
+wire         sms_HSync, sms_VSync;
+wire  [ 4:0] MSX_VGA_R, MSX_VGA_G, MSX_VGA_B, SMS_VGA_R , SMS_VGA_B , SMS_VGA_G;
+wire         MSX_VGA_HS, MSX_VGA_VS, SMS_VGA_HS, SMS_VGA_VS;
+wire         sms_mask_column;
+wire  [ 8:0] sms_x;
+wire  [ 8:0] sms_y;
+wire         sms_HBlank;
+wire         sms_VBlank;
+wire         sms_smode_M1;
+wire         sms_smode_M2;
+wire         sms_smode_M3;
+wire         sms_smode_M4;
+wire         smsvideo_active;
+wire         sms_pal;
 
-wire [5:0]  osd_r_o, osd_g_o, osd_b_o;
-
-mist_video #( .OSD_COLOR ( 3'b001 )) mist_video_inst
+video
 (
-    .clk_sys     ( memclk ), //clk_sys ),
-    .scanlines   ( status[11:10] ),
-    .rotate      ( 2'b00 ),
-    .scandoubler_disable  ( 1'b1 ),
-    .ce_divider  ( 1'b0 ), //1 para clk_sys ou 0 com clksdram para usar blend
-    .blend       ( status[12] ),
-    .no_csync    ( 1'b1 ),
-
-    .SPI_SCK     ( SPI_SCK ),
-    .SPI_SS3     ( SPI_SS2 ),
-    .SPI_DI      ( SPI_DI ),
-
-    .HSync       ( HSync ),
-    .VSync       ( VSync ),
-    .R           ( R_O ),
-    .G           ( G_O ),
-    .B           ( B_O ),
-
-    .VGA_HS      ( VGA_HS ),
-    .VGA_VS      ( VGA_VS ),
-    .VGA_R       ( VGA_R ),
-    .VGA_G       ( VGA_G ),
-    .VGA_B       ( VGA_B ),
-
-    .osd_enable  ( )
+    .clk         ( clk_sms ),
+    .ce_pix      ( ce_pix ),
+    .pal         ( sms_pal ),
+    .gg          ( 1'b0 ),
+    .border      ( 1'b1 ),
+    .mask_column ( sms_mask_column ),
+    .x           ( sms_x ),
+    .y           ( sms_y ),
+    .smode_M1    ( sms_smode_M1 ),
+    .smode_M3    ( sms_smode_M3 ),
+    .HSync       ( sms_HSync ),
+    .VSync       ( sms_VSync ),
+    .HBlank      ( sms_HBlank ),
+    .VBlank      ( sms_VBlank )
 );
 
+assign R_O_SMS = color[3:0];
+assign G_O_SMS = color[7:4];
+assign B_O_SMS = color[11:8];
+
+mist_video #(.SD_HCNT_WIDTH(10), .COLOR_DEPTH(4)) mist_video_sms
+(
+    .clk_sys                ( clk_sms ),
+    .scanlines              ( status[11:10] ),
+    .rotate                 ( 2'b00 ),
+    .scandoubler_disable    ( status[1] ),
+    .blend                  ( status[12] ),
+
+    .SPI_DI                 ( SPI_DI ),
+    .SPI_SCK                ( SPI_SCK ),
+    .SPI_SS3                ( SPI_SS2 ),
+    .HSync                  ( ~sms_HSync ),
+    .VSync                  ( ~sms_VSync ),
+    .R                      ( R_O_SMS ),
+    .G                      ( G_O_SMS ),
+    .B                      ( B_O_SMS ),
+    .VGA_HS                 ( SMS_VGA_HS ),
+    .VGA_VS                 ( SMS_VGA_VS ),
+    .VGA_R                  ( SMS_VGA_R ),
+    .VGA_G                  ( SMS_VGA_G ),
+    .VGA_B                  ( SMS_VGA_B ),
+    .osd_enable             ( )
+);
+
+mist_video #( .OSD_COLOR ( 3'b001 ), .COLOR_DEPTH(5)) mist_video_inst
+(
+    .clk_sys                ( memclk ),
+    .scanlines              ( status[11:10] ),
+    .rotate                 ( 2'b00 ),
+    .scandoubler_disable    ( 1'b1 ),
+    .ce_divider             ( 1'b0 ),
+    .blend                  ( status[12] ),
+    .no_csync               ( 1'b1 ),
+
+    .SPI_SCK                ( SPI_SCK ),
+    .SPI_SS3                ( SPI_SS2 ),
+    .SPI_DI                 ( SPI_DI ),
+
+    .HSync                  ( HSync ),
+    .VSync                  ( VSync ),
+    .R                      ( R_O[5:1] ),
+    .G                      ( G_O[5:1] ),
+    .B                      ( B_O[5:1] ),
+
+    .VGA_HS                 ( MSX_VGA_HS ),
+    .VGA_VS                 ( MSX_VGA_VS ),
+    .VGA_R                  ( MSX_VGA_R ),
+    .VGA_G                  ( MSX_VGA_G ),
+    .VGA_B                  ( MSX_VGA_B ),
+
+    .osd_enable             ( )
+);
+
+assign sms_pal = status[19];
+assign VGA_R  = smsvideo_active ? SMS_VGA_R : MSX_VGA_R;
+assign VGA_G  = smsvideo_active ? SMS_VGA_G : MSX_VGA_G;
+assign VGA_B  = smsvideo_active ? SMS_VGA_B : MSX_VGA_B;
+assign VGA_HS = smsvideo_active ? SMS_VGA_HS : MSX_VGA_HS;
+assign VGA_VS = smsvideo_active ? SMS_VGA_VS : MSX_VGA_VS;
 assign AUDIO_L      = audio_li[0];
 assign AUDIO_R      = audio_ri[0];
 
@@ -1146,7 +1269,7 @@ wire        cpu_rd_s, cpu_wr_s;
 wire        sw1, sw2, cs1,cs2,cs12;
 wire        slot_SLOT1_o, slot_SLOT2_o, slot_SLOT3_o;
 wire        slot_CS1_o, slot_CS2_o, slot_CS12_o;
-wire        slot_IOREQ_o, slot_MREQ_o, slot_RD_o, slot_WR_o, slot_M1_o;
+wire        slot_IOREQ_o, slot_MERQ_o, slot_RD_o, slot_WR_o, slot_M1_o;
 wire        slot_RFSH_i, slot_WAIT_i, slot_INT_i, slot_BUSDIR_i;
 wire        slot_CLOCK_o, slot_RESET_o, slot_RESET_io;
 
@@ -1187,7 +1310,7 @@ assign GPIO[25]        =  ( ext_cart_detect_db ) ? slot_CS1_o       : 1'bZ;
 assign GPIO[24]        =  ( ext_cart_detect_db ) ? slot_CS2_o       : 1'bZ;
 assign GPIO[23]        =  ( ext_cart_detect_db ) ? slot_CS12_o      : 1'bZ;
 
-assign sram_addr_o[16] =  ( ext_cart_detect_db ) ? slot_MREQ_o      : 1'bZ;
+assign sram_addr_o[16] =  ( ext_cart_detect_db ) ? slot_MERQ_o      : 1'bZ;
 assign GPIO[18]        =  ( ext_cart_detect_db ) ? slot_IOREQ_o     : 1'bZ;
 assign GPIO[16]        =  ( ext_cart_detect_db ) ? slot_RD_o        : 1'bZ;
 assign GPIO[14]        =  ( ext_cart_detect_db ) ? slot_WR_o        : 1'bZ;

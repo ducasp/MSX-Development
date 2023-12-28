@@ -71,10 +71,6 @@
 --   JP: 日本語のコメント行は JP:を頭に付ける事にする
 --
 -------------------------------------------------------------------------------
--- Todo
---   * support VdpCmdMXS, VdpCmdMXD bits in command engine
---
--------------------------------------------------------------------------------
 -- Revision History
 --
 -- 3rd,June,2018 modified by KdL
@@ -139,10 +135,10 @@
 -- JP: パターンネームテーブルのマスクを実装→ANMAデモ対応
 -- JP: MultiColorMode(SCREEN3)実装→マジラビデモ対応
 --
--- 12nd,September,2004 modified by Kazuhiro Tsujikawa
+-- 12th,September,2004 modified by Kazuhiro Tsujikawa
 -- JP: VdpR0DispNum等をライン単位で反映→スペースマンボウでのチラツキ対策
 --
--- 11st,September,2004 modified by Kazuhiro Tsujikawa
+-- 11th,September,2004 modified by Kazuhiro Tsujikawa
 -- JP: 水平帰線割り込み修正→MGSEL(テンポ早送り)対策
 --
 -- 22nd,August,2004 modified by Kazuhiro Tsujikawa
@@ -177,7 +173,7 @@
 -- JP: R1/IE0(垂直帰線割り込み許可)の動作を修正
 -- JP: Ys2でバノアの家に入れる様になった
 --
--- 13rd,June,2004 modified by Kazuhiro Tsujikawa
+-- 13th,June,2004 modified by Kazuhiro Tsujikawa
 -- JP: 拡大スプライトが右に1ドットずれる不具合を修正
 -- JP: SCREEN5でスプライト右端32ドットが表示されない不具合を修正
 -- JP: SCREEN5で211ライン(最下)のスプライトが表示されない不具合を修正
@@ -193,7 +189,7 @@
 -- JP: VDPコマンドの実装を開始
 -- JP: HMMC,HMMM,YMMM,HMMV,LMMC,LMMM,LMMVを実装.まだ不具合あり.
 --
--- 12nd,January,2004 modified by Kunihiko Ohnaka
+-- 12th,January,2004 modified by Kunihiko Ohnaka
 -- JP: コメントの修正
 --
 -- 30th,December,2003 modified by Kazuhiro Tsujikawa
@@ -210,7 +206,7 @@
 -- JP: きたつもりだったが，少し収まりが悪い部分があり，あまりきれいな
 -- JP: 対応になっていない部分もあります．
 --
--- 13rd,October,2003 modified by Kunihiko Ohnaka
+-- 13th,October,2003 modified by Kunihiko Ohnaka
 -- JP: ESE-MSX基板では 2S300Eを複数用いる事ができるようにり，VDP単体で
 -- JP: 2S300Eや SRAMを占有する事が可能となった．
 -- JP: これに伴い以下のような変更を行う．
@@ -293,12 +289,15 @@ ENTITY VDP IS
 
         BLANK_O             : OUT   STD_LOGIC;
 
-        -- DISPLAY RESOLUTION (0=15KHZ, 1=31KHZ)
+        -- DISPLAY RESOLUTION (0=15kHz, 1=31kHz)
         DISPRESO            : IN    STD_LOGIC;
 
         NTSC_PAL_TYPE       : IN    STD_LOGIC;
         FORCED_V_MODE       : IN    STD_LOGIC;
-        LEGACY_VGA          : IN    STD_LOGIC
+        LEGACY_VGA          : IN    STD_LOGIC;
+
+        VDP_ID              : IN    STD_LOGIC_VECTOR(  4 DOWNTO 0 );
+        OFFSET_Y            : IN    STD_LOGIC_VECTOR(  6 DOWNTO 0 )
 
         -- DEBUG OUTPUT
     --  DEBUG_OUTPUT        : OUT   STD_LOGIC_VECTOR( 15 DOWNTO 0 ) -- ★
@@ -340,7 +339,8 @@ ARCHITECTURE RTL OF VDP IS
             REG_R25_MSK             : IN    STD_LOGIC;
             REG_R27_H_SCROLL        : IN    STD_LOGIC_VECTOR(  2 DOWNTO 0 );
             REG_R25_YJK             : IN    STD_LOGIC;
-            CENTERYJK_R25_N         : IN    STD_LOGIC
+            CENTERYJK_R25_N         : IN    STD_LOGIC;
+            OFFSET_Y                : IN    STD_LOGIC_VECTOR(  6 DOWNTO 0 )
         );
     END COMPONENT;
 
@@ -405,7 +405,8 @@ ARCHITECTURE RTL OF VDP IS
             -- JP: 描画する事もできるので、このビットが必要
             SPCOLOROUT                  : OUT   STD_LOGIC;
             -- OUTPUT COLOR
-            SPCOLORCODE                 : OUT   STD_LOGIC_VECTOR(  3 DOWNTO 0 )
+            SPCOLORCODE                 : OUT   STD_LOGIC_VECTOR(  3 DOWNTO 0 );
+            REG_R9_Y_DOTS               : IN    STD_LOGIC
         );
     END COMPONENT;
 
@@ -788,7 +789,8 @@ ARCHITECTURE RTL OF VDP IS
             VDPMODEISVRAMINTERLEAVE     : OUT   STD_LOGIC;
 
             -- SWITCHED I/O SIGNALS
-            FORCED_V_MODE               : IN    STD_LOGIC
+            FORCED_V_MODE               : IN    STD_LOGIC;
+            VDP_ID                      : IN    STD_LOGIC_VECTOR(  4 DOWNTO 0 )
         );
     END COMPONENT;
 
@@ -998,7 +1000,6 @@ ARCHITECTURE RTL OF VDP IS
 
     SIGNAL HSYNC                        : STD_LOGIC;
     SIGNAL ENAHSYNC                     : STD_LOGIC;
-    SIGNAL FF_BWINDOW_Y_DL              : STD_LOGIC;
 
     CONSTANT VRAM_ACCESS_IDLE           : INTEGER := 0;
     CONSTANT VRAM_ACCESS_DRAW           : INTEGER := 1;
@@ -1020,7 +1021,7 @@ BEGIN
     ----------------------------------------------------------------
     -- DISPLAY COMPONENTS
     ----------------------------------------------------------------
-    DISPMODEVGA     <=  DISPRESO;   -- DISPLAY RESOLUTION (0=15KHZ, 1=31KHZ)
+    DISPMODEVGA     <=  DISPRESO;   -- DISPLAY RESOLUTION (0=15kHz, 1=31kHz)
 
 --  VDPR9PALMODE    <=  REG_R9_PAL_MODE     WHEN( NTSC_PAL_TYPE = '1' AND LEGACY_VGA = '0' )ELSE
     VDPR9PALMODE    <=  REG_R9_PAL_MODE     WHEN( NTSC_PAL_TYPE = '1' )ELSE
@@ -1172,7 +1173,8 @@ BEGIN
         REG_R25_MSK             => REG_R25_MSK              ,
         REG_R27_H_SCROLL        => REG_R27_H_SCROLL         ,
         REG_R25_YJK             => REG_R25_YJK              ,
-        CENTERYJK_R25_N         => CENTERYJK_R25_N
+        CENTERYJK_R25_N         => CENTERYJK_R25_N          ,
+        OFFSET_Y                => OFFSET_Y
     );
 
     -- GENERATE BWINDOW
@@ -1662,7 +1664,8 @@ BEGIN
         PRAMDAT                     => PRAMDAT,
         PRAMADR                     => PRAMADRSPRITE,
         SPCOLOROUT                  => SPRITECOLOROUT,
-        SPCOLORCODE                 => COLORCODESPRITE
+        SPCOLORCODE                 => COLORCODESPRITE,
+        REG_R9_Y_DOTS               => REG_R9_Y_DOTS
     );
 
     -----------------------------------------------------------------------------
@@ -1775,7 +1778,8 @@ BEGIN
         SPMODE2                     => SPMODE2                      ,
         VDPMODEISVRAMINTERLEAVE     => VDPMODEISVRAMINTERLEAVE      ,
 
-        FORCED_V_MODE               => FORCED_V_MODE
+        FORCED_V_MODE               => FORCED_V_MODE                ,
+        VDP_ID                      => VDP_ID
     );
 
     -- ★

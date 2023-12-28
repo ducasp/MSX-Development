@@ -1,5 +1,5 @@
 @echo off
-rem --- '1_sm_mega-build_and_collect.cmd' v2.7 by Ducasp (2022.04.21)
+rem --- '1_sm_mega-build_and_collect.cmd' v2.8 by Ducasp (2023.12.15)
 
 set TIMEOUT=1
 set PROJECT=ocm_sm
@@ -11,13 +11,17 @@ if not exist %PROJECT%_device.env goto err_init
 set DEVSTR=&set /P DEVICE=<%PROJECT%_device.env
 if "%DEVICE%"=="mc2p" set DEVSTR= for Multicore 2P
 if "%DEVICE%"=="smx" set DEVSTR= for SM-X
-if "%DEVICE%"=="smx_frankysnd" set DEVSTR= for SM-X w/ Franky Sound
+if "%DEVICE%"=="smx_snd" set DEVSTR= for SM-X w/ Extra Sound Support
+if "%DEVICE%"=="smx_franky" set DEVSTR= for SM-X w/ Franky Support
 if "%DEVICE%"=="smxhb" set DEVSTR= for SMX-HB
-if "%DEVICE%"=="smxhb_frankysnd" set DEVSTR= for SMX-HB w/ Franky Sound
+if "%DEVICE%"=="smxhb_snd" set DEVSTR= for SMX-HB w/ Extra Sound Support
+if "%DEVICE%"=="smxhb_franky" set DEVSTR= for SMX-HB w/ Franky Support
 if "%DEVICE%"=="smxmini" set DEVSTR= for SM-X Mini
-if "%DEVICE%"=="smxmini_frankysnd" set DEVSTR= for SM-X Mini w/ Franky Sound
+if "%DEVICE%"=="smxmini_snd" set DEVSTR= for SM-X Mini w/ Extra Sound Support
+if "%DEVICE%"=="smxmini_franky" set DEVSTR= for SM-X Mini w/ Franky Support
 if "%DEVICE%"=="sx2" set DEVSTR= for SX-2
-if "%DEVICE%"=="sx2_frankysnd" set DEVSTR= for SX-2 w/ Franky Sound
+if "%DEVICE%"=="sx2_snd" set DEVSTR= for SX-2 w/ Extra Sound Support
+if "%DEVICE%"=="sx2_franky" set DEVSTR= for SX-2 w/ Franky Support
 if "%1"=="--no-wait" color 1f&title Task "%~dp0%PROJECT%.qpf"%DEVSTR%
 if not exist "%QUARTUS_ROOTDIR%\common\devinfo\cycloneive" goto err_quartus
 if not exist src_addons\ goto err_msg
@@ -45,6 +49,11 @@ copy ..\esemsx3\src\peripheral\keymap.vhd.%PROJECT_KBD% ..\esemsx3\src\periphera
 call :build_current
 call :pack_properly
 set PROJECT_KBD=french
+echo.&echo Building %PROJECT_KBD% layout...
+copy ..\esemsx3\src\peripheral\keymap.vhd.%PROJECT_KBD% ..\esemsx3\src\peripheral\keymap.vhd /y
+call :build_current
+call :pack_properly
+set PROJECT_KBD=italian
 echo.&echo Building %PROJECT_KBD% layout...
 copy ..\esemsx3\src\peripheral\keymap.vhd.%PROJECT_KBD% ..\esemsx3\src\peripheral\keymap.vhd /y
 call :build_current

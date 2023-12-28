@@ -1,22 +1,35 @@
-OCM-PLD Pack v3.9d
-==================
+OCM-PLD Pack v3.9.1plus
+=======================
 
-Author:  KdL (3.9 for 1st Gen and 2nd Gen) Ducasp (3.9c 2nd Gen only)
-Update:  2022.12.01
+Author:  KdL (3.9.1 for 1st Gen and 2nd Gen) Ducasp (3.9.1plus 2nd Gen only)
+Update:  2023.12.20
 
 This package includes a set of custom firmware to update the following machines.
 
-1st Gen  =>  1chipMSX, Zemmix Neo (KR), Zemmix Neo BR, SX-1 and SX-1 Mini/Mini+, use KdL pack.
-2nd Gen  =>  SM-X , SMX-HB, SM-X Mini, SX-2 and Multicore 2+.
+1st Gen  =>  Please download KdL pack, not found here.
+2nd Gen  =>  SM-X (regular), SM-X (mini), SM-X HB (all types), MC2P and SX-2.
 
-All firmware are unofficial, as they are not offered by their respective manufacturers.
-Any content of this package is NOT intended for a commercial purpose and is for personal use only.
+Ducasp extra support:
+
+1.8 Gen  =>  SM-X HB and its variants, FPGA is a little bit smaller than the one in second generation
+             devices and most have 8MB SDRAM
+MC2P     =>  MC2P is a multicore system with a huge 55k LE FPGA, extra SRAM, etc
+
+All firmware are self-made and not provided by the respective manufacturers.
 However, manufacturers are allowed to use these firmware as long as no surcharge is applied.
-The author disclaims any liability for the misuse of the contents of this package.
+The common base firmware is that of the first generation, which originated with 1chipMSX.
+Second generation machines have additional functions as they are more capacious.
 
-The common basis firmware is from the first generation OCM-PLD firmware, born with 1chipMSX.
-The second generation machines have additional features since they are more capacious.
-For more details, refer to the 'history.txt' and the other texts included in the subfolders.
+The MSX++ logo was officially granted to the OCM-PLD firmware by 西 和彦 [Mr. Kazuhiko Nishi] on 2022/Jul/21st.
+
+Here is how to recognize an MSX++ system and how it is classified:
+- the 1chipMSX machine upgraded with OCM-PLD is for all intents and purposes an MSX++ computer;
+- while homebrew machines that receive the same type of upgrade are considered MSX++ compatible;
+- individual components do not identify MSX++, so all unofficial firmware derived from OCM-PLD
+  (those not maintained by KdL) can be considered MSX++ compatibles as long as they correcly support
+  the switched I/O ports extension with ID 0xD4 (212=OCM ID, now MSX++ ID).
+
+For more details, refer to the 'history.txt' and the other texts included in the folders of this package.
 
 
 ______

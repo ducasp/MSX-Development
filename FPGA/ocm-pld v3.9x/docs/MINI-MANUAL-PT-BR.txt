@@ -1,4 +1,4 @@
-                          ***** OCM-PLD v3.9c *****
+                          **** OCM-PLD v3.9.1plus *****
 
 Feito por DucaSP ( https://github.com/ducasp )
 
@@ -14,12 +14,13 @@ Só o faça caso sinta vontade :)
         - Emulação de Paddles VAUS ou Padrão MSX
         - OPL3
         - Franky SN76489 / SSG Master System
+        - Franky VDP do Master System
         - Segundo PSG
         - Autofire por HrA!
         - BIOS Wi-Fi
-    - ESPECÍFICO PARA SMX-HB
+    - ESPECÍFICO PARA SMX-HB / HB EX / HB MINI
         - Certifique-se de configurar corretamente o tipo de teclado!
-        - Alternativas para teclas inexistentes no Hotbit
+        - Alternativas para teclas inexistentes no Hotbit / Expert
         - Debounce do Joystick
         - Alternativas para acessar recursos no gabinete não modificado
         - Programar com JTAG
@@ -39,10 +40,10 @@ Só o faça caso sinta vontade :)
 
 Para não reinventar a roda, por favor use os manuais existentes para:
 
-    - I/O Chaveado e Atalhos do Teclado: switched io ports revision 10.pdf
+    - I/O Chaveado e Atalhos do Teclado: switched io ports revision 11.pdf
 
-    - Chaves DIP: dip-sw user manual v3.9-type2.pdf e se tiver um SMX-HB também
-      dip-sw user manual v3.9-SMX-HB.txt
+    - Chaves DIP: dip-sw user manual v3.9.1-type2.pdf e se tiver um SMX-HB
+      também dip-sw user manual v3.9.1-SMX-HB.txt
 
     - Dicas gerais: Zemmix_Neo_EN-US.pdf e Zemmix_Neo_PT-BR.pdf contam com uma
       grande quantidade de informações sobre como usar SD, fitas, cartuchos,
@@ -79,15 +80,15 @@ manuais e vídeos acima mencionados. :)
                        - Emulação de Mouse Padrão MSX -
 
 Há correções no comportamento do mouse que estava se movendo de dois em
-dois pixels como movimento mínimo no eixo horizontal nas versões atuais da
-OCM-PLD. Agora também é possível configurar diferentes sensibilidades.
+dois pixels como movimento mínimo no eixo horizontal. A versão atual da OCM-PLD
+também incorporou esse fix (exceto SMX-HB e SM-X Mini que não tem build do KdL).
 
 Se aplica a:
-            TODOS DISPOSITIVOS E VERSÕES
+            TODOS DISPOSITIVOS E VERSÕES EXCETO SMX-HB Franky
 
 Como utilizar:
-            Um adaptador tipo splitter PS/2 é necessário para o SM-X e SM-X
-Mini, ele transforma o conector PS/2 em dois, um para teclado e outro para
+            Um adaptador tipo splitter PS/2 é necessário para o SM-X, HB Mini e
+SM-X Mini, ele transforma o conector PS/2 em dois, um para teclado e outro para
 mouse. O SX2 e MC2+ já tem dois conectores PS/2, então basta ligar o mouse na
 porta adequada. No caso do SMX-HB, infelizmente não há conectores PS/2 pré
 instalados, caso deseja utilizar um mouse ou teclado PS/2, deverá soldar um ou
@@ -99,14 +100,8 @@ será "desconectada" por um segundo e então o Mouse MSX emulado será "conectad
 nessa porta. Ao apertar os botões 1 ou 2 (controles de 2 botões) ou A, B, C ou
 START (controles de Mega Drive) enquanto o Mouse MSX está "conectado" irá gerar
 uma "desconexão" da porta de joystick 1 por um segundo e então a porta de
-joystick 1 externa será reconectada. Exclusivo para o MC2+ Exclusive: qualquer
-direção, X, Y, Z e Mode também causam a reconexão da porta de joystick 1
-externa.
-
-            A emulação do Mouse inicia com sensibilidade próxima a utilizada no
-OCM-PLD anteriormente. Ao clicar o terceiro botão do mouse em um mouse que é
-compatível com o padrão Intellimouse, a sensibilidade ao movimento será mudada
-ciclicamente (quatro níveis de sensibilidade).
+joystick 1 externa será reconectada. Exclusivo para o MC2+: qualquer direção,
+X, Y, Z e Mode também causam a reconexão da porta de joystick 1 externa.
 
                   - Emulação de Paddles VAUS ou Padrão MSX -
 
@@ -124,7 +119,7 @@ movimento não estará correta, o que é esperado e também ocorrem em máquinas
 MSX originais com esse tipo de paddle.
 
 Se aplica a:
-            TODOS DISPOSITIVOS, TODAS VERSÕES MENOS SMX-HB FRANKYSND
+            TODOS DISPOSITIVOS, TODAS VERSÕES MENOS SMX-HB FRANKY/SND
 
 Como utilizar:
             A emulação de Paddle vem desligada por padrão. No MC2+ a única
@@ -153,9 +148,11 @@ dos canais que é recebida em tempo real, de forma que independentemente de como
 venha a mesma, a OPL3 é programada para utilizar ambos os canais. Apenas no
 MC2+ a solução é diferente, pois seu FPGA maior permite que os sequenciadores
 / renderizadores de um segundo canal sejam utilizados a temos o som em estéreo.
+A versão atual da OCM-PLD também incorporou esse fix (exceto SMX-HB e SM-X
+Mini que não tem build do KdL).
 
 Se aplica a:
-            TODOS DISPOSITIVOS MENOS SMX-HB, TODAS VERSÕES
+            TODOS MENOS SMX-HB E HB MINI, TODAS VERSÕES EXCETO FRANKY
 
 Como utilizar:
             A OPL3 está desligada por padrão, exceto no MC2+ aonde o padrão é
@@ -171,7 +168,7 @@ pressionando SCROLL LOCK, ou desligar com SETSMART -87 ou ligar com SETSMART
 no MC2+ que será o que foi configurado no OSD) será restaurada ao desligar e
 religar o dispositivo.
 
-        Programas testado com a OPL3: Roboplay, VGMPLAY e a maioria dos
+        Programas testados com a OPL3: Roboplay, VGMPLAY e a maioria dos
 programas que detecta OPL3/OPL4 sem precisar de uma BIOS MSX AUDIO.
 
                     - Franky SN76489 / SSG Master System -
@@ -185,10 +182,11 @@ Musical Memory Mapper, Playsoniq, Franky... Mesmo as modificações que alteram
 as rotinas de som para usar o PSG do MSX, o som não parece correto, e fica bem
 melhor quando o SN76489 está disponível. Ter esse chip também permite tocar
 trilhas sonoras que usam esse chip no VGMPLAY e outros programas compatíveis
-com a Franky.
+com a Franky. Finalmente, pode ser utilizado também para jogos de Master System
+na versão Franky.
 
 Se aplica a:
-            TODOS DISPOSITIVOS, VERSÕES FRANKYSND
+            TODOS DISPOSITIVOS, VERSÕES FRANKY/SND
 
 Como utilizar:
             Infelizmente a Franky utiliza as portas I/O 0x48 e 0x49 para acesso
@@ -202,11 +200,10 @@ chaveada para acessar/configurar certos dispositivos, e portanto há conflito.
 Devido a isso implementei uma proteção que não permite ao SN76489 acesso ao BUS
 MSX quando o dispositivo interno de I/O chaveada estiver selecionado.
 
-            Dispositivos OCM precisam mover a BIOS MSX e outras da memória
-flash ou cartão SD para a memória reservada para essa função. Portanto, há um
-módulo que ao ligar o dispositivo faz isso, porém esse módulo deixa o I/O
-chaveado do OCM selecionado após o boot, efetivamente desabilitando o SN76489.
-Há algumas possibilidades para habilitar o mesmo novamente:
+            Alguns programas (SSMS, versões antigas da COL4MMM, utilitários
+antigos para OCM) podem deixar um dispositivo de I/O chaveada selecionado. Há
+algumas possibilidades para desabilitar a I/O chaveada e re-habilitar o acesso
+ao SSG:
 
     - Use programas que automaticamente desabilitam a I/O chaveada, como jogos
       da COL4MMM no formato COM (se usar a última versão da COL4MMM) ou usar o
@@ -220,11 +217,64 @@ Há algumas possibilidades para habilitar o mesmo novamente:
       SETSMART -8C reserva as portas exclusivamente para o Franky
       SETSMART -8B restaura o funcionamento normal dessas portas
 
-            Se pretende utilizar o SN76489 no Sofa Run, a melhor opção é criar
-um arquivo .BAT que chama SETSMART -8C e outro arquivo .BAT que chama SETSMART
- -8B, então pode executar esses antes/depois de escolher um programa que é
-compatível com o Franky. Outra possibilidade é abrir um VGM que usa o SN76489
-no Sofarun e sair do VGMPLAY assim que ele começar a tocar.
+            Se pretende utilizar o SN76489 no Sofa Run ou usar o SSMS, a melhor
+opção é criar um arquivo .BAT que chama SETSMART -8C e outro arquivo .BAT que
+chama SETSMART -8B, então pode executar esses antes/depois de escolher um programa que é
+compatível com o Franky.
+
+IMPORTANTE: note que as portas 0x48 e 0x49 são usadas no OCM para ler alguns
+status como o tipo de máquina, e alguns softwares para OCM podem não relatar o
+status / Tipo de Máquina corretamente se reservar as portas para serem usadas
+exclusivamente pro Franky. Porém, isso não deve causar nenhum outro problema.
+
+                        - Franky VDP do Master System -
+
+Existe um cartucho chamado Franky, que liga ao MSX o chip integrado do Master
+System que contém seu VDP e seu PSG/SSG. Com esse cartucho, é possível fazer um
+patch nas ROMs de SMS para que elas rodem no MSX. O Master System não usa uma
+BIOS e os jogos em geral se utilizam de uma faixa de endereços para acessar o
+VDP e o SSG, e os controles são acessados de forma similar. Algumas pessoas
+fazem o patch de ROMs para rodar no MSX com uma Franky, e também temos o Sofa
+SMS que tenta automatizar essa tarefa (alguns jogos funcionam, outros não). É
+possível jogar Aleste, Alex Kid, Wonder Boy entre outros jogos caso instale a
+versão FRANKY.
+
+Se aplica a:
+            TODOS DISPOSITIVOS, VERSÕES FRANKY
+
+Como utilizar:
+            Infelizmente a Franky utiliza as portas I/O 0x48 e 0x49 para acesso
+aos registradores do SN76489 e leitura dos contadores de linha do VDP do Master
+System. No padrão MSX as portas de I/O de 0x40 a 0x4F são reservadas para
+dispositivos que implementam I/O chaveada, o que a Franky infelizmente não faz.
+Portanto, é um dispositivo de acesso I/O direto ocupando dois endereços de I/O
+reservados para I/O chaveada. Na maioria dos MSX não há problemas, mas alguns
+(ex.: Panasonic com Turbo, dispositivos OCM, Turbo-R, etc.) implementam I/O
+chaveada para acessar/configurar certos dispositivos, e portanto há conflito.
+Devido a isso implementei uma proteção que não permite ao SN76489 acesso ao BUS
+MSX quando o dispositivo interno de I/O chaveada estiver selecionado.
+
+            Alguns programas (SSMS, versões antigas da COL4MMM, utilitários
+antigos para OCM) podem deixar um dispositivo de I/O chaveada selecionado. Há
+algumas possibilidades para desabilitar a I/O chaveada e re-habilitar o acesso
+ao SSG:
+
+    - Use programas que automaticamente desabilitam a I/O chaveada, como jogos
+      da COL4MMM no formato COM (se usar a última versão da COL4MMM) ou usar o
+      VGMPLAY para tocar um VGM que usa o SN76489. No caso do VGMPLAY, você
+      pode apenas tocar brevemente um trecho e sair e então utilizar qualquer
+      outro software pois o VGMPLAY já deixou a I/O chaveada desabilitada.
+
+    - Desabilitar a I/O chaveada no MSX Basic com o comando OUT &H40,0
+
+    - Reservar as portas 0x48 e 0x49 exclusivamente para o Franky usando:
+      SETSMART -8C reserva as portas exclusivamente para o Franky
+      SETSMART -8B restaura o funcionamento normal dessas portas
+
+            Se pretende utilizar o SN76489 no Sofa Run ou usar o SSMS, a melhor
+opção é criar um arquivo .BAT que chama SETSMART -8C e outro arquivo .BAT que
+chama SETSMART -8B, então pode executar esses antes/depois de escolher um programa que é
+compatível com o Franky.
 
 IMPORTANTE: note que as portas 0x48 e 0x49 são usadas no OCM para ler alguns
 status como o tipo de máquina, e alguns softwares para OCM podem não relatar o
@@ -237,14 +287,21 @@ Um segundo PSG é algo que pode ser utilizado por algumas modificações como a 
 Maze of Galious que melhora os gráficos para MSX2 e também a trilha sonora, e
 pelo VGMPLAY ou outros programas compatíveis. Essa implementação permite que os
 registros do PSG sejam lidos, tornando fácil que o segundo PSG seja detectado.
+Está habilitado por padrão e pode ser desabilitado caso queira usar o segundo
+PSG de um cartucho externo, desabilite o slot externo pelas dips, mande o
+comando SETSMART -54, então habilite o slot externo pelas dips e toque no botão
+de RESET. A versão atual da OCM-PLD também incorporou a melhoria (exceto SMX-HB
+e SM-X Mini que não tem build do KdL).
 
 Se aplica a:
-            TODOS DISPOSITIVOS, VERSÕES FRANKYSND
+            TODOS DISPOSITIVOS, TODAS VERSÕES
 
 Como utilizar:
             Não há qualquer configuração ou comandos necessários. O segundo PSG
 está sempre ativo nas portas I/O 0x10 a 0x13. É automaticamente detectado por
-qualquer programa que procure pelo PSG nessa faixa de I/O.
+qualquer programa que procure pelo PSG nessa faixa de I/O. Se usar o OCM-PLD do
+KdL, o segundo PSG está desabilitado por padrão e precisa enviar o comando
+SETSMART -55 para ligar o mesmo, nos meus firmwares está habilitado por padrão.
 
       ***** OCM-PLD v3.9 by KdL - funcionalidades não documentadas: *****
 
@@ -276,19 +333,18 @@ se altera para a maior velocidade possível. :)
                                 - BIOS Wi-Fi -
 
 Fiz uma BIOS compatível com UNAPI para o OCM-PLD, e essa BIOS inclui um menu
-de configuração fácil de utilizar que é chamado mantendo F1 Key pressionado no
+de configuração fácil de utilizar que é chamado mantendo F1 pressionado no
 boot. O KdL auxiliou muito no design dos menus, testando e também com fazendo a
-programação de algumas partes. A BIOS Wi-Fi BIOS não está presente no pacote de
-BIOS que é embutido nos arquivos PLD dos dispositivos segunda geração (e o MC2+
-não tem como embutir a BIOS no core). A única forma de utilizar essa BIOS é com
-um cartão SD (ou no MC2+ pode ser uma imagem também) aonde o primeiro arquivo
-gravado no sistema de arquivos foi a SD-BIOS (normalmente OCM-BIOS.DAT). Essa
-SD-BIOS pode então ser substituída por outra a qualquer momento caso seja feita
-a cópia sobrescrevendo a antiga, desde que seja feito assim (não apague). Se a
-SD-BIOS tiver a BIOS Wi-Fi embutida, lembre-se de remover a chamada ao driver
-ESP8266.COM do autoexec.bat (e talvez retirar também RAMHLPR.COM, WAITWIFI.COM
-e SNTP.COM), quase tudo que normalmente se utilizaria o CFG8266 ou SNTP pode
-ser feito com a BIOS Wi-Fi / menu de configuração, exceto:
+programação de algumas partes. A BIOS Wi-Fi não está presente no pacote de BIOS
+que é embutido nos arquivos PLD dos dispositivos segunda geração (e o MC2+ não
+tem como embutir a BIOS no core). A única forma de utilizar essa BIOS é com um
+cartão SD (ou no MC2+ pode ser uma imagem também) aonde exista na raiz o
+arquivo de SD-BIOS com o nome OCM-BIOS.DAT. Essa SD-BIOS pode ser usada desde
+que o arquivo não esteja fragmentado. Se a SD-BIOS tiver a BIOS Wi-Fi embutida,
+lembre-se de remover a chamada ao driver ESP8266.COM do autoexec.bat (e talvez
+retirar também RAMHLPR.COM, WAITWIFI.COM e SNTP.COM), quase tudo que
+normalmente se utilizaria o CFG8266 ou SNTP pode ser feito com a BIOS Wi-Fi /
+menu de configuração, exceto:
     - Atualização do Firmware do ESP
     - Atualização dos certificado SSL
     - Configuração manual de IP
@@ -299,13 +355,14 @@ Se aplica a:
 
 Como utilizar:
             Deve criar seu cartão SD ou Imagem (MC2+) corretamente, seguindo as
-recomendações para dispositivos OCM, e garantir que o arquivo OCM-BIOS.DAT seja
-o primeiro arquivo salvo no cartão após ser formatado. A maneira mais simples
-de fazer isso é usar o OCM-SDBIOS Pack do KdL. Para obter esse pacote precisa
-solicitar ao KdL, clique no link OCM-SDBIOS Pack disponível na página:
+recomendações para dispositivos OCM, e ter o arquivo OCM-BIOS.DAT na raiz. A
+maneira mais simples de fazer isso é usar o OCM-SDBIOS Pack do KdL. Para obter
+esse pacote precisa solicitar ao KdL, clique no link OCM-SDBIOS Pack disponível
+na página:
 http://gnogni.altervista.org/index.html
             Eu criei um pacote de instalação UNAPI que também tem instruções
-e algumas SD-BIOS prontas, pode baixar o pacote em:
+e algumas SD-BIOS prontas, nesse caso ignore as instruções sobre o OCM-BIOS.DAT
+ter que ser o primeiro arquivo, pode baixar o pacote em:
 https://github.com/ducasp/MSX-Development/releases/tag/SMXWiFiPack_v1.2
             Finalmente, fiz um vídeo no YouTube sobre a criação de cartões SD
 com SD-Bios usando o OCM-SDBIOS Pack do KdL, mesmo o vídeo não mencionando que
@@ -328,21 +385,25 @@ permitindo que:
     - Configurar a BIOS Wi-Fi para atualizar data e hora no boot (bem mais
       rápido que ter o SNTP.COM no AUTOEXEC.BAT)
 
-                      ***** ESPECÍFICO PARA SMX-HB *****
+               ***** ESPECÍFICO PARA SMX-HB / EX / HB MINI *****
 
-            Algumas diferenças ocorrem no SMX-HB, por algumas razões:
+            Algumas diferenças ocorrem no SMX-HB / EX / HB MINI:
 
     1 - Devido à falta de componentes e para manter um preço acessível, utiliza
         um FPGA com capacidade cerca de 1/3 menor que os dispositivos segunda
         geração. Por isso, atualmente não é possível colocar a OPL3, pois ela
-        usa muitos recursos de unidades lógicas e registradores do FPGA.
+        usa muitos recursos de unidades lógicas e registradores do FPGA. Também
+        por isso a versão Franky não tem emulação de mouse MSX com mouse PS/2,
+        emulação de Paddles, PCM e MIDI Out do Turbo-R.
 
     2 - Por se tratar de uma placa para ser colocada dentro de um computador
-        MSX real (Hotbit) e utilizar o teclado do próprio Hotbit ao invés de um
+        MSX real (Hotbit ou Expert) e utilizar o teclado do mesmo ao invés do
         teclado PC-AT PS/2 (que pode ser utilizado também desde que solde um
         conector PS/2 nas portas GPIO e desabilite o teclado "interno"), grande
         parte da teclas utilizadas para atalhos / habilitar / desabilitar
-        dispositivos não estão disponíveis ao usuário.
+        dispositivos não estão disponíveis ao usuário. (apenas HB / EX, HB MINI
+        usa uma porta PS/2 pra treclado e precisa de um splitter PS/2 para usar
+        mouses, como o SM-X / SM-X Mini)
 
     3 - As portas de joystick tem uma sensibilidade alta, o debounce é preciso
         para evitar acionamentos falsos quando não há nada conectado nas portas
@@ -353,24 +414,25 @@ permitindo que:
         nem tudo é acessível facilmente. O leitor de cartões SD, chaves DIP e o
         botão do gerador de scanlines não são acessíveis com o gabinete fechado
         a menos que o usuário opte por fazer rasgos no gabinete para tornar os
-        mesmos acessíveis.
+        mesmos acessíveis. (APENAS HB / EX)
 
     5 - O acesso ao conector JTAG para o FPGA/Memória Flash só é possível se o
         módulo FPGA for retirado da placa. Devido a isso, o módulo FPGA não irá
         receber energia da fonte do gabinete e o USB Blaster não consegue
-        alimentar o módulo.
+        alimentar o módulo. (APENAS HB / EX)
 
        - Certifique-se de configurar corretamente o tipo de teclado! -
 
-            A maior parte dos usuários vão usar o teclado do Hotbit. Nesse caso
-, certifique-se que a chave DIP 9 está na posição OFF, que irá informar o OCM
-que deve usar um mapa específico de teclas e uma interface específica que se
-adapta melhor. Caso não o faça, algumas teclas estarão trocadas e o teclado
-poderá não responder. Se deseja utilizar um teclado PS/2, procure se informar
-com o Victor Trucco ou seu revendedor como fazer as conexões e configurações da
-placa para esse fim. Quando isso estiver feito, irá mudar a chave DIP 9 para a
-posição ON. Caso não o faça, como no caso anterior, algumas teclas estarão
-trocadas.
+            A maior parte dos usuários vão usar o teclado do Hotbit/Expert.
+Nesse caso, certifique-se que a chave DIP 9 está na posição OFF, que irá
+informar o OCM que deve usar um mapa específico de teclas e uma interface
+específica que se adapta melhor. Caso não o faça, algumas teclas estarão
+trocadas e o teclado poderá não responder. Se deseja utilizar um teclado PS/2,
+procure se informar com o Victor Trucco ou seu revendedor como fazer as
+conexões e configurações da placa para esse fim. Quando isso estiver feito,
+irá mudar a chave DIP 9 para a posição ON. Caso não o faça, como no caso
+anterior, algumas teclas estarão trocadas. USUÁRIOS DO HB MINI DEVEM DEIXAR A
+DIP 9 SEMPRE NA POSIÇÃO ON!
 
              - Alternativas para teclas inexistentes no Hotbit -
 
@@ -391,25 +453,18 @@ algum tempo. Se o período esperando por estabilidade é muito baixo, então nã
 muito efetivo, e se for muito alto pode causar um atraso na entrada perceptível
 e incompatibilidade com dispositivos que usam a porta de joystick para algum
 protocolo de comunicação como JoyNet, Adaptadores para Serial, Paddle VAUS,etc.
-Como o uso desses dispositivos não é comum, a porta de joystick do SMX-HB por
-padrão tem o Debounce habilitado, e o período de estabilidade foi ajustado pelo
-Victor Trucco e deve ser bom o suficiente para não afetar a maioria dos
-dispositivos que não são controles. Caso encontre algum dispositivo que não
-funcione adequadamente, tente desligar o debounce. Note que após ser desligado
-e religado o debounce retorna ao estado padrão (habilitado).
-
-    - Desabilitar o Debounce: SETSMART -89
-    - Habilitar o Debounce: desligar e religar ou SETSMART -8A
+No momento o debounce não pode ser desabilitado.
 
        - Alternativas para acessar recursos no gabinete não modificado -
 
-            O gabinete do Hotbit não tem todas as aberturas para expor tudo que
-a placa SMX-HB oferece. Isso é um pouco mais chato pelo fato de não ser simples
-ficar abrindo e fechando o gabinete. Mas, na maioria dos casos existem boas
-alternativas que contornam a necessidade de abrir o gabinete. Se certifique de
-configurar as chaves DIP nas configurações que mais pretende utilizar, já que
-ao configurar de forma alternativa o que é controlado por essas chaves, essa
-configuração tem que ser feita toda vez que o dispositivo é desligado/religado.
+            O gabinete do Hotbit/Expert não tem todas as aberturas para expor
+tudo que a placa SMX-HB oferece. Isso é um pouco mais chato pelo fato de não
+ser simples ficar abrindo e fechando o gabinete. Mas, na maioria dos casos
+existem boas alternativas que contornam a necessidade de abrir o gabinete. Se
+certifique de configurar as chaves DIP nas configurações que mais pretende
+utilizar, já que ao configurar de forma alternativa o que é controlado por
+essas chaves, essa configuração tem que ser feita toda vez que o dispositivo é
+desligado/religado.
 
     - Leitor de cartões SD: a razão principal de tirar o cartão é para colocar
       o mesmo em outro computador para transferir arquivos. O SMX-HB conta com
@@ -486,11 +541,11 @@ configuração tem que ser feita toda vez que o dispositivo é desligado/religad
         1 - SCC   2 - A16K  : SETSMART -14
 
     - Programar com JTAG: a recuperação de um SMX-HB com um arquivo JIC e USB
-      Blaster não é fácil. Não apenas é necessário abrir o gabinete do Hotbit
-      mas também precisa remover a placa filha com o FPGA, conectar essa ao USB
-      Blaster e a uma fonte de alimentação externa antes de utilizar o Quartus
-      Programmer... A recomendação de fonte externa é DC 5V 2A, conector
-      redondo, terra na parte externa e positivo na parte interna.
+      Blaster não é fácil. Não apenas é necessário abrir o gabinete mas também
+      precisa remover a placa filha com o FPGA, conectar essa ao USB Blaster e
+      a uma fonte de alimentação externa antes de utilizar o Quartus Programmer
+      ... A recomendação de fonte externa é DC 5V 2A, conector redondo, terra
+      na parte externa e positivo na parte interna.
 
                        ***** ESPECÍFICO PARA MC2+ *****
 
@@ -556,11 +611,12 @@ sejam diferentes para esse dispositivo... :)
 
     - MEGA SD / Cartão SD: O MC2+ não tem a OCM-PLD salva em uma memória flash,
       e por isso não é possível ter as BIOS do MSX junto com a OCM-PLD como nos
-      outros dispositivos. Por isso, é mandatório ter a SD-BIOS como o primeiro
-      arquivo colocado no sistema de arquivos do cartão. Caso isso não seja
-      feito provavelmente irá ver apenas uma tela preta já que não há BIOS. Seu
-      cartão SD ou arquivo de imagem deve seguir as mesmas recomendações dos
-      demais dispositivos OCM (FAT16 até 4GB, etc.) e ter uma SD-BIOS também.
+      outros dispositivos. Por isso, é mandatório ter a SD-BIOS em um arquivo
+      chamado OCM-BIOS.DAT colocado na raiz sistema de arquivos do cartão. Caso
+      isso não seja feito provavelmente irá ver apenas uma tela preta já que
+      não há BIOS. Seu cartão SD ou arquivo de imagem deve seguir as mesmas
+      recomendações dos demais dispositivos OCM (FAT16 até 4GB, etc.) e ter uma
+      SD-BIOS também.
       Na seção NOTAS DO EDITOR há um link para um vídeo no YouTube que pode te
       ajudar com isso. Além disso, caso esteja utilizando um cartão SD apenas
       para MSX, copie o arquivo .MCP nele (e se quiser que seja carregado de
@@ -618,4 +674,4 @@ sejam diferentes para esse dispositivo... :)
 Esse manual é gratuito e pode ser livremente distribuído. Trabalhos derivados
 podem ser criados dede que o manual original e seu autor sejam mencionados e
 creditados.
-(c)2022 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2022 - 2023 Oduvaldo Pavan Junior - ducasp@gmail.com

@@ -1,0 +1,581 @@
+Z80 Macro Assembler ZMA v1.0.15
+=====================================================
+Programmed by t.hara
+
+<< code >>
+[	ORG DRAM_CODE_ADDRESS]
+	code address: 0x000000
+
+[BEGIN_OF_CODE :]
+	label address: 0x000000
+
+[	DI] Z80:5cyc, R800:2cyc
+000000: f3
+
+[INIT_SWITCH_IO ::]
+	global label address: 0x000001
+
+[	LD A , EXP_IO_1CHIPMSX_ID] Z80:8cyc, R800:2cyc
+000001: 3e d4
+
+[	OUT [ EXP_IO_VENDOR_ID_PORT ] , A] Z80:12cyc, R800:10 or 9cyc
+000003: d3 40
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_preloader.asm"] begin
+[	SCOPE INIT_PRELOADER]
+	Scope path: INIT_PRELOADER:
+
+[INIT_PRELOADER ::]
+	global label address: 0x000005
+
+[	LD A , 0X40] Z80:8cyc, R800:2cyc
+000005: 3e 40
+
+[	LD [ ESERAM8K_BANK0 ] , A] Z80:14cyc, R800:6cyc
+000007: 32 00 60
+
+[	LD A , [ MEGASD_STATUS_REGISTER ]] Z80:14cyc, R800:6cyc
+00000a: 3a 00 58
+
+[	LD C , A] Z80:5cyc, R800:2cyc
+00000d: 4f
+
+[	LD A , 0X60] Z80:8cyc, R800:2cyc
+00000e: 3e 60
+
+[	LD [ ESERAM8K_BANK0 ] , A] Z80:14cyc, R800:6cyc
+000010: 32 00 60
+
+[	INC A] Z80:5cyc, R800:1cyc
+000013: 3c
+
+[	LD [ MEGASD_MODE_REGISTER ] , A] Z80:14cyc, R800:6cyc
+000014: 32 00 58
+
+[	LD B , 160] Z80:8cyc, R800:2cyc
+000017: 06 a0
+
+[DUMMY_READ0 :]
+	label address: 0x000019
+
+[	LD A , [ MEGASD_SD_REGISTER | ( 1 << 12 ) ]] Z80:14cyc, R800:6cyc
+000019: 3a 00 50
+
+[	NOP] Z80:5cyc, R800:1cyc
+00001c: 00
+
+[	DJNZ DUMMY_READ0] Z80:14cyc(cond=true), 9cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+00001d: 10 fa
+
+[	LD A , [ MEGASD_SD_REGISTER | ( 0 << 12 ) ]] Z80:14cyc, R800:6cyc
+00001f: 3a 00 40
+
+[	XOR A , A] Z80:5cyc, R800:1cyc
+000022: af
+
+[	LD [ MEGASD_MODE_REGISTER ] , A] Z80:14cyc, R800:6cyc
+000023: 32 00 58
+
+[	LD A , IPLROM_BANK] Z80:8cyc, R800:2cyc
+000026: 3e ff
+
+[	LD [ ESERAM8K_BANK3 ] , A] Z80:14cyc, R800:6cyc
+000028: 32 00 78
+
+[	LD B , LOADING_ATTEMPTS] Z80:8cyc, R800:2cyc
+00002b: 06 10
+
+[NEW_ATTEMPT :]
+	label address: 0x00002d
+
+[	PUSH BC] Z80:12cyc, R800:6cyc
+00002d: c5
+
+[	LD DE , TARGET_SECTOR_NUMBER] Z80:11cyc, R800:3cyc
+00002e: 11 fa 07
+
+[	LD HL , DESTINATION_ADDRESS] Z80:11cyc, R800:3cyc
+000031: 21 00 b4
+
+[	LD B , NUMBER_OF_SECTORS] Z80:8cyc, R800:2cyc
+000034: 06 06
+
+[	CALL READ_SECTOR_FROM_EPCS] Z80:18cyc, R800:5cyc
+000036: cd 8d 00
+
+[	POP BC] Z80:11cyc, R800:5cyc
+000039: c1
+
+[	JR C , LOADING_ERROR] Z80:13cyc(cond=true), 8cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+00003a: 38 0b
+
+[	LD A , [ DESTINATION_ADDRESS ]] Z80:14cyc, R800:6cyc
+00003c: 3a 00 b4
+
+[	CP A , 0XF3] Z80:8cyc, R800:2cyc
+00003f: fe f3
+
+[	JR NZ , LOADING_ERROR] Z80:13cyc(cond=true), 8cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+000041: 20 04
+
+[	LD A , C] Z80:5cyc, R800:2cyc
+000043: 79
+
+[	JP DESTINATION_ADDRESS] Z80:11cyc, R800:5cyc
+000044: c3 00 b4
+
+[LOADING_ERROR :]
+	label address: 0x000047
+
+[	DJNZ NEW_ATTEMPT] Z80:14cyc(cond=true), 9cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+000047: 10 e4
+
+[	ENDSCOPE]
+	Scope path: 
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_preloader.asm"] end
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_vdp.asm"] begin
+[	SCOPE INIT_VDP]
+	Scope path: INIT_VDP:
+
+[INIT_VDP ::]
+	global label address: 0x000049
+
+[	LD HL , VDP_CONTROL_REGS] Z80:11cyc, R800:3cyc
+000049: 21 b3 00
+
+[	LD BC , ( ( VDP_CONTROL_REGS_END - VDP_CONTROL_REGS ) << 8 ) | VDP_PORT1] Z80:11cyc, R800:3cyc
+00004c: 01 99 10
+
+[	OTIR] Z80:23 or 18cyc, R800:? or 12 or 11cyc
+00004f: ed b3
+
+[	LD BC , ( ( VDP_MSX1_PALETTE_REGS_END - VDP_MSX1_PALETTE_REGS ) << 8 ) | VDP_PORT2] Z80:11cyc, R800:3cyc
+000051: 01 9a 20
+
+[	OTIR] Z80:23 or 18cyc, R800:? or 12 or 11cyc
+000054: ed b3
+
+[	DEC C] Z80:5cyc, R800:1cyc
+000056: 0d
+
+[	XOR A , A] Z80:5cyc, R800:1cyc
+000057: af
+
+[	LD D , 0X20] Z80:8cyc, R800:2cyc
+000058: 16 20
+
+[LOOP1 :]
+	label address: 0x00005a
+
+[	OUT [ VDP_PORT0 ] , A] Z80:12cyc, R800:10 or 9cyc
+00005a: d3 98
+
+[	DJNZ LOOP1] Z80:14cyc(cond=true), 9cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+00005c: 10 fc
+
+[	DEC D] Z80:5cyc, R800:1cyc
+00005e: 15
+
+[	JR NZ , LOOP1] Z80:13cyc(cond=true), 8cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+00005f: 20 f9
+
+[	LD DE , 0X8140] Z80:11cyc, R800:3cyc
+000061: 11 40 81
+
+[	OUT [ C ] , E] Z80:14cyc, R800:10 or 9cyc
+000064: ed 59
+
+[	OUT [ C ] , D] Z80:14cyc, R800:10 or 9cyc
+000066: ed 51
+
+[	LD B , 32] Z80:8cyc, R800:2cyc
+000068: 06 20
+
+[	LD A , 0XF0] Z80:8cyc, R800:2cyc
+00006a: 3e f0
+
+[LOOP2 :]
+	label address: 0x00006c
+
+[	OUT [ VDP_PORT0 ] , A] Z80:12cyc, R800:10 or 9cyc
+00006c: d3 98
+
+[	DJNZ LOOP2] Z80:14cyc(cond=true), 9cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+00006e: 10 fc
+
+[	LD D , 1 * 8] Z80:8cyc, R800:2cyc
+000070: 16 08
+
+[	OUT [ C ] , D] Z80:14cyc, R800:10 or 9cyc
+000072: ed 51
+
+[	OUT [ C ] , E] Z80:14cyc, R800:10 or 9cyc
+000074: ed 59
+
+[	DEC C] Z80:5cyc, R800:1cyc
+000076: 0d
+
+[	LD B , ( ( ICON_PATTERN_END - ICON_PATTERN ) % 256 )] Z80:8cyc, R800:2cyc
+000077: 06 20
+
+[	OTIR] Z80:23 or 18cyc, R800:? or 12 or 11cyc
+000079: ed b3
+
+[	ENDSCOPE]
+	Scope path: 
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_vdp.asm"] end
+
+[	LD A , ICON_ERROR] Z80:8cyc, R800:2cyc
+00007b: 3e 01
+
+[STOP_WITH_ERROR ::]
+	global label address: 0x00007d
+
+[	CALL VDP_PUT_ICON] Z80:18cyc, R800:5cyc
+00007d: cd 03 01
+
+[	LD A , 0X35] Z80:8cyc, R800:2cyc
+000080: 3e 35
+
+[	OUT [ 0X41 ] , A] Z80:12cyc, R800:10 or 9cyc
+000082: d3 41
+
+[	LD A , 0X1F] Z80:8cyc, R800:2cyc
+000084: 3e 1f
+
+[	OUT [ 0X41 ] , A] Z80:12cyc, R800:10 or 9cyc
+000086: d3 41
+
+[	LD A , 0X23] Z80:8cyc, R800:2cyc
+000088: 3e 23
+
+[	OUT [ 0X41 ] , A] Z80:12cyc, R800:10 or 9cyc
+00008a: d3 41
+
+[	HALT] Z80:5cyc, R800:2cyc and wait interrupt
+00008c: 76
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_serial_rom.asm"] begin
+[	SCOPE READ_SECTOR_FROM_EPCS]
+	Scope path: READ_SECTOR_FROM_EPCS:
+
+[READ_SECTOR_FROM_EPCS ::]
+	global label address: 0x00008d
+
+[	PUSH DE] Z80:12cyc, R800:6cyc
+00008d: d5
+
+[	EX DE , HL] Z80:5cyc, R800:1cyc
+00008e: eb
+
+[	ADD HL , HL] Z80:12cyc, R800:1cyc
+00008f: 29
+
+[	EX DE , HL] Z80:5cyc, R800:1cyc
+000090: eb
+
+[	XOR A , A] Z80:5cyc, R800:1cyc
+000091: af
+
+[	LD C , B] Z80:5cyc, R800:2cyc
+000092: 48
+
+[	LD B , A] Z80:5cyc, R800:2cyc
+000093: 47
+
+[	PUSH BC] Z80:12cyc, R800:6cyc
+000094: c5
+
+[	PUSH HL] Z80:12cyc, R800:6cyc
+000095: e5
+
+[	LD HL , MEGASD_SD_REGISTER | ( 0 << 12 )] Z80:11cyc, R800:3cyc
+000096: 21 00 40
+
+[	LD [ HL ] , EPCS_READ_BYTES] Z80:11cyc, R800:5cyc
+000099: 36 03
+
+[	LD [ HL ] , D] Z80:8cyc, R800:4cyc
+00009b: 72
+
+[	LD [ HL ] , E] Z80:8cyc, R800:4cyc
+00009c: 73
+
+[	LD [ HL ] , A] Z80:8cyc, R800:4cyc
+00009d: 77
+
+[	CP A , [ HL ]] Z80:8cyc, R800:4cyc
+00009e: be
+
+[	POP DE] Z80:11cyc, R800:5cyc
+00009f: d1
+
+[	LD A , C] Z80:5cyc, R800:2cyc
+0000a0: 79
+
+[	LD C , B] Z80:5cyc, R800:2cyc
+0000a1: 48
+
+[READ_ALL :]
+	label address: 0x0000a2
+
+[	PUSH HL] Z80:12cyc, R800:6cyc
+0000a2: e5
+
+[	LD B , 2] Z80:8cyc, R800:2cyc
+0000a3: 06 02
+
+[	LDIR] Z80:23cyc(BC!=0), 18cyc(BC=0), R800:?cyc(BC!=0), 7cyc(BC=0)
+0000a5: ed b0
+
+[	POP HL] Z80:11cyc, R800:5cyc
+0000a7: e1
+
+[	DEC A] Z80:5cyc, R800:1cyc
+0000a8: 3d
+
+[	JR NZ , READ_ALL] Z80:13cyc(cond=true), 8cyc(cond=false), R800:3cyc(cond=true), 2cyc(cond=false)
+0000a9: 20 f7
+
+[	LD A , [ MEGASD_SD_REGISTER | ( 1 << 12 ) ]] Z80:14cyc, R800:6cyc
+0000ab: 3a 00 50
+
+[	POP HL] Z80:11cyc, R800:5cyc
+0000ae: e1
+
+[	POP DE] Z80:11cyc, R800:5cyc
+0000af: d1
+
+[	ADD HL , DE] Z80:12cyc, R800:1cyc
+0000b0: 19
+
+[	EX DE , HL] Z80:5cyc, R800:1cyc
+0000b1: eb
+
+[	RET] Z80:11cyc, R800:5cyc
+0000b2: c9
+
+[	ENDSCOPE]
+	Scope path: 
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_serial_rom.asm"] end
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_vdp_preloader_icon.asm"] begin
+[VDP_CONTROL_REGS ::]
+	global label address: 0x0000b3
+
+[	DB 0X1800 >> 10 , 0X82]
+0000b3: 06 82
+
+[	DB 0X2000 >> 6 , 0X83]
+0000b5: 80 83
+
+[	DB 0X0000 >> 11 , 0X84]
+0000b7: 00 84
+
+[	DB 0X1B00 >> 7 , 0X85]
+0000b9: 36 85
+
+[	DB 0X00 , 0X86]
+0000bb: 00 86
+
+[	DB 0XF1 , 0X87]
+0000bd: f1 87
+
+[	DB 0X00 , 0X8B]
+0000bf: 00 8b
+
+[	DB 0X00 , 0X40]
+0000c1: 00 40
+
+[VDP_CONTROL_REGS_END ::]
+	global label address: 0x0000c3
+
+[VDP_MSX1_PALETTE_REGS ::]
+	global label address: 0x0000c3
+
+[	DB 0X00 , 0X00]
+0000c3: 00 00
+
+[	DB 0X00 , 0X00]
+0000c5: 00 00
+
+[	DB 0X22 , 0X06]
+0000c7: 22 06
+
+[	DB 0X34 , 0X07]
+0000c9: 34 07
+
+[	DB 0X37 , 0X03]
+0000cb: 37 03
+
+[	DB 0X47 , 0X04]
+0000cd: 47 04
+
+[	DB 0X53 , 0X03]
+0000cf: 53 03
+
+[	DB 0X47 , 0X06]
+0000d1: 47 06
+
+[	DB 0X63 , 0X03]
+0000d3: 63 03
+
+[	DB 0X64 , 0X04]
+0000d5: 64 04
+
+[	DB 0X63 , 0X06]
+0000d7: 63 06
+
+[	DB 0X65 , 0X06]
+0000d9: 65 06
+
+[	DB 0X11 , 0X05]
+0000db: 11 05
+
+[	DB 0X56 , 0X03]
+0000dd: 56 03
+
+[	DB 0X66 , 0X06]
+0000df: 66 06
+
+[	DB 0X77 , 0X07]
+0000e1: 77 07
+
+[VDP_MSX1_PALETTE_REGS_END ::]
+	global label address: 0x0000e3
+
+[ICON_PATTERN ::]
+	global label address: 0x0000e3
+
+[	DB 0X49 , 0X49 , 0XFF , 0XFF , 0XFF , 0XFF , 0XFF , 0XBF]
+0000e3: 49 49 ff ff ff ff ff bf
+
+[	DB 0X20 , 0X20 , 0XF0 , 0XF0 , 0XF0 , 0XF0 , 0XF0 , 0XF0]
+0000eb: 20 20 f0 f0 f0 f0 f0 f0
+
+[	DB 0XFF , 0X49 , 0X49 , 0X00 , 0X02 , 0X07 , 0X0F , 0X1F]
+0000f3: ff 49 49 00 02 07 0f 1f
+
+[	DB 0XF0 , 0X20 , 0X20 , 0X00 , 0X00 , 0X00 , 0X80 , 0XC0]
+0000fb: f0 20 20 00 00 00 80 c0
+
+[ICON_PATTERN_END ::]
+	global label address: 0x000103
+
+[	SCOPE VDP_PUT_ICON]
+	Scope path: VDP_PUT_ICON:
+
+[VDP_PUT_ICON ::]
+	global label address: 0x000103
+
+[	LD HL , 0X1801 | 0X4000] Z80:11cyc, R800:3cyc
+000103: 21 01 58
+
+[	CALL SUB_CODE] Z80:18cyc, R800:5cyc
+000106: cd 0b 01
+
+[	LD L , 33] Z80:8cyc, R800:2cyc
+000109: 2e 21
+
+[SUB_CODE :]
+	label address: 0x00010b
+
+[	LD C , VDP_PORT1] Z80:8cyc, R800:2cyc
+00010b: 0e 99
+
+[	OUT [ C ] , L] Z80:14cyc, R800:10 or 9cyc
+00010d: ed 69
+
+[	OUT [ C ] , H] Z80:14cyc, R800:10 or 9cyc
+00010f: ed 61
+
+[	OUT [ VDP_PORT0 ] , A] Z80:12cyc, R800:10 or 9cyc
+000111: d3 98
+
+[	INC A] Z80:5cyc, R800:1cyc
+000113: 3c
+
+[	OUT [ VDP_PORT0 ] , A] Z80:12cyc, R800:10 or 9cyc
+000114: d3 98
+
+[	INC A] Z80:5cyc, R800:1cyc
+000116: 3c
+
+[	RET] Z80:11cyc, R800:5cyc
+000117: c9
+
+[	ENDSCOPE]
+	Scope path: 
+
+[	INCLUDE ".//../subroutine/ocm_iplrom_vdp_preloader_icon.asm"] end
+
+[END_OF_CODE :]
+	label address: 0x000118
+
+[IF ( END_OF_CODE - BEGIN_OF_CODE ) > 512]
+
+[ELSE]
+
+MESSAGE: Size is not a problem. (280byte): ../hex_iplrom_512k_rev300_preloader.asm(113)
+[ENDIF]
+	Selected {ELSE} block.
+
+
+<< label >>
+BEGIN_OF_CODE 0 ( 0x0 )
+DESTINATION_ADDRESS 46080 ( 0xb400 )
+DRAM_CODE_ADDRESS 0 ( 0x0 )
+END_OF_CODE 280 ( 0x118 )
+EPCS_ERASE_BULK 199 ( 0xc7 )
+EPCS_ERASE_SECTOR 216 ( 0xd8 )
+EPCS_FAST_READ 11 ( 0xb )
+EPCS_READ_BYTES 3 ( 0x3 )
+EPCS_READ_DEVICE_ID 159 ( 0x9f )
+EPCS_READ_SILICON_ID 171 ( 0xab )
+EPCS_READ_STATUS 5 ( 0x5 )
+EPCS_WRITE_BYTES 2 ( 0x2 )
+EPCS_WRITE_DISABLE 4 ( 0x4 )
+EPCS_WRITE_ENABLE 6 ( 0x6 )
+EPCS_WRITE_STATUS 1 ( 0x1 )
+ESERAM8K_BANK0 24576 ( 0x6000 )
+ESERAM8K_BANK1 26624 ( 0x6800 )
+ESERAM8K_BANK2 28672 ( 0x7000 )
+ESERAM8K_BANK3 30720 ( 0x7800 )
+EXP_IO_1CHIPMSX_ID 212 ( 0xd4 )
+EXP_IO_VENDOR_ID_PORT 64 ( 0x40 )
+ICON_ERROR 1 ( 0x1 )
+ICON_PATTERN 227 ( 0xe3 )
+ICON_PATTERN_END 259 ( 0x103 )
+INIT_PRELOADER 5 ( 0x5 )
+INIT_PRELOADER:DUMMY_READ0 25 ( 0x19 )
+INIT_PRELOADER:LOADING_ERROR 71 ( 0x47 )
+INIT_PRELOADER:NEW_ATTEMPT 45 ( 0x2d )
+INIT_SWITCH_IO 1 ( 0x1 )
+INIT_VDP 73 ( 0x49 )
+INIT_VDP:LOOP1 90 ( 0x5a )
+INIT_VDP:LOOP2 108 ( 0x6c )
+IPLROM_BANK 255 ( 0xff )
+LOADING_ATTEMPTS 16 ( 0x10 )
+MEGASD_LAST_DATA_REGISTER 23552 ( 0x5c00 )
+MEGASD_MODE_REGISTER 22528 ( 0x5800 )
+MEGASD_SD_REGISTER 16384 ( 0x4000 )
+MEGASD_STATUS_REGISTER 22528 ( 0x5800 )
+NUMBER_OF_SECTORS 6 ( 0x6 )
+READ_SECTOR_FROM_EPCS 141 ( 0x8d )
+READ_SECTOR_FROM_EPCS:READ_ALL 162 ( 0xa2 )
+STOP_WITH_ERROR 125 ( 0x7d )
+TARGET_SECTOR_NUMBER 2042 ( 0x7fa )
+VDP_CONTROL_REGS 179 ( 0xb3 )
+VDP_CONTROL_REGS_END 195 ( 0xc3 )
+VDP_MSX1_PALETTE_REGS 195 ( 0xc3 )
+VDP_MSX1_PALETTE_REGS_END 227 ( 0xe3 )
+VDP_PORT0 152 ( 0x98 )
+VDP_PORT1 153 ( 0x99 )
+VDP_PORT2 154 ( 0x9a )
+VDP_PORT3 155 ( 0x9b )
+VDP_PUT_ICON 259 ( 0x103 )
+VDP_PUT_ICON:SUB_CODE 267 ( 0x10b )

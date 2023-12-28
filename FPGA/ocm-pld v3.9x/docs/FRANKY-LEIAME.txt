@@ -1,0 +1,27 @@
+Use o SSMS para executar ROMs de Master System.
+
+Copie o arquivo SSMS.INI para a pasta aonde tem o SSMS / Sofarun. Ele tem os
+patches extras do retrocanada76 que ele postou até 28 de Dezembro de 2023.
+
+Lembre-se de digitar SETSMART -8C antes, senão poderá ficar sem som.
+
+Se usar o Sofa Run, lembre de verificar as configurações de SMS nas
+configurações do Sofa Run e se certifique que TODAS configurações exceto AUDIO
+e VIDEO (devem estar configuradas como Franky) estão como DEFAULT, senão as
+configurações adequadas para alguns jogos no arquivo SSMS.INI serão ignoradas
+e suas configurações do Sofa Run serão utilizadas!
+
+IMPORTANTE: O SOFA SMS AINDA FALHA NO PATCH DE MUITOS JOGOS. É absolutamente
+normal um jogo não funcionar. Alguns funcionam perfeitamente como Prince of
+Persia ou Montezuma's Revenge, outros você pode baixar as versões já pré
+patcheadas do Alexito (a Alex Kidd in Shinobi World dele é excelente) no MRC em
+https://www.msx.org/forum/development/msx-development/franky-projects-smsmsx-conversions-remakes-tools-emulatorocm-etc?page=10
+, os jogos do SSMS.INI irão funcionar (verifique que tem a versão correta que
+o INI pede, infelizmente o SSMS usa um CRC32 de apenas os primeiros 16KB dos
+arquivos, então os CRC32 normalmente divulgados que são do arquivo todo não
+servem), e claro, pode testar outros jogos.
+
+Caso se sinta apto a ajudar, o usuário retrocanada76 explica como você mesmo
+fazer patches para jogos:
+https://www.msx.org/forum/msx-talk/general-discussion/franky-ssmscom-patches-where-are-they?page=0
+Lembre-se de publicar seus patches lá caso crie algum :)
