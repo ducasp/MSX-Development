@@ -33,7 +33,7 @@ USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
 
 # Release notes
 
-OCM-PLD v3.9.1plusa is an extension on KdL OCM release v3.9.1. What this
+OCM-PLD v3.9.1plus is an extension on KdL OCM release v3.9.1. What this
 extension brings to the table:
 
 - New supported devices:

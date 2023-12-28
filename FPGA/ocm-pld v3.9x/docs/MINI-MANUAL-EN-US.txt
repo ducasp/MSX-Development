@@ -14,6 +14,7 @@ Just do it if you feel like it :)
         - VAUS or MSX Standard Paddle emulation
         - OPL3
         - Franky SN76489 / Master System SSG
+        - Franky Master System VDP
         - Second PSG
         - Autofire by HrA!
         - Wi-Fi BIOS
@@ -78,7 +79,8 @@ the above mentioned manuals and videos. :)
                             - MSX Mouse emulation -
 
 There are fixes for its behavior as it was moving on 2 pixels increment minimum
-on previous OCM-PLD.
+, current OCM-PLD picked up this fix as well (except for SMX-HB and SM-X Mini
+that aren't supported by KdL).
 
 Applies to:
             ALL DEVICES AND BUILDS EXCEPT SMX-HB Franky
@@ -144,6 +146,8 @@ interruptions and timers, as well for software / sound tracks that program
 sounds to play on only one channel. Solution for most devices was an ingenious
 hack that modifies the incoming channel programming on the fly to play on both
 channels. Only on MC2+, full stereo rendering/sequencing is now available.
+Current OCM-PLD picked up this fix as well (except for SMX-HB and SM-X Mini
+that aren't supported by KdL).
 
 Applies to:
             ALL DEVICES EXCEPT SMX-HB AND HB MINI, ALL BUILDS EXCEPT FRANKY
@@ -176,10 +180,65 @@ cases sound is only available if you have a SN76489 chip in an expansion like
 Musical Memory Mapper, Playsoniq, Franky, etc... Even the few patches that have
 sound working on MSX PSG do not sound quite right, sounding a lot better when a
 SN76489 is available. Having that chip also allows to play VGM sound-tracks
-using that chip using VGMPLAY and other software that detects a Franky.
+using that chip using VGMPLAY and other software that detects a Franky. Finally
+, it can be used also to play SMS games on Franky builds.
 
 Applies to:
             ALL DEVICES, FRANKY/SND BUILDS
+
+How to use:
+            Franky design unfortunately choses to use I/O ports 0x48 and 0x49
+to access SN76489 registers and to read Sega Master System VDP line counters.
+In the MSX standard I/O ports from 0x40 to 0x4F are reserved for switched I/O
+devices, which Franky unfortunately doesn't implement. As such, it is a direct
+I/O device occupying two I/O addresses reserved for switched I/O. For most MSX
+computers that is fine, but on some (i.e.: Panasonic machines with Turbo speeds
+, OCM devices like yours, Turbo-R, etc.) there are devices using switched I/O,
+and there will be a conflict. Due to that I've implemented a protection that
+won't allow SN76489 to access the MSX BUS when the internal Switched I/O device
+is selected.
+
+            Some software (SSMS, old versions of COL4MM, old versions of OCM
+utilities) might leave a switched I/O device selected. There are a few ways to
+disable switched I/O and re-enable access to the SSG:
+
+    - Use software that automatically disables switched I/O before trying to
+      detect/use a SN76489 on a Franky device. Using COL4MMM games in COM
+      format (if you use the latest version of COL4MMM) or using VGMPLAY
+      to play a sound track using SN76489 doesn't require any additional steps,
+      in case of VGMPLAY, you can just play a SN76489 song briefly and exit and
+      then use any other software you wish as it will leave switched I/O
+      disabled and SN76489 will be enabled.
+
+    - Disable the switched I/O in MSX Basic using the command OUT &H40,0
+
+    - Reserve ports 0x48 and 0x49 for exclusive Franky use using:
+      SETSMART -8C will reserve those ports exclusively for FRANKYSND
+      SETSMART -8B will restore normal functionality of those ports
+
+            If you plan to use SN76489 on Sofa Run or use SSMS, the best option
+is to create a .BAT file called ENFRANKY.BAT that will run SETSMART -8C and
+other .BAT called DIFRANKY.BAT that will run SETSMART -8B, so you can execute
+those before/after running Franky compatible software.
+
+IMPORTANT: notice that I/O ports 0x48 and 0x49 are used by OCM to read a few
+statuses like Machine Type, and some OCM software might not report the correct
+status / Machine Type when you reserve ports to be used only for Franky. This
+shouldn't cause any malfunction though.
+
+                         - Franky Master System VDP -
+
+There is cartridge named Franky, which connects the SMS chip that contains its
+VDP and PSG/SSG to the MSX. With it, it is possible to patch SMS ROMs so they
+work on MSX. SMS doesn't use a BIOS and its games generally access hardware
+using a range of I/O addresses to access VDP and SSG, as well to access its
+controllers. Some people patch SMS games so they can run on a MSX with a Franky
+, and we also have Sofa SMS that tries to automate that  task (some games work,
+others doesn't). It is possible to play Alest, Alex Kidd, Wonder Boy among many
+other games if you install the FRANKY version.
+
+Applies to:
+            ALL DEVICES, FRANKY BUILDS
 
 How to use:
             Franky design unfortunately choses to use I/O ports 0x48 and 0x49
@@ -230,7 +289,8 @@ PSG registers to be read back making easy to detect the second PSG. It is on
 by default and it can be disabled if you wanna use the second PSG of an
 external cartridge, disable the external slot through the dip switches, send
 the command SETSMART -54, then enable the external slot through the dip
-switches and push the RESET button.
+switches and push the RESET button. Current OCM-PLD picked up this feature as
+well (except for SMX-HB and SM-X Mini that aren't supported by KdL).
 
 Applies to:
             ALL DEVICES, ALL VERSIONS
@@ -238,7 +298,9 @@ Applies to:
 How to use:
             No special set-up or commands are needed. Second PSG is always
 working on I/O ports 0x10 to 0x13. It is automatically detected by any software
-that looks for a PSG installed in that I/O address range.
+that looks for a PSG installed in that I/O address range. If you use KdL's
+OCM-PLD, second PSG is disabled by default and you must send SETSMART -55
+command to enable it. My firmwares have it enabled by default.
 
   ***** OCM-PLD v3.9 by KdL brought this feature that is not documented: *****
 
@@ -329,8 +391,8 @@ F1. The Wi-Fi setup menu is pretty intuitive and allows you to:
         due to that Franky version doesn't emulate MSX mouse using PS/2 mouse,
         paddles and Turbo-R MIDI Out and PCM.
 
-    2 - As it is a board to be fitted inside a real MSX computer (Hotbit) case
-        and use that computer case built-in keyboard instead of a PC-AT PS/2
+    2 - As it is a board to be fitted inside a real MSX computer (Hotbit or
+        Expert) case and use that computer keyboard instead of a PC-AT PS/2
         keyboard (which can still be used if you solder a PS/2 connector on its
         GPIO port and disable "internal" keyboard), most of the times keys that
         are used for shortcuts or enabling disabling devices are not available
@@ -387,13 +449,13 @@ can't be disabled.
 
          - Alternative access to some resources using unmodified case -
 
-            Hotbit case doesn't have enough openings for all resources that end
-user has available with SMX-HB board. This might be less than optimal as it is
-no easy task to open the case and then close it again. But, for most cases you
-have good alternatives that will avoid the need to open the case. Just make
-sure to set the dip switches for the settings you are going to use most, as
-those alternatives will not stick after you power down, needing that you run
-the software/command line again to set it back after powering down.
+            Hotbit/Expert case doesn't have enough openings for all resources
+that end user has available with SMX-HB board. This might be less than optimal
+as it is no easy task to open the case and then close it again. But, for most
+cases you have good alternatives that will avoid the need to open the case.
+Just make sure to set the dip switches for the settings you are going to use
+most, as those alternatives will not stick after you power down, needing that
+you run the software/command line again to set it back after powering down.
 
     - SD Card Slot: the major use to take a card out is to plug it to a reader
       in another computer to move files to it. SMX-HB has built-in Wi-Fi that
@@ -467,8 +529,8 @@ the software/command line again to set it back after powering down.
         1 - SCC   2 - A16K  : SETSMART -14
 
     - JTAG Programming: recovery of an SMX-HB with a JIC file and an USB
-      Blaster is no easy task. You not only have to open the Hotbit case, but
-      you need to remove the FPGA daughter-board, connect it to USB Blaster and
+      Blaster is no easy task. You not only have to open the case, but you also
+      need to remove the FPGA daughter-board, connect it to USB Blaster and
       connect an external power supply to the FPGA daughter-board before using
       Quartus Programmer... The recommended external supply is DC 5V 2A, round
       connector, external for ground and internal for voltage.
