@@ -30,7 +30,10 @@ USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
 
 # I'm lost and don't know what version to choose for my device
 
-CHOOSING.TXT file will help you, my first recommendation as the version I use
+CHOOSING.TXT file will help you, but the Lazy Couch Penguin version is: first
+get ocmsm_XXXX_3.9.1plus.7z file where XXXX is your device name. IMPORTANT:
+SM-X HB Mini IS A SM-X HB DEVICE AND USES SM-X HB FILES. NEVER, EVER THINK ON
+USING SM-X Mini FOR SM-X HB Mini! My first recommendation as the version I use
 and find it funnier and more interesting is the FRANKY version, language that
 matches the layout of your PS/2 keyboard, dual EPBIOS and backslash. It allows
 you to play Coleco (COL4MMM, use COM - Franky version), SG1000 (SG1000 or SSMS)
@@ -298,12 +301,16 @@ USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
 
 # Estou perdido e não sei o que escolher
 
-O arquivo ESCOLHENDO.TXT irá lhe ajudar, via de regra a versão mais divertida e
-interessante para a maioria, na minha opinião, é a FRANKY com a língua do seu
-teclado PS/2, dual EPBIOS e backslash. Essa versão permite rodar jogos do
-Coleco (COL4MMM, use versão COM - Franky), SG1000 (SG1000 ou SSMS) e de Master
-System (SSMS ou jogos convertidos). Note que no SMX-HB se abre mão do Mouse
-PS/2 como mouse MSX, MIDI e PCM do Turbo-R quando utilizando essa versão.
+O arquivo ESCOLHENDO.TXT irá lhe ajudar, mas se quer a versão curta da estória:
+primeiro baixe o arquivo ocmsm_XXXX_3.9.1plus.7z aonde XXXX é o seu dispositvo.
+IMPORTANTE: SM-X HB Mini É UM DISPOSITIVO SM-X HB E USA OS ARQUIVOS DO SM-X HB.
+NUNCA JAMAIS PENSE EM USAR SM-X Mini PARA UM SM-X HB Mini! Via de regra a
+versão mais divertida e interessante para a maioria, na minha opinião, é a
+FRANKY com a língua do seu teclado PS/2, dual EPBIOS e backslash. Essa versão
+permite rodar jogos do Coleco (COL4MMM, use versão COM - Franky), SG1000 
+(SG1000 ou SSMS) e de Master System (SSMS ou jogos convertidos). Note que no
+SMX-HB se abre mão do Mouse PS/2 como mouse MSX, MIDI e PCM do Turbo-R quando
+utilizando essa versão.
 
 # Não gosto de ler manuais, como atualizo?
 
