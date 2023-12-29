@@ -24,6 +24,23 @@ não tem uma característica ou a combinação que quer, NÃO USE UM FIRMWARE DE
 OUTRO DISPOSITIVO, IRÁ BRICAR SEU DISPOSITIVO E SÓ IRÁ VOLTAR A FUNCIONAR SE
 USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
 
+# Estou perdido e não sei o que escolher
+
+O arquivo ESCOLHENDO.TXT irá lhe ajudar, via de regra a versão mais divertida e
+interessante para a maioria, na minha opinião, é a FRANKY com a língua do seu
+teclado PS/2, dual EPBIOS e backslash. Essa versão permite rodar jogos do
+Coleco (COL4MMM, use versão COM - Franky), SG1000 (SG1000 ou SSMS) e de Master
+System (SSMS ou jogos convertidos). Note que no SMX-HB se abre mão do Mouse
+PS/2 como mouse MSX, MIDI e PCM do Turbo-R quando utilizando essa versão.
+
+# Não gosto de ler manuais, como atualizo?
+
+Leia acima, e pegue a versão correta pro seu dispositivo, dentro do arquivo há
+um arquivo PLD e outro arquivo JIC. Copie o arquivo PLD junto com o arquivo
+SMXFLASH.COM pro seu cartão, e no MSX DOS execute SMXFLASH OCM-SM.PLD
+
+Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.txt
+
 # Novidades em relação a v3.9d
 
 - Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
@@ -31,6 +48,9 @@ USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
   já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
   podem não funcionar com o novo controlador a menos que faça algumas mudanças
   propostas no hardware.
+
+- Três "sabores" disponíveis, normal, Franky e Snd. Veja na tabela o que cada
+  uma tem ou não. Para MC2P existe uma única versão com tudo junto.
 
 # Notas de liberação da versão
 
@@ -47,13 +67,6 @@ de diferente:
       teclado PS/2 e com gabinete próprio. Por ter um teclado próprio de MSX
       (HB e EX apenas), tem suas peculiaridades (algumas não se aplicam ao HB
       MINI que usa apenas teclados PS/2):
-
-        - Permite o debounce das portas de joystick ser desligado, talvez possa
-        ajudar com problemas que algumas pessoas estavam tendo com paddles.
-        Para desligar o debounce use o comando SETSMART -89 , para religar use
-        SETSMART -8A , ao desligar e religar a placa, o padrão é debounce
-        ligado. NOTA: temporariamente essa opção está indisponível e o debounce
-        está permanentemente ativado independente da seleção. (HB,EX e HB MINI)
 
         - Suporte a um terceiro mapa de teclados, então tem o mapa da versão
         (us/br/fr/es/it) e japonês se usar PS/2 e um para o teclado do Hotbit

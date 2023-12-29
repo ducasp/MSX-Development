@@ -243,6 +243,11 @@ Se aplica a:
             TODOS DISPOSITIVOS, VERSÕES FRANKY
 
 Como utilizar:
+            IMPORTANTE: o VDP do Master System não trabalha bem com a CPU em
+velocidade diferente de 3.58MHz, antes de iniciar um jogo de Master System deve
+desligar o Turbo da CPU (ex.: DIP SWITCH 1 na posição OFF), caso contrário não
+irá funcionar adequadamente!
+
             Infelizmente a Franky utiliza as portas I/O 0x48 e 0x49 para acesso
 aos registradores do SN76489 e leitura dos contadores de linha do VDP do Master
 System. No padrão MSX as portas de I/O de 0x40 a 0x4F são reservadas para

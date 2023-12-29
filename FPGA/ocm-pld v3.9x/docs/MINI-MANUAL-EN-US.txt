@@ -241,6 +241,10 @@ Applies to:
             ALL DEVICES, FRANKY BUILDS
 
 How to use:
+            IMPORTANT: SMS VDP doesn't work well with a CPU speed other than
+3.58MHz, so before starting up a SMS game you must turn off CPU Turbo (ex.: DIP
+SWITCH 1 set to OFF), otherwise it won't work properly!
+
             Franky design unfortunately choses to use I/O ports 0x48 and 0x49
 to access SN76489 registers and to read Sega Master System VDP line counters.
 In the MSX standard I/O ports from 0x40 to 0x4F are reserved for switched I/O
