@@ -12,7 +12,7 @@ entity vdp_main is
 		ce_vdp:				in  STD_LOGIC;
 		ce_pix:				in  STD_LOGIC;
 		ce_sp:				in  STD_LOGIC;
-		gg:					in  std_logic;			
+		ggres:					in  std_logic;			
 		sp64:					in  std_logic;			
 		vram_A:				out std_logic_vector(13 downto 0);
 		vram_D:				in  std_logic_vector(7 downto 0);
@@ -131,17 +131,17 @@ begin
 		vram_D			=> vram_D,		
 		color				=> spr_color);
 
-	process (x, y, mask_column0, bg_priority, spr_color, bg_color, overscan, display_on, gg, smode_M1, smode_M3)
+	process (x, y, mask_column0, bg_priority, spr_color, bg_color, overscan, display_on, ggres, smode_M1, smode_M3)
 		variable spr_active	: boolean;
 		variable bg_active	: boolean;
 	begin
-		if ((x>48 and x<=208) or (gg='0' and x<=256 and x>0)) and -- thank you slingshot
+		if ((x>48 and x<=208) or (ggres='0' and x<=256 and x>0)) and -- thank you slingshot
  			(mask_column0='0' or x>=9) and display_on='1' then
 			if (((y>=24 and y<168) and smode_M1='0')
 				or ((y>=40 and y<184) and smode_M1='1')
-				or (gg='0' and y<192) 
-				or (smode_M1='1' and y<224 and gg='0') 
-				or (smode_M3='1' and y<240 and gg='0') ) then
+				or (ggres='0' and y<192) 
+				or (smode_M1='1' and y<224 and ggres='0') 
+				or (smode_M3='1' and y<240 and ggres='0') ) then
 				
 				spr_active	:= not (spr_color="0000");
 				bg_active	:= not (bg_color(3 downto 0)="0000");

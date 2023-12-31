@@ -5,12 +5,13 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity video is
 	Port (
-		clk:				in  std_logic;
+		clk:			in  std_logic;
 		ce_pix:			in  std_logic;
-		pal:				in  std_logic;
-		gg:				in  std_logic;
-		border:        in  std_logic := '1';
+		pal:			in  std_logic;
+		border:         in  std_logic := '1';
+		gg:             in  std_logic :='0';
 		mask_column:	in  std_logic := '0';
+		cut_mask:		in	std_logic := '0';
 		smode_M1:		in	 std_logic;
 		smode_M3:		in	 std_logic;
 		
@@ -50,18 +51,18 @@ begin
 						elsif smode_M3='1' then
 							if vcount = 266 then
 								vcount <= conv_std_logic_vector(482,9);
-							elsif vcount = 478 then
+							elsif vcount = 482 then
 								vsync <= '1';
-							elsif vcount = 481 then
+							elsif vcount = 485 then
 								vsync <= '0';
 							end if;
 						else
 						-- VCounter: 0-242, 442-511 = 313 steps
 							if vcount = 242 then
 								vcount <= conv_std_logic_vector(442,9);
-							elsif vcount = 458 then
+							elsif vcount = 442 then
 								vsync <= '1';
-							elsif vcount = 461 then
+							elsif vcount = 445 then
 								vsync <= '0';
 							end if;
 						end if;
@@ -114,17 +115,18 @@ begin
 	x	<= hcount;
 	y	<= vcount;
 
-	vbl_st  <= conv_std_logic_vector(184,9) when (smode_M1='1' and gg='1' and border='0')
+	vbl_st  <= conv_std_logic_vector(184,9) when (smode_M1='1' and gg='1')
 			else conv_std_logic_vector(224,9) when smode_M1 = '1'
 			else conv_std_logic_vector(240,9) when smode_M3 = '1'
-			else conv_std_logic_vector(215,9) when border = '1' and gg = '0'
-			else conv_std_logic_vector(192,9) when (border xor gg) = '0'
+			else conv_std_logic_vector(216,9) when border = '1' and pal = '0'
+			else conv_std_logic_vector(240,9) when border = '1'
+			else conv_std_logic_vector(192,9) when gg = '0'
 			else conv_std_logic_vector(168,9);
 			
-	vbl_end <= conv_std_logic_vector(40,9)  when (smode_M1='1' and gg='1' and border='0')
-			else conv_std_logic_vector(000,9) when smode_M1 = '1' or smode_M3 = '1' 
-			else conv_std_logic_vector(488,9) when border = '1' and gg = '0'
-			else conv_std_logic_vector(000,9) when (border xor gg) = '0'
+	vbl_end <= conv_std_logic_vector(40,9)  when (smode_M1='1' and gg='1')
+			else conv_std_logic_vector(000,9) when smode_M1 = '1' or smode_M3 = '1' or (border = '0' and gg = '0')
+			else conv_std_logic_vector(488,9) when border = '1' and pal = '0'
+			else conv_std_logic_vector(458,9) when border = '1'
 			else conv_std_logic_vector(024,9);
 
 	hbl_st  <= conv_std_logic_vector(270,9) when border = '1' and gg = '0'
@@ -132,7 +134,7 @@ begin
 			else conv_std_logic_vector(208,9);
 
 	hbl_end <= conv_std_logic_vector(500,9) when border = '1' and gg = '0'
-			else conv_std_logic_vector(008,9) when (border xor gg) = '0' and mask_column = '1'
+			else conv_std_logic_vector(008,9) when (border xor gg) = '0' and mask_column = '1' and cut_mask = '1'
 			else conv_std_logic_vector(000,9) when (border xor gg) = '0'
 			else conv_std_logic_vector(048,9);
 

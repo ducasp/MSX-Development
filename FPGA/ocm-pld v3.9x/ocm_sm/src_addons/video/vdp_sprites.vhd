@@ -88,6 +88,7 @@ begin
 			color => spr_color(i),
 			active=> spr_active(i)
 		);
+
 	end generate;
 
 	with smode_M4 & state select
