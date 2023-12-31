@@ -1,41 +1,4 @@
-/*
-  
-   Multicore 2 / Multicore 2+
-  
-   Copyright (c) 2017-2020 - Victor Trucco
-
-  
-   All rights reserved
-  
-   Redistribution and use in source and synthezised forms, with or without
-   modification, are permitted provided that the following conditions are met:
-  
-   Redistributions of source code must retain the above copyright notice,
-   this list of conditions and the following disclaimer.
-  
-   Redistributions in synthesized form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-  
-   Neither the name of the author nor the names of other contributors may
-   be used to endorse or promote products derived from this software without
-   specific prior written permission.
-  
-   THIS CODE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-   THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-   PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE
-   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-   POSSIBILITY OF SUCH DAMAGE.
-  
-   You are responsible for any legal issues arising from your use of this code.
-  
-*//*  This file is part of JT89.
+/*  This file is part of JT89.
 
     JT89 is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -73,6 +36,7 @@ module jt89(
     input          rst,
     input          wr_n,
     input    [7:0] din,
+    input    [7:0] mux,
     output  signed [10:0] sound,
     output         ready
 );
@@ -90,19 +54,14 @@ jt89_mixer mix(
     .ch1    ( ch1   ),
     .ch2    ( ch2   ),
     .noise  ( noise ),
+    .mux    ( mux   ),
     .sound  ( sound )
 );
 
 // configuration registers
-reg [9:0] tone0 = 8'b00000000;
-reg [9:0] tone1 = 8'b00000000;
-reg [9:0] tone2 = 8'b00000000;
-
-reg [3:0] vol0 = 4'b1111;
-reg [3:0] vol1 = 4'b1111;
-reg [3:0] vol2 = 4'b1111;
-reg [3:0] vol3 = 4'b1111;
-reg [2:0] ctrl3 = 3'b100;
+reg [9:0] tone0, tone1, tone2;
+reg [3:0] vol0, vol1, vol2, vol3;
+reg [2:0] ctrl3;
 reg [2:0] regn;
 
 reg [3:0] clk_div;
@@ -140,7 +99,7 @@ always @(posedge clk)
                 3'b00_0: if( din[7] ) tone0[3:0]<=din[3:0]; else tone0[9:4]<=din[5:0];
                 3'b01_0: if( din[7] ) tone1[3:0]<=din[3:0]; else tone1[9:4]<=din[5:0];
                 3'b10_0: if( din[7] ) tone2[3:0]<=din[3:0]; else tone2[9:4]<=din[5:0];
-                3'b11_0: if( din[7] ) ctrl3 <= din[2:0];
+                3'b11_0: ctrl3 <= din[2:0]; //Need to update these every time.
                 3'b00_1: vol0  <= din[3:0];
                 3'b01_1: vol1  <= din[3:0];
                 3'b10_1: vol2  <= din[3:0];

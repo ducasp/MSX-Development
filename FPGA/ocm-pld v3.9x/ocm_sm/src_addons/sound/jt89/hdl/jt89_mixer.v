@@ -28,6 +28,7 @@ module jt89_mixer #(parameter bw=9)(
     input     [bw-1:0] ch1,
     input     [bw-1:0] ch2,
     input     [bw-1:0] noise,
+    input      [7:0] mux,
     output reg signed [bw+1:0] sound
 );
 
@@ -35,12 +36,11 @@ reg signed [bw+1:0] fresh;
 
 always @(*)
     fresh = 
-        { {2{ch0[bw-1]}}, ch0   }+
-        { {2{ch1[bw-1]}}, ch1   }+
-        { {2{ch2[bw-1]}}, ch2   }+
-        { {2{noise[bw-1]}}, noise };
+        ({ {2{ch0[bw-1]}}, ch0     })+
+        ({ {2{ch1[bw-1]}}, ch1     })+
+        ({ {2{ch2[bw-1]}}, ch2     })+
+        ({ {2{noise[bw-1]}}, noise });
 
-always @(posedge clk)
-    sound <= fresh;
+always @(posedge clk) sound <= fresh;
 
 endmodule
