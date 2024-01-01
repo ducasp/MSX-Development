@@ -2319,10 +2319,12 @@ begin
     -- Also, simulates a value for reading on address 48/49 so
     -- vgmplay detects a Franky when just SN76489 is available
     ----------------------------------------------------------------
-    process( clk21m )
+    process( clk21m, reset )
         variable R_temp : std_logic_vector(  7 downto 0 ) := "00000000";
     begin
-        if( clk21m'event and clk21m = '1' )then
+        if( reset = '1' )then
+            sn76489NoIO <= '1';
+        elsif( clk21m'event and clk21m = '1' )then
             if ( sn76489Req = '1' and pSltWr_n = '0' )then
                 sn76489NoIO <= '0';
             end if;
