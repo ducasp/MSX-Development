@@ -588,9 +588,9 @@ architecture Behavior of top is
         COLOR_DEPTH             => 4
     )
     port map(
-        clk_sys                => clk_sms,
+        clk_sys                => ce_vdp,
         bypass                 => '0',
-        ce_divider             => "010",
+        ce_divider             => "001",
         scanlines              => vga_scanlines,
         pixel_ena              => clk_sms_hdmi,
         hs_in                  => not sms_HSync,
