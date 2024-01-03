@@ -584,11 +584,11 @@ architecture Behavior of top is
     vga_video_sms : scandoublersmx
     generic map
     (
-        HCNT_WIDTH              => 10,
+        HCNT_WIDTH              => 11,
         COLOR_DEPTH             => 4
     )
     port map(
-        clk_sys                => ce_vdp,
+        clk_sys                => clk_sms,
         bypass                 => '0',
         ce_divider             => "001",
         scanlines              => vga_scanlines,
