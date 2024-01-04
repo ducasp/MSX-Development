@@ -1,4 +1,4 @@
-# OCM-PLD v3.9.1plus
+# OCM-PLD v3.9.2plus
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
@@ -27,7 +27,7 @@ USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
 # Estou perdido e não sei o que escolher
 
 O arquivo ESCOLHENDO.TXT irá lhe ajudar, mas se quer a versão curta da estória:
-primeiro baixe o arquivo ocmsm_XXXX_3.9.1plus.7z aonde XXXX é o seu dispositvo.
+primeiro baixe o arquivo ocmsm_XXXX_3.9.2plus.7z aonde XXXX é o seu dispositvo.
 IMPORTANTE: SM-X HB Mini É UM DISPOSITIVO SM-X HB E USA OS ARQUIVOS DO SM-X HB.
 NUNCA JAMAIS PENSE EM USAR SM-X Mini PARA UM SM-X HB Mini! Via de regra a
 versão mais divertida e interessante para a maioria, na minha opinião, é a
@@ -45,20 +45,28 @@ SMXFLASH.COM pro seu cartão, e no MSX DOS execute SMXFLASH OCM-SM.PLD
 
 Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.txt
 
-# Novidades em relação a v3.9d
+# Novidades em relação a v3.9.1plus
 
-- Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
-  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está ausente
-  já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
-  podem não funcionar com o novo controlador a menos que faça algumas mudanças
-  propostas no hardware.
+- Incorporadas todas mudanças da 3.9.2 que ainda não estavam na 3.9.1plus,
+  verifique o release original da 3.9.2 do KdL. Nota: o novo controlador PS2
+  está ausente já que pelo meu entendimento com ele teclados que hoje funcionam
+  na 3.9.0 podem não funcionar com o novo controlador a menos que faça algumas
+  mudanças propostas no hardware.
 
-- Três "sabores" disponíveis, normal, Franky e Snd. Veja na tabela o que cada
-  uma tem ou não. Para MC2P existe uma única versão com tudo junto.
+- Nas versões com SN76489, corrigido o problema de as vezes o ficar tocando uma
+  nota continuamente após um reset.
+
+- Nas versões com SN76489, foi atualizado para uma versão mais atual do JT89
+  que corrige o problema de som no Populous do SMS.
+
+- Nas versões com Franky, foi corrigido o VDP 3,3% mais rápido que o original,
+  que causava o vídeo a 62Hz de frequência horizontal, jogos ligeiramente mais
+  rápidos e alguns monitores / TVs não reconhecerem a saída de vídeo do Master
+  System.
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9.1plus é uma extensão da OCM v3.9.1 do KdL. O que essa versão tem
+OCM-PLD v3.9.2plus é uma extensão da OCM v3.9.2 do KdL. O que essa versão tem
 de diferente:
 
 - Novos dispositivos suportados:
@@ -272,12 +280,12 @@ de diferente:
       causando alguns problemas ao tentar jogar Lilly's Saga, correção feita
       pelo Hara-san.
 
-Todo código fonte e binários alterados em relação ao OCM 3.9.1:
-(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+Todo código fonte e binários alterados em relação ao OCM 3.9.2:
+(c)2022-2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.2 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
 Todo código adicional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9.1, verifique a licença do mesmo.
+Para o código original do OCM 3.9.2, verifique a licença do mesmo.

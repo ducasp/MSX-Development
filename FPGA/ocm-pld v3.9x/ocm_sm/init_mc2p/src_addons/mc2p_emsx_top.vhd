@@ -49,9 +49,17 @@
 -- VRAM, thanks KdL!
 -- Fixes to z80 emulation by t.hara
 --
--- OCM-PLD Pack v3.9.1a by Ducasp (2023.09.08)
+-- OCM-PLD Pack v3.9.1plus by Ducasp (2023.12.29)
 -- Bringing build up to speed with KdL 3.9.1
 -- 
+-- OCM-PLD Pack v3.9.2plus by Ducasp (2024.XX.YY)
+-- Bringing build up to speed with KdL 3.9.1
+-- Improvements on Franky
+--  - SN76489 using latest version from Jotego that works better with Populous
+--  - SN76489 mute on reset (sometimes it doesn't pick-up reset)
+--  - SN76489 now using the OCM-SM approach of 21MHz clock and clkena, so it works 
+--    like other chips on REQ logic
+--
 ------------------------------------------------------------------------------------
 -- Setup for XTAL 50.00000MHz
 ------------------------------------------------------------------------------------
@@ -205,9 +213,7 @@ entity emsx_top is
         sms_x           : in    std_logic_vector( 8  downto 0 );
         sms_y           : in    std_logic_vector( 8  downto 0 );
         sms_smode_M1    : out   std_logic;
-        sms_smode_M2    : out   std_logic;
         sms_smode_M3    : out   std_logic;
-        sms_smode_M4    : out   std_logic;
         sms_pal         : in    std_logic;
         sms_video_active: out   std_logic;
         pll_locked      : out   std_logic
@@ -1107,6 +1113,7 @@ architecture RTL of emsx_top is
 
     -- SMS signals
     signal  clk_sms_s      : std_logic;
+    signal  reset54m        : std_logic := '1';
 
     -- ESP signals
     signal  esp_dout_s      : std_logic_vector(  7 downto 0 ) := (others => '1');
@@ -1173,19 +1180,26 @@ begin
     -- Franky VDP Glue Logic
     -- Linked to clk_sms_s, otherwise it will corrupt everything
     ----------------------------------------------------------------
-    process (clk_sms_s)
+    process (clk_sms_s, reset)
     begin
-        if( clk_sms_s'event and clk_sms_s = '1' )then
-            if ( ( adr(7 downto 1) = "1000100" or ( adr(7 downto 1) = "0100100" and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) ) )
-                 and CpuM1_n = '1' and pSltIorq_n = '0' and pSltRd_n = '0' ) then
-                smsVDPReqRD_n <= '0';
-                smsVDPReqWR_n <= '1';
-            elsif ( adr(7 downto 1) = "1000100"  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltWr_n = '0' ) then
-                smsVDPReqWR_n <= '0';
+        if rising_edge( clk_sms_s )then
+            if ( reset = '1' ) then
+                reset54m <= '1';
                 smsVDPReqRD_n <= '1';
+                smsVDPReqWR_n <= '1';
             else
-                smsVDPReqRD_n <= '1';
-                smsVDPReqWR_n <= '1';
+                reset54m <= '0';
+                if ( ( adr(7 downto 1) = "1000100" or ( adr(7 downto 1) = "0100100" and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' ) ) )
+                     and CpuM1_n = '1' and pSltIorq_n = '0' and pSltRd_n = '0' ) then
+                    smsVDPReqRD_n <= '0';
+                    smsVDPReqWR_n <= '1';
+                elsif ( adr(7 downto 1) = "1000100"  and CpuM1_n = '1' and pSltIorq_n = '0' and pSltWr_n = '0' ) then
+                    smsVDPReqWR_n <= '0';
+                    smsVDPReqRD_n <= '1';
+                else
+                    smsVDPReqRD_n <= '1';
+                    smsVDPReqWR_n <= '1';
+                end if;
             end if;
         end if;
     end process;
@@ -2222,7 +2236,7 @@ begin
     portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010"                                                )else '0';  -- I/O:F2h      / Port F2 device (ESP8266 BIOS)
     portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                                )else '0';  -- I/O:F4h      / Port F4 device
     tr_pcm_req  <=  req when( mem = '0' and adr(7 downto 1) = "1010010"                                                 )else '0';  -- I/O:A4-A5h   / turboR PCM device
-    sn76489Req  <=  '1' when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
+    sn76489Req  <=  req when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
                          and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                      )else '0';  -- I/O:48-49h   / Franky SN76489
 
     BusDir  <=  '1' when( pSltAdr(7 downto 2) = "100110"                                        )else  -- I/O:98-9Bh / VDP (V9938/V9958)
@@ -2252,10 +2266,12 @@ begin
     -- Also, simulates a value for reading on address 48/49 so
     -- vgmplay detects a Franky when just SN76489 is available
     ----------------------------------------------------------------
-    process( clk21m )
+    process( clk21m, reset )
         variable R_temp : std_logic_vector(  7 downto 0 ) := "00000000";
     begin
-        if( clk21m'event and clk21m = '1' )then
+        if( reset = '1' )then
+            sn76489NoIO <= '1';
+        elsif( clk21m'event and clk21m = '1' )then
             if ( sn76489Req = '1' and pSltWr_n = '0' )then
                 sn76489NoIO <= '0';
             end if;
@@ -3265,9 +3281,7 @@ begin
                 color           => colorSMSVDP,
                 mask_column     => sms_mask_column,
                 smode_M1        => sms_smode_M1,
-                smode_M2        => sms_smode_M2,
                 smode_M3        => sms_smode_M3,
-                smode_M4        => sms_smode_M4,
                 reset_n         => (not reset)
             );
     end generate;
@@ -3296,8 +3310,8 @@ begin
         sn76489_l : jt89
         port map(
             rst                 => (reset),
-            clk                 => cpuclk,
-            clk_en              => '1',
+            clk                 => clk21m,
+            clk_en              => clkena,
             din                 => dbo,
             wr_n                => (not sn76489Req) or pSltWr_n,
             sound               => sn76489_sound_s (15 downto 5)

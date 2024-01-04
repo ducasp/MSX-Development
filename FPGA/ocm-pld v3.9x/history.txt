@@ -32,8 +32,8 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 -------------------------------------------------------------------------------------------------------------------
--- OCM-PLDs modified, compiled and tested by KdL 2006-2022
--- SMX-HB and SMX w/ Franky modified, compiled and tested by Ducasp 2023 ( https://www.github.com/ducasp )
+-- OCM-PLDs modified, compiled and tested by KdL 2006-2024
+-- SMX-HB and SMX w/ Franky modified, compiled and tested by Ducasp 2024 ( https://www.github.com/ducasp )
 -------------------------------------------------------------------------------------------------------------------
 --
 -- Dedicated firmware for the following 1st Gen machines based on Altera Cyclone I:
@@ -103,7 +103,16 @@
 -------------------------------------------------------------------------------------------------------------------
 --
 
-v3.9.1plus Ducasp's Unofficial Release \___________________________________________________________________________
+v3.9.2plus Ducasp's Unofficial Release \___________________________________________________________________________
+
+v3.9.2plus [2024.XX.YY] [Ducasp Updates!]
+
+- Up to speed with KdL 3.9.2.
+- Improvements on SN76489 (where applicable): latest version from Jotego that fixes bad sound on SMS Populous, now
+  it is muted upon reset so no note get stuck.
+- Picked up SMS VDP fixes from MiSTER repository for better reliability / results.
+- Fixed SMS VDP running 3,3% faster on SM-X / SM-X Mini / SX-2 and SM-X HB (some monitors wouldn't display SMS
+  image due to Vertical Refresh of 62Hz and games were running a tad faster).
 
 v3.9.1plus [2023.12.20] [Ducasp Updates!]
 

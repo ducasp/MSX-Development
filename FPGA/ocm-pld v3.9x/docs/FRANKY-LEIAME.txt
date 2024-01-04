@@ -5,9 +5,9 @@ patches extras do retrocanada76 que ele postou até 28 de Dezembro de 2023.
 
 Lembre-se de digitar SETSMART -8C antes, senão poderá ficar sem som.
 
-IMPORTANTE: O VDP do Master System não funciona bem com a CPU em Turbo e quase
-todos jogos irão falhar se o z80 não estiver em 3.58MHz, portanto, desligue o
-Turbo (primeira DIP SWITCH).
+IMPORTANTE: O VDP do Master System pode não funcionar bem com a CPU em Turbo e
+alguns jogos podem falhar se o z80 não estiver em 3.58MHz, se necessário
+desligue o Turbo (primeira DIP SWITCH).
 
 Se usar o Sofa Run, lembre de verificar as configurações de SMS nas
 configurações do Sofa Run e se certifique que TODAS configurações exceto AUDIO

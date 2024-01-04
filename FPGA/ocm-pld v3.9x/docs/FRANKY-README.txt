@@ -5,8 +5,8 @@ known extra patches added by retrocanada76 up to December 28th / 2023.
 
 Remember to use SETSMART -8C before, otherwise you might not have sound.
 
-IMPORTANT: SMS VDP doesn't work well with a Turbo Clocked CPU and almost all
-games will fail if z80 is not clocked @3.58MHz, so, turn off Turbo (first DIP
+IMPORTANT: SMS VDP might not work well with a Turbo Clocked CPU and some games
+will fail if z80 is not clocked @3.58MHz, if needed turn off Turbo (first DIP
 SWITCH).
 
 If using Sofa Run, remember to check SMS settings in Sofa Run settings and make

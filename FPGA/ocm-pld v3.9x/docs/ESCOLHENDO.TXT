@@ -95,12 +95,12 @@ escolher...
 
 4 - Agora já tem seu arquivo de firmware, apenas use ele :)
 
-Todo código fonte e binários alterados em relação ao OCM 3.9.1:
-(c)2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+Todo código fonte e binários alterados em relação ao OCM 3.9.2:
+(c)2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.2 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
 Todo código adcional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9.1, verifique a licença do mesmo.
+Para o código original do OCM 3.9.2, verifique a licença do mesmo.

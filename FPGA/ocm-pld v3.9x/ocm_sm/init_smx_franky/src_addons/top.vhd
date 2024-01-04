@@ -246,30 +246,18 @@ architecture Behavior of top is
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
     signal clk_sms          : std_logic;
-    signal clk_sms_hdmi     : std_logic;
 
     -- Franky signals
     signal sms_active       : std_logic;
     signal ce_vdp           : std_logic;
     signal ce_pix           : std_logic;
     signal ce_sp            : std_logic;
-    signal ce_cpu_p         : std_logic;
-    signal ce_cpu_n         : std_logic;
     signal color            : std_logic_vector( 11 downto 0 );
     signal sms_x            : std_logic_vector( 8 downto 0 );
     signal sms_y            : std_logic_vector( 8 downto 0 );
     signal sms_mask_column  : std_logic;
     signal sms_smode_M1     : std_logic;
-    signal sms_smode_M2     : std_logic;
     signal sms_smode_M3     : std_logic;
-    signal sms_smode_M4     : std_logic;
-    signal sms_r_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_g_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_b_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_HBlank_o     : std_logic;
-    signal sms_VBlank_o     : std_logic;
-    signal sms_HSync_o      : std_logic;
-    signal sms_VSync_o      : std_logic;
     signal SMS_VGA_R        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_B        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_G        : std_logic_vector(  4 downto 0 ) := (others => '0');
@@ -295,8 +283,6 @@ architecture Behavior of top is
     signal vga_b_s          : std_logic_vector(  5 downto 0 ) := (others => '0');
     signal vga_hsync_n_s    : std_logic := '1';
     signal vga_vsync_n_s    : std_logic := '1';
-    signal vga_hsync_out_s  : std_logic := '1';
-    signal vga_Vsync_out_s  : std_logic := '1';
     signal blank_s          : std_logic;
 
     --audio
@@ -490,9 +476,7 @@ architecture Behavior of top is
         sms_x                   => sms_x,
         sms_y                   => sms_y,
         sms_smode_M1            => sms_smode_M1,
-        sms_smode_M2            => sms_smode_M2,
         sms_smode_M3            => sms_smode_M3,
-        sms_smode_M4            => sms_smode_M4,
         sms_video_active        => sms_active,
 
         -- SM-X, Multicore 2 and SX-2 ports
@@ -541,25 +525,14 @@ architecture Behavior of top is
     sdram_clk_o     <= clk_sdram;
 
     -- VIDEO
-    sms_r_o         <= SMS_VGA_R when ( vga_status = '1' ) else color( 3 downto 0 ) & color ( 0 );
-    sms_g_o         <= SMS_VGA_G when ( vga_status = '1' ) else color( 7 downto 4 ) & color ( 4 );
-    sms_b_o         <= SMS_VGA_B when ( vga_status = '1' ) else color(11 downto 8 ) & color ( 8 );
-    sms_HBlank_o    <= SMS_VGA_HBlank when ( vga_status = '1' ) else sms_HBlank;
-    sms_VBlank_o    <= SMS_VGA_VBlank when ( vga_status = '1' ) else sms_VBlank;
-    sms_HSync_o     <= SMS_VGA_HS when ( vga_status = '1' ) else sms_HSync;
-    sms_VSync_o     <= SMS_VGA_VS when ( vga_status = '1' ) else sms_VSync;
-
     vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else SMS_VGA_R;
     vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else SMS_VGA_G;
     vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else SMS_VGA_B;
-    vga_hsync_out_s <= vga_hsync_n_s when ( sms_active = '0' ) else sms_HSync_o;
-    vga_vsync_out_s <= vga_vsync_n_s when ( sms_active = '0' ) else sms_VSync_o;
-
-    vga_hsync_n_o   <= vga_hsync_out_s;
-    vga_vsync_n_o   <= vga_vsync_out_s;
+    vga_hsync_n_o   <= vga_hsync_n_s  when ( sms_active = '0' ) else SMS_VGA_HS;
+    vga_vsync_n_o   <= vga_vsync_n_s  when ( sms_active = '0' ) else SMS_VGA_VS;
 
     hdmi_pclk       <= clk21m when ( sms_active = '0' ) else clk_sms;
-    hdmi_de         <= not blank_s when ( sms_active = '0' ) else not ( sms_HBlank_o or sms_VBlank_o );
+    hdmi_de         <= not blank_s when ( sms_active = '0' ) else not ( SMS_VGA_HBlank or SMS_VGA_VBlank );
     hdmi_rst        <= power_on_reset_s;
 
     -- Franky
@@ -589,10 +562,9 @@ architecture Behavior of top is
     )
     port map(
         clk_sys                => clk_sms,
-        bypass                 => '0',
+        bypass                 => not vga_status,
         ce_divider             => "001",
         scanlines              => vga_scanlines,
-        pixel_ena              => clk_sms_hdmi,
         hs_in                  => not sms_HSync,
         vs_in                  => not sms_VSync,
         hb_in                  => sms_HBlank,
@@ -610,38 +582,30 @@ architecture Behavior of top is
     );
 
     process ( clk_sms )
-        variable clkd : std_logic_vector( 4 downto 0 ) := "00000";
+        variable clkd : std_logic_vector( 4 downto 0 ) := "11111";
     begin
         if falling_edge( clk_sms ) then
-            ce_sp <= clkd(0);
+            ce_sp <= clkd(0);--div2 used for extra sprites
             ce_vdp <= '0';--div5
             ce_pix <= '0';--div10
-            ce_cpu_p <= '0';--div15
-            ce_cpu_n <= '0';--div15
             clkd := clkd + 1;
 
-            if (clkd = "11101") then
-                clkd := "00000";
+            if (clkd = "11101") then    -- 29
+                clkd := "11111";
                 ce_vdp <= '1';
                 ce_pix <= '1';
-            elsif (clkd = "11000") then
+            elsif (clkd = "11000") then -- 24
                 ce_vdp <= '1';
-                ce_cpu_p <= '1';
-            elsif (clkd = "10011") then
-                ce_vdp <= '1';
-                ce_pix <= '1';
-            elsif (clkd = "10001") then
-                ce_cpu_n <= '1';
-            elsif (clkd = "01110") then
-                ce_vdp <= '1';
-            elsif (clkd = "01001") then
-                ce_cpu_p <= '1';
+            elsif (clkd = "10011") then -- 19
                 ce_vdp <= '1';
                 ce_pix <= '1';
-            elsif (clkd = "00100") then
+            elsif (clkd = "01110") then -- 14
                 ce_vdp <= '1';
-            elsif (clkd = "00010") then
-                ce_cpu_n <= '1';
+            elsif (clkd = "01001") then -- 9
+                ce_vdp <= '1';
+                ce_pix <= '1';
+            elsif (clkd = "00100") then -- 4
+                ce_vdp <= '1';
             end if;
         end if;
     end process;

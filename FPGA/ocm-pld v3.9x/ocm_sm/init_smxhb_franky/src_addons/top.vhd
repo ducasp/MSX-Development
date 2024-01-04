@@ -183,7 +183,6 @@ architecture Behavior of top is
     signal clk_sdram        : std_logic;
     signal clk21m           : std_logic;
     signal clk_sms          : std_logic;
-    signal clk_sms_hdmi     : std_logic;
 
     -- Franky signals
     signal sms_active       : std_logic;
@@ -196,13 +195,6 @@ architecture Behavior of top is
     signal sms_mask_column  : std_logic;
     signal sms_smode_M1     : std_logic;
     signal sms_smode_M3     : std_logic;
-    signal sms_r_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_g_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_b_o          : std_logic_vector(  4 downto 0 ) := (others => '0');
-    signal sms_HBlank_o     : std_logic;
-    signal sms_VBlank_o     : std_logic;
-    signal sms_HSync_o      : std_logic;
-    signal sms_VSync_o      : std_logic;
     signal SMS_VGA_R        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_B        : std_logic_vector(  4 downto 0 ) := (others => '0');
     signal SMS_VGA_G        : std_logic_vector(  4 downto 0 ) := (others => '0');
@@ -229,8 +221,6 @@ architecture Behavior of top is
     signal vga_b_s          : std_logic_vector(  5 downto 0 ) := (others => '0');
     signal vga_hsync_n_s    : std_logic := '1';
     signal vga_vsync_n_s    : std_logic := '1';
-    signal vga_hsync_out_s  : std_logic := '1';
-    signal vga_Vsync_out_s  : std_logic := '1';
     signal blank_s          : std_logic;
 
     -- slot
@@ -250,13 +240,9 @@ architecture Behavior of top is
     signal vga_r_out_s      : std_logic_vector(  4 downto 0 );
     signal vga_g_out_s      : std_logic_vector(  4 downto 0 );
     signal vga_b_out_s      : std_logic_vector(  4 downto 0 );
-    signal sms_odd_line_s   : std_logic := '0';
     signal vga_r_out_s_21   : std_logic_vector(  4 downto 0 );
     signal vga_g_out_s_21   : std_logic_vector(  4 downto 0 );
     signal vga_b_out_s_21   : std_logic_vector(  4 downto 0 );
-    signal vga_r_out_s_54   : std_logic_vector(  4 downto 0 );
-    signal vga_g_out_s_54   : std_logic_vector(  4 downto 0 );
-    signal vga_b_out_s_54   : std_logic_vector(  4 downto 0 );
 
     -- Joysticks
     signal joy1_s           : std_logic_vector(  5 downto 0 );
@@ -439,22 +425,11 @@ architecture Behavior of top is
                        --( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
 
     -- VIDEO
-    sms_r_o         <= SMS_VGA_R when ( vga_status = '1' ) else color( 3 downto 0 ) & color ( 0 );
-    sms_g_o         <= SMS_VGA_G when ( vga_status = '1' ) else color( 7 downto 4 ) & color ( 4 );
-    sms_b_o         <= SMS_VGA_B when ( vga_status = '1' ) else color(11 downto 8 ) & color ( 8 );
-    sms_HBlank_o    <= SMS_VGA_HBlank when ( vga_status = '1' ) else sms_HBlank;
-    sms_VBlank_o    <= SMS_VGA_VBlank when ( vga_status = '1' ) else sms_VBlank;
-    sms_HSync_o     <= SMS_VGA_HS when ( vga_status = '1' ) else sms_HSync;
-    sms_VSync_o     <= SMS_VGA_VS when ( vga_status = '1' ) else sms_VSync;
-
-    vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else vga_r_out_s_54;
-    vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else vga_g_out_s_54;
-    vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else vga_b_out_s_54;
-    vga_hsync_out_s <= vga_hsync_n_s when ( sms_active = '0' ) else sms_HSync_o;
-    vga_vsync_out_s <= vga_vsync_n_s when ( sms_active = '0' ) else sms_VSync_o;
-
-    vga_hsync_n_o   <= vga_hsync_out_s;
-    vga_vsync_n_o   <= vga_vsync_out_s;
+    vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else SMS_VGA_R;
+    vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else SMS_VGA_G;
+    vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else SMS_VGA_B;
+    vga_hsync_n_o   <= vga_hsync_n_s  when ( sms_active = '0' ) else SMS_VGA_HS;
+    vga_vsync_n_o   <= vga_vsync_n_s  when ( sms_active = '0' ) else SMS_VGA_VS;
 
     -- Franky
     video1 : work.video
@@ -483,10 +458,9 @@ architecture Behavior of top is
     )
     port map(
         clk_sys                => clk_sms,
-        bypass                 => '0',
+        bypass                 => not vga_status,
         ce_divider             => "010",
-        scanlines              => "00",
-        pixel_ena              => clk_sms_hdmi,
+        scanlines              => vga_scanlines,
         hs_in                  => not sms_HSync,
         vs_in                  => not sms_VSync,
         hb_in                  => sms_HBlank,
@@ -504,29 +478,29 @@ architecture Behavior of top is
     );
 
     process ( clk_sms )
-        variable clkd : std_logic_vector( 4 downto 0 ) := "00000";
+        variable clkd : std_logic_vector( 4 downto 0 ) := "11111";
     begin
         if falling_edge( clk_sms ) then
-            ce_sp <= clkd(0);
+            ce_sp <= clkd(0);--div2 used for extra sprites
             ce_vdp <= '0';--div5
             ce_pix <= '0';--div10
             clkd := clkd + 1;
 
-            if (clkd = "11101") then
-                clkd := "00000";
+            if (clkd = "11101") then    -- 29
+                clkd := "11111";
                 ce_vdp <= '1';
                 ce_pix <= '1';
-            elsif (clkd = "11000") then
+            elsif (clkd = "11000") then -- 24
                 ce_vdp <= '1';
-            elsif (clkd = "10011") then
-                ce_vdp <= '1';
-                ce_pix <= '1';
-            elsif (clkd = "01110") then
-                ce_vdp <= '1';
-            elsif (clkd = "01001") then
+            elsif (clkd = "10011") then -- 19
                 ce_vdp <= '1';
                 ce_pix <= '1';
-            elsif (clkd = "00100") then
+            elsif (clkd = "01110") then -- 14
+                ce_vdp <= '1';
+            elsif (clkd = "01001") then -- 9
+                ce_vdp <= '1';
+                ce_pix <= '1';
+            elsif (clkd = "00100") then -- 4
                 ce_vdp <= '1';
             end if;
         end if;
@@ -603,61 +577,12 @@ architecture Behavior of top is
         end if;
     end process;
 
-    process( clk_sms )
-        variable r_v_54 : unsigned(  4 downto 0 );
-        variable g_v_54 : unsigned(  4 downto 0 );
-        variable b_v_54 : unsigned(  4 downto 0 );
-    begin
-        if rising_edge( clk_sms )then
-            -- 100%
-            vga_r_out_s_54 <= sms_r_o;
-            vga_g_out_s_54 <= sms_g_o;
-            vga_b_out_s_54 <= sms_b_o;
-
-            if sms_odd_line_s = '0' and vga_status = '1' then
-
-                if vga_scanlines = "11" then
-                    -- 75%
-                    vga_r_out_s_54 <=  "00" & sms_r_o(  4 downto 2 );
-                    vga_g_out_s_54 <=  "00" & sms_g_o(  4 downto 2 );
-                    vga_b_out_s_54 <=  "00" & sms_b_o(  4 downto 2 );
-
-                elsif vga_scanlines = "10" then
-                    -- 50%
-                    vga_r_out_s_54 <=  '0' & sms_r_o(  4 downto 1 );
-                    vga_g_out_s_54 <=  '0' & sms_g_o(  4 downto 1 );
-                    vga_b_out_s_54 <=  '0' & sms_b_o(  4 downto 1 );
-
-                elsif vga_scanlines = "01" then
-                    -- 25%
-                    r_v_54 := unsigned('0' & sms_r_o(  4 downto 1 )) + unsigned("00" & sms_r_o(  4 downto 2 ));
-                    g_v_54 := unsigned('0' & sms_g_o(  4 downto 1 )) + unsigned("00" & sms_g_o(  4 downto 2 ));
-                    b_v_54 := unsigned('0' & sms_b_o(  4 downto 1 )) + unsigned("00" & sms_b_o(  4 downto 2 ));
-
-                    vga_r_out_s_54 <= std_logic_vector(r_v_54);
-                    vga_g_out_s_54 <= std_logic_vector(g_v_54);
-                    vga_b_out_s_54 <= std_logic_vector(b_v_54);
-
-                end if;
-            end if;
-        end if;
-    end process;
-
     process( vga_hsync_n_s, vga_vsync_n_s )
     begin
         if vga_vsync_n_s = '0' then
             odd_line_s <= '0';
         elsif rising_edge( vga_hsync_n_s ) then
             odd_line_s <= not odd_line_s;
-        end if;
-    end process;
-
-    process( SMS_VGA_HS, SMS_VGA_VS )
-    begin
-        if SMS_VGA_VS = '0' then
-            sms_odd_line_s <= '0';
-        elsif rising_edge( SMS_VGA_HS ) then
-            sms_odd_line_s <= not sms_odd_line_s;
         end if;
     end process;
 

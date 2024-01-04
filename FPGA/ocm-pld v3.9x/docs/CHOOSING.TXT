@@ -92,12 +92,12 @@ to choose from...
 
 4 - Now you have your firmware file, just use it :)
 
-All source code and binaries that changed in relation to OCM 3.9.1:
-(c)2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+All source code and binaries that changed in relation to OCM 3.9.2:
+(c)2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-All source code from OCM 3.9.1 originally is a work of many people, including
+All source code from OCM 3.9.2 originally is a work of many people, including
 KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.
-Regarding original OCM 3.9.1 code, check its own licence.
+Regarding original OCM 3.9.2 code, check its own licence.

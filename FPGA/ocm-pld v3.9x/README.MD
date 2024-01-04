@@ -1,4 +1,4 @@
-# OCM-PLD v3.9.1plus
+# OCM-PLD v3.9.2plus
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
@@ -31,7 +31,7 @@ USING USB BLASTER AND A PC. YOU'VE BEEN WARNED!
 # I'm lost and don't know what version to choose for my device
 
 CHOOSING.TXT file will help you, but the Lazy Couch Penguin version is: first
-get ocmsm_XXXX_3.9.1plus.7z file where XXXX is your device name. IMPORTANT:
+get ocmsm_XXXX_3.9.2plus.7z file where XXXX is your device name. IMPORTANT:
 SM-X HB Mini IS A SM-X HB DEVICE AND USES SM-X HB FILES. NEVER, EVER THINK ON
 USING SM-X Mini FOR SM-X HB Mini! My first recommendation as the version I use
 and find it funnier and more interesting is the FRANKY version, language that
@@ -49,20 +49,27 @@ your card, and when in MSX DOS run SMXFLASH OCM-SM.PLD
 
 Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.txt
 
-# New in relation to v3.9d
+# New in relation to v3.9.1plus
 
-- Incorporated all 3.9.1 changes not present in 3.9d, check original KdL 3.9.1
-  release for more information. Note: PS2 new controller was not Incorporated
-  as my understanding is that it might make some keyboards currently working on
-  3.9.0 to not work on it unless you make some proposed hardware changes.
+- Picked up all 3.9.2 updates that weren't on 3.9.1plus, check the original
+  3.9.2 KdL release. Note: new PS2 controller is absent since I've understood
+  that some keyboards that work today on OCM 3.9 and lower might stop working
+  with the new controller if the proposed hardware updates are not made.
 
-- Three "flavours" available, Regular, Franky and Snd. See in the table above
-  what each flavor har or doesn't have. MC2P has a single version that has all
-  features.
+- Version that have SN76489, the issue were some note kept playing after a
+  reset has been fixed.
+
+- Versions that have SN76489, it was updated with the latest JT89 version, it
+  fixes a sound issue with SMS Populous.
+
+- Versions that have Franky, the issue where VDP runs 3,3% faster and caused
+  video output @62Hz Horizontal Frequency has been fixed, some games played
+  slightly faster and some monitors / TVs did not recognize SMS video output
+  due to that refresh rate.
 
 # Release notes
 
-OCM-PLD v3.9.1plus is an extension on KdL OCM release v3.9.1. What this
+OCM-PLD v3.9.2plus is an extension on KdL OCM release v3.9.2. What this
 extension brings to the table:
 
 - New supported devices:
@@ -264,16 +271,16 @@ extension brings to the table:
       z80 implementation causing issues while playing Lilly's Saga, fix
       provided by Hara-san.
 
-All source code and binaries that changed in relation to OCM 3.9.1:
-(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+All source code and binaries that changed in relation to OCM 3.9.2:
+(c)2022-2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-All source code from OCM 3.9.1 originally is a work of many people, including
+All source code from OCM 3.9.2 originally is a work of many people, including
 KdL and Hara-san that are really huge contributors to it!
 
 All code can be re-used, re-written, derivative work can be sold, as long as the
 source code of changes is made public as well.
 
-# OCM-PLD v3.9.1plus
+# OCM-PLD v3.9.2plus
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
@@ -302,7 +309,7 @@ USAR UMA USB BLASTER E UM PC. VOCÊ FOI AVISADO!
 # Estou perdido e não sei o que escolher
 
 O arquivo ESCOLHENDO.TXT irá lhe ajudar, mas se quer a versão curta da estória:
-primeiro baixe o arquivo ocmsm_XXXX_3.9.1plus.7z aonde XXXX é o seu dispositvo.
+primeiro baixe o arquivo ocmsm_XXXX_3.9.2plus.7z aonde XXXX é o seu dispositvo.
 IMPORTANTE: SM-X HB Mini É UM DISPOSITIVO SM-X HB E USA OS ARQUIVOS DO SM-X HB.
 NUNCA JAMAIS PENSE EM USAR SM-X Mini PARA UM SM-X HB Mini! Via de regra a
 versão mais divertida e interessante para a maioria, na minha opinião, é a
@@ -320,20 +327,28 @@ SMXFLASH.COM pro seu cartão, e no MSX DOS execute SMXFLASH OCM-SM.PLD
 
 Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.txt
 
-# Novidades em relação a v3.9d
+# Novidades em relação a v3.9.1plus
 
-- Incorporadas todas mudanças da 3.9.1 que ainda não estavam na 3.9d, verifique
-  o release original da 3.9.1 do KdL. Nota: o novo controlador PS2 está ausente
-  já que pelo meu entendimento com ele teclados que hoje funcionam na 3.9.0
-  podem não funcionar com o novo controlador a menos que faça algumas mudanças
-  propostas no hardware.
+- Incorporadas todas mudanças da 3.9.2 que ainda não estavam na 3.9.1plus,
+  verifique o release original da 3.9.2 do KdL. Nota: o novo controlador PS2
+  está ausente já que pelo meu entendimento com ele teclados que hoje funcionam
+  na 3.9.0 podem não funcionar com o novo controlador a menos que faça algumas
+  mudanças propostas no hardware.
 
-- Três "sabores" disponíveis, normal, Franky e Snd. Veja na tabela o que cada
-  uma tem ou não. Para MC2P existe uma única versão com tudo junto.
+- Nas versões com SN76489, corrigido o problema de as vezes o ficar tocando uma
+  nota continuamente após um reset.
+
+- Nas versões com SN76489, foi atualizado para uma versão mais atual do JT89
+  que corrige o problema de som no Populous do SMS.
+
+- Nas versões com Franky, foi corrigido o VDP 3,3% mais rápido que o original,
+  que causava o vídeo a 62Hz de frequência horizontal, jogos ligeiramente mais
+  rápidos e alguns monitores / TVs não reconhecerem a saída de vídeo do Master
+  System.
 
 # Notas de liberação da versão
 
-OCM-PLD v3.9.1plus é uma extensão da OCM v3.9.1 do KdL. O que essa versão tem
+OCM-PLD v3.9.2plus é uma extensão da OCM v3.9.2 do KdL. O que essa versão tem
 de diferente:
 
 - Novos dispositivos suportados:
@@ -547,12 +562,12 @@ de diferente:
       causando alguns problemas ao tentar jogar Lilly's Saga, correção feita
       pelo Hara-san.
 
-Todo código fonte e binários alterados em relação ao OCM 3.9.1:
-(c)2022-2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+Todo código fonte e binários alterados em relação ao OCM 3.9.2:
+(c)2022-2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-Todo código fonte do OCM 3.9.1 é um trabalho de muitas pessoas, incluindo KdL e
+Todo código fonte do OCM 3.9.2 é um trabalho de muitas pessoas, incluindo KdL e
 Hara-san que são grandes contribuidores!
 
 Todo código adicional pode ser reutilizado, re-escrito, trabalhos derivados
 podem ser vendidos DESDE QUE o código fonte das mudanças seja publicado também.
-Para o código original do OCM 3.9.1, verifique a licença do mesmo.
+Para o código original do OCM 3.9.2, verifique a licença do mesmo.
