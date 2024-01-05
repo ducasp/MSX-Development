@@ -4,7 +4,7 @@
 ;   Initial Program Loader for Cyclone & EPCS (Altera)
 ;   Revision 3.00
 ;
-; Copyright (c) 2021-2022 Takayuki Hara
+; Copyright (c) 2021-2023 Takayuki Hara
 ; All rights reserved.
 ;
 ; Redistribution and use of this source code or any derivative works, are
@@ -33,12 +33,13 @@
 ; IPL-ROM Revision 2.00 for 512 kB unpacked with Dual-EPBIOS support
 ; EPCS16 [or higher] start adr 100000h - Optimized by KdL 2020.01.09
 ;
-; Coded in TWZ'CA3 w/ TASM80 v3.2ud for OCM-PLD Pack v3.4 or later
+; Coded in TASM80 v3.2ud w/ TWZ'CA3 for OCM-PLD Pack v3.4 or later
+; TASM is at http://www.ticalc.org
 ;
 ; SDHC support by Yuukun-OKEI, thanks to MAX
 ; ------------------------------------------------------------------------------
 ; History:
-;   2022/Oct/7th	v3.00	t.hara	Overall revision.
+;   2023/May/29th  v3.00  t.hara  Overall revision.  Coded in ZMA v1.0.15
 ; ==============================================================================
 
 ; ------------------------------------------------------------------------------
@@ -46,7 +47,7 @@
 		ds		"OCMPLD_IPLROM"					; Fixed signature
 		db		'2'								; '1': 1st gen, '2': 2nd gen
 		db		39								; Require version of OCM-PLD
-		db		1								; Require revision of OCM-PLD
+		db		2								; Require revision of OCM-PLD
 
 ; ------------------------------------------------------------------------------
 ; IPL-ROM body

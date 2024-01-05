@@ -221,7 +221,7 @@ end emsx_top;
 architecture RTL of emsx_top is
 
     -- CPU
-    component t800a
+    component t80a
         port(
             RESET_n     : in    std_logic;
             R800_mode   : in    std_logic;
@@ -652,6 +652,7 @@ architecture RTL of emsx_top is
             LevCtrl         : inout std_logic_vector(  2 downto 0 );            -- Volume and high-speed level
             GreenLvEna      : out   std_logic;
             -- 'RESET' group
+            cold_reset_comb : in    std_logic;                                  -- Cold Reset combination
             swioRESET_n     : inout std_logic;                                  -- Reset Pulse
             warmRESET       : inout std_logic;                                  -- 0=Cold Reset, 1=Warm Reset
             WarmMSXlogo     : inout std_logic;                                  -- Show MSX logo with Warm Reset
@@ -699,9 +700,11 @@ architecture RTL of emsx_top is
             clk21m          : in    std_logic;
             reset           : in    std_logic;
             count_en        : in    std_logic;
+            af_on_off_led   : in    std_logic;
             af_on_off_toggle: in    std_logic;
             af_increment    : in    std_logic;
             af_decrement    : in    std_logic;
+            af_led_sta      : out   std_logic;
             af_mask         : out   std_logic;
             af_speed        : out   std_logic_vector( 3 downto 0 )
         );
@@ -779,6 +782,7 @@ architecture RTL of emsx_top is
     signal  ff_dip_ack      : std_logic_vector(  7 downto 0 );                      -- here to reduce LEs
     signal  LevCtrl         : std_logic_vector(  2 downto 0 );
     signal  GreenLvEna      : std_logic;
+    signal  cold_reset_comb : std_logic;
     signal  swioRESET_n     : std_logic := '1';
     signal  warmRESET       : std_logic := '0';
     signal  WarmMSXlogo     : std_logic;                                            -- here to reduce LEs
@@ -1149,13 +1153,19 @@ architecture RTL of emsx_top is
     signal  VideoSWState_s   : std_logic_vector(  1 downto 0 ) := (others => '0');
 
     -- Autofire,  Added by t.hara, 2021/Aug/6th
+    -- Autofire,  Added by t.hara, 2021/Aug/6th
+    signal  af_on_off_led   : std_logic;
     signal  af_on_off_toggle: std_logic;
     signal  af_increment    : std_logic;
     signal  af_decrement    : std_logic;
+    signal  af_led_sta      : std_logic;
     signal  af_mask         : std_logic;
     signal  w_pJoyA_in      : std_logic_vector(  5 downto 0 );
     signal  w_pJoyB_in      : std_logic_vector(  5 downto 0 );
     signal  w_PpiPortB      : std_logic_vector(  7 downto 0 );
+
+    signal  w_pLed          : std_logic_vector(  7 downto 0 );    -- 0=Off, 1=On (green)         -- 2022/Dec./18th  Added by t.hara for ESEPS2MOUSE
+    signal  w_pLedPwr       : std_logic;
 
 begin
 
@@ -1662,19 +1672,19 @@ begin
         end if;
     end process;
 
-    -- power LED assignment (generic)
-    pLedPwr <=  ('1'                                 )      -- LED light test on reset
+    w_pLedPwr <=
+                ('1'                                 )      -- LED light test on reset
                                                             when( iSltRst_n = '0' or power_on_reset = '0' )else
                 ('1'                                 )      -- On
-                                                            when( Paus = '0' and Red_sta = '1' and GreenLv_cnt = "0000" )else
+                                                            when( Paus = '0' and Red_sta = '1' and GreenLv_cnt = "0000" and af_led_sta = '0' )else
                 ('0'                                 );     -- Off
+    pLedPwr <= w_pLedPwr;
 
     -- LEDs assignment (specific for SM-X and SX-2)
-    pLed    <=  (others     => FreeCounter(1)        )      -- LED lights test on reset
+    w_pLed  <=  (others     => FreeCounter(1)        )      -- LED lights test on reset
                                                             when( iSltRst_n = '0' or power_on_reset = '0' )else
 
---              (others     => '0'                   )      -- Blackout Mode + Autofire
-                "0000000" & af_mask                         -- Modified by t.hara, 2021/Aug/7th
+                (others     => '0'                   )      -- Blackout Mode
                                                             when( Paus = '1' )else
 
                 (GreenLeds(0)                        ) &    -- Lights Mode + Blink
@@ -1693,7 +1703,19 @@ begin
                 (GreenLv(4)                          ) &
                 (GreenLv(5)                          ) &
                 (GreenLv(6)                          ) &
-                (MmcEnaLed                           )      when( GreenLv_cnt /= "0000" )else
+                (MmcEnaLed                           )      when( GreenLv_cnt /= "0000" and af_led_sta = '0' )else
+
+                (GreenLv(0)                          ) &    -- Volume + Autofire
+                (GreenLv(1)                          ) &
+                (GreenLv(2)                          ) &
+                (GreenLv(3)                          ) &
+                (GreenLv(4)                          ) &
+                (GreenLv(5)                          ) &
+                (GreenLv(6)                          ) &
+                (not af_mask                         )      when( GreenLv_cnt /= "0000" )else
+
+                "0000000" & not af_mask                     -- Autofire by t.hara, 2021/Aug/7th
+                                                            when( af_led_sta = '1' )else
 
                 (io42_id212(0)                       ) &    -- Virtual DIP-SW (Auto) + Blink
                 (DisplayMode(1)                      ) &
@@ -1703,6 +1725,7 @@ begin
                 (Slot2Mode(0)                        ) &
                 (FullRAM                             ) &
                 (MmcEnaLed                           );
+    pLed  <= w_pLed;
 
     -- DIP-SW latch
     process( clk21m )
@@ -1783,7 +1806,7 @@ begin
                     if( ff_ldbios_n = '0' )then
                         count := "0010";                                -- 8.06MHz (simulated)
                     else
-                        count := CustomSpeed;                           -- 4.10MHz until 8.06MHz (simulated)
+                        count := CustomSpeed;                           -- 4.10MHz up to 8.06MHz (simulated)
                     end if;
                 elsif( ff_clksel5m_n = '0' and (iSltScc1 = '1' or iSltScc2 = '1') )then
                     count := "0001";
@@ -1792,7 +1815,11 @@ begin
                 if( ff_clksel = '1' )then
                     count := "0110";                                    -- "0011" = original value, "0110" = better reading the pull-up states at 10.74MHz
                 elsif( ff_clksel5m_n = '0' )then
-                    count := "0110";                                    -- "0110" = calibrated to properly access the ADPCM unit (NMS-1205) at 5.37 MHz
+                    if( extclk3m = '0' )then
+                        count := "0010";                                -- "0010" = calibrated to minimize artifacts in Gradius 2 Enhanced at 5.37 MHz, and other titles
+                    else
+                        count := "0110";                                -- "0110" = calibrated to properly access the ADPCM unit (NMS-1205) with async 5.37 MHz
+                    end if;
                 end if;
             elsif( count /= "0000" )then                                -- countdown timer
                 count := count - 1;
@@ -1895,15 +1922,15 @@ begin
                 dlydbi <= swio_dbi;
             elsif( mem = '0' and adr(  7 downto 0 ) = "10100111" and portF4_mode = '1' )then    -- Pause R800 (read only)
                 dlydbi <= (others => '0');
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11110010" )then                          -- Port F2 (ESP8266 BIOS)
+            elsif( mem = '0' and adr(  7 downto 0 ) = "11110010" and use_wifi_g )then           -- Port F2 (ESP8266 BIOS)
                 dlydbi <= portF2;
             elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" and portF4_mode = '1' )then    -- Port F4 normal (Z80 mode)
                 dlydbi <= portF4_bit7 & "0000000";
             elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" )then                          -- Port F4 inverted
                 dlydbi <= portF4_bit7 & "1111111";
-            elsif( mem = '0' and adr(  7 downto 1 ) = "0000011" )then                           -- ESP ports 06-07h
+            elsif( mem = '0' and adr(  7 downto 1 ) = "0000011" and use_wifi_g )then            -- ESP ports 06-07h
                 dlydbi <= esp_dout_s;
---          elsif( mem = '0' and adr(  7 downto 1 ) = "0111110" )then                           -- OPLL ports 7C-7Dh via OPL3
+--          elsif( mem = '0' and adr(  7 downto 1 ) = "0111110" and opl3_enabled = '1' )then    -- OPLL ports 7C-7Dh via OPL3
 --              dlydbi <= opl3_dout_s;
             elsif( mem = '0' and adr(  7 downto 1 ) = "1000100" and use_franky_vdp_g )then      -- Franky ports 88-89
                 dlydbi <= franky_v_dout_s;            
@@ -2222,7 +2249,7 @@ begin
     systim_req  <=  req when( mem = '0' and adr(7 downto 1) = "1110011"                                             )else '0';  -- I/O:E6-E7h   / System timer (S1990)
     swio_req    <=  req when( ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '0'                         ) or
                      ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '1' and adr(  7 downto 1 ) /= "0100100") )else '0';  -- I/O:40-4Fh   / Switched I/O ports
-    portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010"                                            )else '0';  -- I/O:F2h      / Port F2 device (ESP8266 BIOS)
+    portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010" and use_wifi_g                             )else '0';  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
     portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                            )else '0';  -- I/O:F4h      / Port F4 device
     sn76489Req  <=  req when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
                          and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                  )else '0';  -- I/O:48-49h   / Franky SN76489
@@ -2238,10 +2265,10 @@ begin
                 '1' when( pSltAdr(7 downto 1) = "1110011"                                       )else  -- I/O:E6-E7h / System timer (S1990)
                 '1' when( pSltAdr(7 downto 4) = "0100" and io40_n /= "11111111"                 )else  -- I/O:40-4Fh / Switched I/O ports and Franky PSG when S/W I/O is on
                 '1' when( pSltAdr(7 downto 0) = "10100111" and portF4_mode = '1'                )else  -- I/O:A7h    / Pause R800 (read only)
-                '1' when( pSltAdr(7 downto 0) = "11110010"                                      )else  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
+                '1' when( pSltAdr(7 downto 0) = "11110010" and use_wifi_g                       )else  -- I/O:F2h   / Port F2 device (ESP8266 BIOS)
                 '1' when( pSltAdr(7 downto 0) = "11110100"                                      )else  -- I/O:F4h    / Port F4 device
-                '1' when( pSltAdr(7 downto 1) = "0000011"                                       )else  -- I/O:06-07h / ESP
---              '1' when( pSltAdr(7 downto 1) = "0111110"                                       )else  -- I/O:7C-7Dh / OPLL via OPL3
+                '1' when( pSltAdr(7 downto 1) = "0000011" and use_wifi_g                        )else  -- I/O:06-07h / ESP
+--              '1' when( pSltAdr(7 downto 1) = "0111110" and opl3_enabled = '1'                )else  -- I/O:7C-7Dh / OPLL via OPL3
                 '1' when( pSltAdr(7 downto 1) = "0100100" and use_franky_psg_g                  )else  -- I/O:48-49h / Franky SN76489
                 '1' when( pSltAdr(7 downto 1) = "1000100" and use_franky_vdp_g                  )else  -- I/O:88-89h / Franky VDP
                 '0';
@@ -2881,10 +2908,10 @@ begin
 
     clkSYSSMS <= clk_sms_s;
 
-    U01 : t800a
+    U01 : t80a
         port map(
             RESET_n     => (not reset),
-            R800_mode   => portF4_mode,
+            R800_mode   => portF4_mode,         -- '0' => no MULU, '1' => MULU with LEs, portF4_mode = auto selection with LEs
             CLK_n       => iCpuClk,
             WAIT_n      => wait_n_s,
             INT_n       => pSltInt_n,
@@ -3113,6 +3140,7 @@ begin
             LevCtrl         => LevCtrl          ,
             GreenLvEna      => GreenLvEna       ,
 
+            cold_reset_comb => cold_reset_comb  ,
             swioRESET_n     => swioRESET_n      ,
             warmRESET       => warmRESET        ,
             WarmMSXlogo     => WarmMSXlogo      ,   -- here to reduce LEs
@@ -3148,9 +3176,9 @@ begin
                 clk_i       => clk21m,
                 wait_o      => esp_wait_s,
                 reset_i     => xSltRst_n,           -- swioRESET_n was purposely excluded here
-                iorq_i      => pSltIorq_n,
-                wrt_i       => pSltWr_n,
-                rd_i        => pSltRd_n,
+                iorq_i      => iSltIorq_n,
+                wrt_i       => xSltWr_n,
+                rd_i        => xSltRd_n,
                 tx_i        => esp_tx_i,
                 rx_o        => esp_rx_o,
                 adr_i       => adr,
@@ -3209,9 +3237,11 @@ begin
         clk21m              => clk21m,
         reset               => reset,
         count_en            => ff_clk21m_cnt(18),
+        af_on_off_led       => af_on_off_led,
         af_on_off_toggle    => af_on_off_toggle,
         af_increment        => af_increment,
         af_decrement        => af_decrement,
+        af_led_sta          => af_led_sta,
         af_mask             => af_mask,
         af_speed            => open
     );
@@ -3219,9 +3249,10 @@ begin
     -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
     -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map Added the CTRL status by t.hara, 2021/Aug/6th
     -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap / Internal SMX-HB Keyboard by Ducasp 2022/Apr/21st
-    af_on_off_toggle <=      vFkeys(7)  and vFkeys(6) and ( (vFkeys(4) xor Fkeys(4)) or (vFkeys(5) xor Fkeys(5)) );
-    af_increment     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(5) xor Fkeys(5));
-    af_decrement     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(4) xor Fkeys(4));
+    af_on_off_led    <=      vFkeys(7)  and vFkeys(6) and (vFkeys(5) xor Fkeys(5)); -- [CTRL+SHIFT+PGUP]
+    af_on_off_toggle <=      vFkeys(7)  and vFkeys(6) and (vFkeys(4) xor Fkeys(4)); -- [CTRL+SHIFT+PGDOWN]
+    af_increment     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(5) xor Fkeys(5)); -- [CTRL+PGUP]
+    af_decrement     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(4) xor Fkeys(4)); -- [CTRL+PGDOWN]
 
     -- Joypad autofire
     w_pJoyA_in   <= pJoyA_in(5) & (pJoyA_in(4) or af_mask) & pJoyA_in( 3 downto 0 );
@@ -3230,5 +3261,8 @@ begin
     -- Space key autofire
     PpiPortB     <= w_PpiPortB when( PpiPortC( 3 downto 0 ) /= "1000" )else
                     w_PpiPortB( 7 downto 1 ) & (w_PpiPortB(0) or af_mask);
+
+    -- Cold Reset combination
+    cold_reset_comb  <=      vFkeys(7)  and vFkeys(6) and (vFkeys(0) xor Fkeys(0)); -- [CTRL+SHIFT+F12]
 
 end RTL;
