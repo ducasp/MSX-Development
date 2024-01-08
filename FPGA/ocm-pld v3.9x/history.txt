@@ -114,6 +114,7 @@ v3.9.2plus [2024.XX.YY] [Ducasp Updates!]
 - Picked up SMS VDP fixes from MiSTER repository for better reliability / results.
 - Fixed SMS VDP running 3,3% faster on SM-X / SM-X Mini / SX-2 and SM-X HB (some monitors wouldn't display SMS
   image due to Vertical Refresh of 62Hz and games were running a tad faster).
+- SMB-HB using Franky, unfortunately PSG2 had to go to leave room for extra updates, sorry!
 
 v3.9.1plus [2023.12.20] [Ducasp Updates!]
 

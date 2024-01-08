@@ -1,4 +1,4 @@
-                         ***** OCM-PLD v3.9.1plus *****
+                         ***** OCM-PLD v3.9.2plus *****
 
 Brought to you by DucaSP ( https://github.com/ducasp )
 
@@ -297,7 +297,7 @@ switches and push the RESET button. Current OCM-PLD picked up this feature as
 well (except for SMX-HB and SM-X Mini that aren't supported by KdL).
 
 Applies to:
-            ALL DEVICES, ALL VERSIONS
+            ALL DEVICES, ALL VERSIONS, EXCEPT SMX-HB FRANKY
 
 How to use:
             No special set-up or commands are needed. Second PSG is always
@@ -659,4 +659,4 @@ some things need to be different for this device... :)
 
 This manual is free to use and can be freely distributed. Derivative work can
 be created as long as the original manual and author are mentioned/credited.
-(c)2022 - 2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2022 - 2024 Oduvaldo Pavan Junior - ducasp@gmail.com

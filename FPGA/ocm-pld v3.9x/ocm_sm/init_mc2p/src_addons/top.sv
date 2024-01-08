@@ -621,8 +621,6 @@ always @(negedge clk_sms) begin
     ce_sp <= clkd[0];
     ce_vdp <= 0;//div5
     ce_pix <= 0;//div10
-    ce_cpu_p <= 0;//div15
-    ce_cpu_n <= 0;//div15
     clkd <= clkd + 1'd1;
     if (clkd==29) begin
         clkd <= 0;
@@ -630,22 +628,16 @@ always @(negedge clk_sms) begin
         ce_pix <= 1;
     end else if (clkd==24) begin
         ce_vdp <= 1;
-        ce_cpu_p <= 1;
     end else if (clkd==19) begin
         ce_vdp <= 1;
         ce_pix <= 1;
-    end else if (clkd==17) begin
-        ce_cpu_n <= 1;
     end else if (clkd==14) begin
         ce_vdp <= 1;
     end else if (clkd==9) begin
-        ce_cpu_p <= 1;
         ce_vdp <= 1;
         ce_pix <= 1;
     end else if (clkd==4) begin
         ce_vdp <= 1;
-    end else if (clkd==2) begin
-        ce_cpu_n <= 1;
     end
 end
 
@@ -1100,9 +1092,7 @@ emsx_top emsx
         .sms_x           ( sms_x          ),
         .sms_y           ( sms_y          ),
         .sms_smode_M1    ( sms_smode_M1   ),
-        .sms_smode_M2    ( sms_smode_M2   ),
         .sms_smode_M3    ( sms_smode_M3   ),
-        .sms_smode_M4    ( sms_smode_M4   ),
         .sms_pal         ( sms_pal        ),
         .sms_video_active( smsvideo_active),
 
@@ -1166,9 +1156,7 @@ wire  [ 8:0] sms_y;
 wire         sms_HBlank;
 wire         sms_VBlank;
 wire         sms_smode_M1;
-wire         sms_smode_M2;
 wire         sms_smode_M3;
-wire         sms_smode_M4;
 wire         smsvideo_active;
 wire         sms_pal;
 

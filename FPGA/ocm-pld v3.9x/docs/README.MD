@@ -18,7 +18,7 @@ A versão em português desse documento está logo abaixo :)
 | SM-X Mini Franky | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
 | SM-X Mini Snd    | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
 | SM-X HB          | No        | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
-| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | Yes    | No       | No          | No                |
+| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | No     | No       | No          | No                |
 | SM-X HB Snd      | No        | No          | Yes     | No      | Yes                     | No                      | Yes    | Yes      | Yes         | No                |
 
 NOTE: NEVER, EVER THINK ABOUT USING MC2P IF YOU DON'T HAVE MC2P, SM-X IF YOUR
@@ -38,8 +38,8 @@ and find it funnier and more interesting is the FRANKY version, language that
 matches the layout of your PS/2 keyboard, dual EPBIOS and backslash. It allows
 you to play Coleco (COL4MMM, use COM - Franky version), SG1000 (SG1000 or SSMS)
 and Sega Master System (SSMS or converted games). Note that for SMX-HB you
-won't have PS/2 Mouse as MSX Mouse, Turbo-R MIDI and PCM when using that
-version.
+won't have PS/2 Mouse as MSX Mouse, Turbo-R MIDI, second PSG and PCM when using
+that version.
 
 # I don't like to read manuals, how do I upgrade?
 
@@ -66,6 +66,9 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
   video output @62Hz Horizontal Frequency has been fixed, some games played
   slightly faster and some monitors / TVs did not recognize SMS video output
   due to that refresh rate.
+
+- SMX-HB Franky version: given the updates from 3.9.2, unfortunately PSG 2 had
+  to go to leave space for the updates. Sorry!
 
 # Release notes
 
@@ -296,7 +299,7 @@ source code of changes is made public as well.
 | SM-X Mini Franky   | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
 | SM-X Mini Snd      | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
 | SM-X HB            | Não       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
-| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Sim    | Não      | Não         | Não                |
+| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Não    | Não      | Não         | Não                |
 | SM-X HB Snd        | Não       | Não          | Sim     | Não     | Sim                     | Não                      | Sim    | Sim      | Sim         | Não                |
 
 NOTA: NUNCA, JAMAIS PENSE EM USAR MC2P SE NÃO TEM UM MC2P, SM-X SE SEU
@@ -345,6 +348,9 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
   que causava o vídeo a 62Hz de frequência horizontal, jogos ligeiramente mais
   rápidos e alguns monitores / TVs não reconhecerem a saída de vídeo do Master
   System.
+
+- SMX-HB com Franky: devido às novidades da 3.9.2, infelizmente o segundo PSG
+  teve que ser removido nessa versão para dar espaço às novidades.
 
 # Notas de liberação da versão
 

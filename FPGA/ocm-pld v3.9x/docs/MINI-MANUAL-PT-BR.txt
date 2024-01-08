@@ -1,4 +1,4 @@
-                          **** OCM-PLD v3.9.1plus *****
+                          **** OCM-PLD v3.9.2plus *****
 
 Feito por DucaSP ( https://github.com/ducasp )
 
@@ -299,7 +299,7 @@ de RESET. A versão atual da OCM-PLD também incorporou a melhoria (exceto SMX-H
 e SM-X Mini que não tem build do KdL).
 
 Se aplica a:
-            TODOS DISPOSITIVOS, TODAS VERSÕES
+            TODOS DISPOSITIVOS, TODAS VERSÕES, EXCETO SMX-HB FRANKY
 
 Como utilizar:
             Não há qualquer configuração ou comandos necessários. O segundo PSG
@@ -679,4 +679,4 @@ sejam diferentes para esse dispositivo... :)
 Esse manual é gratuito e pode ser livremente distribuído. Trabalhos derivados
 podem ser criados dede que o manual original e seu autor sejam mencionados e
 creditados.
-(c)2022 - 2023 Oduvaldo Pavan Junior - ducasp@gmail.com
+(c)2022 - 2024 Oduvaldo Pavan Junior - ducasp@gmail.com

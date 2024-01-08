@@ -14,7 +14,7 @@
 | SM-X Mini Franky | No        | No          | Yes     | Yes     | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
 | SM-X Mini Snd    | Yes       | No          | Yes     | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
 | SM-X HB          | No        | No          | No      | No      | Yes                     | Yes                     | Yes    | Yes      | Yes         | No                |
-| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | Yes    | No       | No          | No                |
+| SM-X HB Franky   | No        | No          | Yes     | Yes     | No                      | No                      | No     | No       | No          | No                |
 | SM-X HB Snd      | No        | No          | Yes     | No      | Yes                     | No                      | Yes    | Yes      | Yes         | No                |
 
 NOTE: NEVER, EVER THINK ABOUT USING MC2P IF YOU DON'T HAVE MC2P, SM-X IF YOUR

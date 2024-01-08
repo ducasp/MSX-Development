@@ -14,7 +14,7 @@
 | SM-X Mini Franky   | Não       | Não          | Sim     | Sim     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
 | SM-X Mini Snd      | Sim       | Não          | Sim     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
 | SM-X HB            | Não       | Não          | Não     | Não     | Sim                     | Sim                      | Sim    | Sim      | Sim         | Não                |
-| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Sim    | Não      | Não         | Não                |
+| SM-X HB Franky     | Não       | Não          | Sim     | Sim     | Não                     | Não                      | Não    | Não      | Não         | Não                |
 | SM-X HB Snd        | Não       | Não          | Sim     | Não     | Sim                     | Não                      | Sim    | Sim      | Sim         | Não                |
 
 NOTA: NUNCA, JAMAIS PENSE EM USAR MC2P SE NÃO TEM UM MC2P, SM-X SE SEU
@@ -63,6 +63,9 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
   que causava o vídeo a 62Hz de frequência horizontal, jogos ligeiramente mais
   rápidos e alguns monitores / TVs não reconhecerem a saída de vídeo do Master
   System.
+
+- SMX-HB com Franky: devido às novidades da 3.9.2, infelizmente o segundo PSG
+  teve que ser removido nessa versão para dar espaço às novidades.
 
 # Notas de liberação da versão
 
