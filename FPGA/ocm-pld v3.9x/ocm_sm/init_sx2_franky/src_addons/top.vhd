@@ -269,6 +269,7 @@ architecture Behavior of top is
     signal sms_VBlank       : std_logic;
     signal sms_HSync        : std_logic;
     signal sms_VSync        : std_logic;
+    signal sms_CSync        : std_logic;
 
     -- reset signal
     signal reset_s          : std_logic;                                            -- global reset
@@ -528,8 +529,14 @@ architecture Behavior of top is
     vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else SMS_VGA_R;
     vga_g_o         <= vga_g_out_s_21 when ( sms_active = '0' ) else SMS_VGA_G;
     vga_b_o         <= vga_b_out_s_21 when ( sms_active = '0' ) else SMS_VGA_B;
-    vga_hsync_n_o   <= vga_hsync_n_s  when ( sms_active = '0' ) else SMS_VGA_HS;
-    vga_vsync_n_o   <= vga_vsync_n_s  when ( sms_active = '0' ) else SMS_VGA_VS;
+    -- HSYNC get OCM output always if not SMS (that will be VGA Sync or CSYNC or Nothing depending on DIP setting)
+    -- if SMS will get SMS double scan if vga_status otherwise get SMS CSYNC
+    vga_hsync_n_o   <= vga_hsync_n_s  when ( sms_active = '0' ) else
+                       SMS_VGA_HS when ( vga_status = '1' ) else
+                       sms_CSync;
+    -- VSYNC get OCM output always if not SMS (will be VGA Sync or Audio depending on DIP setting)
+    -- if SMS and Double Scan will get SMS_VGA Vsync
+    vga_vsync_n_o   <= vga_vsync_n_s  when ( sms_active = '0' or vga_status = '0' ) else SMS_VGA_VS;
 
     hdmi_pclk       <= clk21m when ( sms_active = '0' ) else clk_sms;
     hdmi_de         <= not blank_s when ( sms_active = '0' ) else not ( SMS_VGA_HBlank or SMS_VGA_VBlank );
@@ -553,6 +560,8 @@ architecture Behavior of top is
         HBlank      => sms_HBlank,
         VBlank      => sms_VBlank
     );
+
+    sms_CSync <= not ( (not sms_HSync) xor (not sms_VSync) );
 
     vga_video_sms : scandoublersmx
     generic map
