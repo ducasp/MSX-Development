@@ -97,7 +97,8 @@ entity controller is port (
     rks     : out   rks_type;
 
     key     : out   std_logic;
-    rhythm  : out   std_logic
+    rhythm  : out   std_logic;
+    phold   : out   std_logic
 
     -- slot_out : out slot_id
 );
@@ -235,6 +236,7 @@ begin   -- rtl
 
         if(reset = '1') then
 
+            phold <= '0';
             key <= '0';
             rhythm <= '0';
             tll := (others=>'0');
@@ -349,6 +351,10 @@ begin   -- rtl
                     elsif conv_integer(addr) = 14 then
 
                         rflag <= data;
+
+                    elsif conv_integer(addr) = 15 then
+
+                        phold <= data(2);
 
                     elsif conv_integer(addr) < 16 then
 
