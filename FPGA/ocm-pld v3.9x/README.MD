@@ -47,7 +47,8 @@ Read the above note and download the right version for your device, in the file
 you will find a PLD file and a JIC file. Copy the PLD file and SMXFLASH.COM to
 your card, and when in MSX DOS run SMXFLASH OCM-SM.PLD
 
-Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.txt
+However, you might not enjoy the new features as much if you don't read the
+MINI-MANUAL-EN-US.txt file
 
 # New in relation to v3.9.1plus
 
@@ -69,6 +70,9 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
 
 - SMX-HB Franky version: given the updates from 3.9.2, unfortunately PSG 2 had
   to go to leave space for the updates. Sorry!
+
+- All versions: OPLL / MSX Music improvement, test register bit 2 functionality
+  (Phase Lock) has been implemented, now FMPCM works correctly.
 
 # Release notes
 
@@ -351,6 +355,10 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
 
 - SMX-HB com Franky: devido às novidades da 3.9.2, infelizmente o segundo PSG
   teve que ser removido nessa versão para dar espaço às novidades.
+
+- Todas versões: OPLL / MSX Music melhorado, implementação da funcionalidade do
+  registro de testes ativada pelo bit 2 (Phase Lock), agora o FMPCM funciona de
+  forma correta.
 
 # Notas de liberação da versão
 

@@ -49,7 +49,6 @@ set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/esefir5.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/tapram.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/dac/esepwm.vhd
 set_global_assignment -name VHDL_FILE src_addons/peripheral/eseps2mcp.vhd
-#set_global_assignment -name VHDL_FILE src_addons/peripheral/iplrom_512k.390.vhd
 set_global_assignment -name VHDL_FILE src_addons/peripheral/keymapmcp.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/kanji.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/mapper.vhd

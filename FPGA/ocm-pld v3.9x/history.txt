@@ -115,6 +115,8 @@ v3.9.2plus [2024.XX.YY] [Ducasp Updates!]
 - Fixed SMS VDP running 3,3% faster on SM-X / SM-X Mini / SX-2 and SM-X HB (some monitors wouldn't display SMS
   image due to Vertical Refresh of 62Hz and games were running a tad faster).
 - SMB-HB using Franky, unfortunately PSG2 had to go to leave room for extra updates, sorry!
+- Improvement on OPLL / MSX Music: it now supports test register bit 2 functionality, phase hold, which is used by
+  Grauw's FMPCM application.
 
 v3.9.1plus [2023.12.20] [Ducasp Updates!]
 

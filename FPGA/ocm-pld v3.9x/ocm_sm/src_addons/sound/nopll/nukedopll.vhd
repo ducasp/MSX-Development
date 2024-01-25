@@ -130,6 +130,7 @@ begin
         WE_n <= WE_n_buf;
         mix := ('0'&MO) + ('0'&RO) - "01000000000";
         wav <= mix(wav'range);
+        CS_n_buf <= '1';
 
       end if;
 

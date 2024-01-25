@@ -95,7 +95,8 @@ architecture rtl of opll is
         rks     : out   rks_type;
         key     : out   std_logic;
         rhythm  : out   std_logic;
-        phold   : out   std_logic
+        phold   : out   std_logic;
+        egmax   : out   std_logic
     );
     end component;
 
@@ -117,6 +118,7 @@ architecture rtl of opll is
         rr      : in    rr_type;
         rks     : in    rks_type;
         key     : in    std_logic;
+        egmax   : in    std_logic;
 
         egout   : out   std_logic_vector( 12 downto 0 )
     );
@@ -226,6 +228,7 @@ architecture rtl of opll is
     signal rks      : rks_type;
     signal key      : std_logic;
     signal phold    : std_logic;
+    signal egmax    : std_logic;
 
     signal rhythm   : std_logic;
 
@@ -332,13 +335,13 @@ begin
     -- no delay
     ct: controller port map (
         xin,reset,xena, slot, stage, opllwr,opllptr,oplldat,
-        am,pm,wf,ml,tl,fb,ar,dr,sl,rr,blk,fnum,rks,key,rhythm,phold);
+        am,pm,wf,ml,tl,fb,ar,dr,sl,rr,blk,fnum,rks,key,rhythm,phold,egmax);
 
     -- 2 stages delay
     eg: envelopegenerator port map (
         xin,reset,xena,
         slot2, stage2, rhythm,
-        am, tl, ar, dr, sl, rr, rks, key,
+        am, tl, ar, dr, sl, rr, rks, key, egmax,
         egout
     );
 

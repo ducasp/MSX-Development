@@ -67,6 +67,10 @@ Porém, não irá aproveitar muito as novidades se não ler o MINI-MANUAL-PT-BR.
 - SMX-HB com Franky: devido às novidades da 3.9.2, infelizmente o segundo PSG
   teve que ser removido nessa versão para dar espaço às novidades.
 
+- Todas versões: OPLL / MSX Music melhorado, implementação da funcionalidade do
+  registro de testes ativada pelo bit 2 (Phase Lock), agora o FMPCM funciona de
+  forma correta.
+
 # Notas de liberação da versão
 
 OCM-PLD v3.9.2plus é uma extensão da OCM v3.9.2 do KdL. O que essa versão tem
