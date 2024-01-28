@@ -1,0 +1,335 @@
+# Files
+
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_colordec.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_command.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_doublebuf.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_graphic123m.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_graphic4567.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_hvcounter.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_interrupt.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_linebuf.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_ntsc_pal.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_package.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_register.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_spinforam.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_sprite.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_ssg.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_text12.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_vga.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_wait_control.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vencode.vhd
+set_global_assignment -name QIP_FILE src_addons/video/smsvdp.qip
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/scc/megaram.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/scc/scc_wave.vhd
+set_global_assignment -name VHDL_FILE src_addons/sound/psg/mc2p_psg.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/psg/psg_wave.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/AttackTable.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/Controller.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/EnvelopeGenerator.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/EnvelopeMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/FeedbackMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/LinearTable.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/Operator.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/Opll.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/OutputGenerator.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/OutputMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/PhaseGenerator.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/PhaseMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/RegisterMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/SineTable.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/SlotCounter.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/TemporalMixer.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/vm2413.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/VoiceMemory.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/vm2413/VoiceRom.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/opll/eseopll.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/lpf/lpf.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/esefir5.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/filter/tapram.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/sound/dac/esepwm.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/eseps2mcp.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/keymapmcp.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/kanji.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/mapper.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/midi.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/ram.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/sm_swioports.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/systemtimer.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/UART.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80_ALU.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80_MCode.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80_Pack.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80_Reg.vhd
+set_global_assignment -name VHDL_FILE src_addons/cpu/T80a.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/peripheral/fifo.vhd
+set_global_assignment -name VHDL_FILE src_addons/peripheral/sm_wifi_lite.vhd
+set_global_assignment -name VHDL_FILE src_addons/sys/debounce.vhd
+set_global_assignment -name VHDL_FILE src_addons/mc2p_emsx_top.vhd
+set_global_assignment -name SYSTEMVERILOG_FILE src_addons/top.sv
+set_global_assignment -name VERILOG_FILE src_addons/peripheral/autofire.v
+set_global_assignment -name VERILOG_FILE src_addons/peripheral/iplrom_512k_noepcs.v
+set_global_assignment -name VERILOG_FILE ../esemsx3/src/peripheral/megasd.v
+set_global_assignment -name VERILOG_FILE src_addons/peripheral/ps2_mouse.v
+set_global_assignment -name VERILOG_FILE src_addons/peripheral/sm_rtc.v
+set_global_assignment -name VERILOG_FILE ../esemsx3/src/sound/tr_pcm/tr_pcm.v
+set_global_assignment -name QIP_FILE src_addons/sound/jt89/hdl/jt89.qip
+set_global_assignment -name QIP_FILE src_addons/sound/opl3/opl3.qip
+set_global_assignment -name QIP_FILE src_addons/sys/pll.qip
+set_global_assignment -name QIP_FILE src_addons/sys/mc2p.qip
+set_global_assignment -name SDC_FILE ocm_sm_constrains.sdc
+
+# Pin & Location Assignments
+# ==========================
+set_location_assignment PIN_T2 -to clock_50_i
+set_location_assignment PIN_B22 -to LED
+set_location_assignment PIN_V2 -to SDRAM_A[0]
+set_location_assignment PIN_V1 -to SDRAM_A[1]
+set_location_assignment PIN_U2 -to SDRAM_A[2]
+set_location_assignment PIN_U1 -to SDRAM_A[3]
+set_location_assignment PIN_V3 -to SDRAM_A[4]
+set_location_assignment PIN_V4 -to SDRAM_A[5]
+set_location_assignment PIN_Y2 -to SDRAM_A[6]
+set_location_assignment PIN_AA1 -to SDRAM_A[7]
+set_location_assignment PIN_Y3 -to SDRAM_A[8]
+set_location_assignment PIN_V5 -to SDRAM_A[9]
+set_location_assignment PIN_W1 -to SDRAM_A[10]
+set_location_assignment PIN_Y4 -to SDRAM_A[11]
+set_location_assignment PIN_V6 -to SDRAM_A[12]
+set_location_assignment PIN_W2 -to SDRAM_BA[1]
+set_location_assignment PIN_Y1 -to SDRAM_BA[0]
+set_location_assignment PIN_AA4 -to SDRAM_nCAS
+set_location_assignment PIN_W6 -to SDRAM_CKE
+set_location_assignment PIN_Y6 -to SDRAM_CLK
+set_location_assignment PIN_AA3 -to SDRAM_nCS
+set_location_assignment PIN_V11 -to SDRAM_DQ[15]
+set_location_assignment PIN_W10 -to SDRAM_DQ[14]
+set_location_assignment PIN_Y10 -to SDRAM_DQ[13]
+set_location_assignment PIN_V10 -to SDRAM_DQ[12]
+set_location_assignment PIN_V9 -to SDRAM_DQ[11]
+set_location_assignment PIN_Y8 -to SDRAM_DQ[10]
+set_location_assignment PIN_W8 -to SDRAM_DQ[9]
+set_location_assignment PIN_Y7 -to SDRAM_DQ[8]
+set_location_assignment PIN_AB5 -to SDRAM_DQ[7]
+set_location_assignment PIN_AA7 -to SDRAM_DQ[6]
+set_location_assignment PIN_AB7 -to SDRAM_DQ[5]
+set_location_assignment PIN_AA8 -to SDRAM_DQ[4]
+set_location_assignment PIN_AB8 -to SDRAM_DQ[3]
+set_location_assignment PIN_AA9 -to SDRAM_DQ[2]
+set_location_assignment PIN_AB9 -to SDRAM_DQ[1]
+set_location_assignment PIN_AA10 -to SDRAM_DQ[0]
+set_location_assignment PIN_AA5 -to SDRAM_DQML
+set_location_assignment PIN_AB3 -to SDRAM_nRAS
+set_location_assignment PIN_W7 -to SDRAM_DQMH
+set_location_assignment PIN_AB4 -to SDRAM_nWE
+
+set_location_assignment PIN_F1 -to VGA_R[4]
+set_location_assignment PIN_D2 -to VGA_R[3]
+set_location_assignment PIN_E1 -to VGA_R[2]
+set_location_assignment PIN_C2 -to VGA_R[1]
+set_location_assignment PIN_C1 -to VGA_R[0]
+set_location_assignment PIN_P2 -to VGA_G[4]
+set_location_assignment PIN_N2 -to VGA_G[3]
+set_location_assignment PIN_M2 -to VGA_G[2]
+set_location_assignment PIN_J2 -to VGA_G[1]
+set_location_assignment PIN_H2 -to VGA_G[0]
+set_location_assignment PIN_R1 -to VGA_B[4]
+set_location_assignment PIN_P1 -to VGA_B[3]
+set_location_assignment PIN_N1 -to VGA_B[2]
+set_location_assignment PIN_M1 -to VGA_B[1]
+set_location_assignment PIN_J1 -to VGA_B[0]
+set_location_assignment PIN_B3 -to VGA_HS
+set_location_assignment PIN_B2 -to VGA_VS
+
+set_location_assignment PIN_N19 -to ps2_clk_io
+set_location_assignment PIN_N20 -to ps2_data_io
+set_location_assignment PIN_C21 -to ps2_mouse_clk_io
+set_location_assignment PIN_B21 -to ps2_mouse_data_io
+
+# NO SRAM
+
+set_location_assignment PIN_A3 -to AUDIO_L
+set_location_assignment PIN_B4 -to AUDIO_R
+set_location_assignment PIN_V21 -to mic_o
+set_location_assignment PIN_AA13 -to ear_i
+
+set_location_assignment PIN_G22 -to btn_n_i[2]
+set_location_assignment PIN_AA12 -to btn_n_i[1]
+
+set_location_assignment PIN_D22 -to sd_cs_n_o
+set_location_assignment PIN_D21 -to sd_miso_i
+set_location_assignment PIN_E21 -to sd_mosi_o
+set_location_assignment PIN_E22 -to sd_sclk_o
+
+set_location_assignment PIN_Y21 -to stm_rst_o
+set_location_assignment PIN_J21 -to stm_tx_i
+set_location_assignment PIN_K21 -to stm_rx_o
+set_location_assignment PIN_N22 -to SPI_SS2
+set_location_assignment PIN_N21 -to SPI_SCK
+set_location_assignment PIN_M21 -to SPI_DO
+set_location_assignment PIN_K22 -to SPI_DI
+
+set_location_assignment PIN_AB20 -to joy1_up_io
+set_location_assignment PIN_W21 -to joy1_down_io
+set_location_assignment PIN_W22 -to joy1_left_io
+set_location_assignment PIN_V22 -to joy1_right_io
+set_location_assignment PIN_Y22 -to joy1_p6_io
+set_location_assignment PIN_AA18 -to joy1_p7_io
+set_location_assignment PIN_H20 -to joy1_p8_io
+set_location_assignment PIN_P17 -to joy2_up_io
+set_location_assignment PIN_AA17 -to joy2_down_io
+set_location_assignment PIN_AB18 -to joy2_left_io
+set_location_assignment PIN_AA19 -to joy2_right_io
+set_location_assignment PIN_AB17 -to joy2_p6_io
+set_location_assignment PIN_K22 -to joy2_p7_io
+set_location_assignment PIN_AB19 -to joy2_p8_io
+set_location_assignment PIN_J21 -to esp_tx_i
+set_location_assignment PIN_K21 -to esp_rx_o
+set_location_assignment PIN_AB13 -to dip_i[8]
+set_location_assignment PIN_AB10 -to dip_i[7]
+set_location_assignment PIN_U19 -to dip_i[6]
+set_location_assignment PIN_C22 -to dip_i[5]
+set_location_assignment PIN_AB15 -to dip_i[4]
+set_location_assignment PIN_AB16 -to dip_i[3]
+set_location_assignment PIN_R20 -to dip_i[2]
+set_location_assignment PIN_R19 -to dip_i[1]
+set_location_assignment PIN_F14 -to slot_SLOT1_o
+set_location_assignment PIN_M19 -to slot_SLOT2_o
+set_location_assignment PIN_U22 -to slot_WAIT_i
+set_location_assignment PIN_F10 -to slot_WR_o
+set_location_assignment PIN_F13 -to slot_CS1_o
+set_location_assignment PIN_F15 -to slot_CS2_o
+set_location_assignment PIN_AA14 -to slot_BUSDIR_i
+set_location_assignment PIN_U20 -to slot_M1_o
+set_location_assignment PIN_F11 -to slot_MERQ_o
+set_location_assignment PIN_G10 -to slot_RD_o
+set_location_assignment PIN_G8 -to slot_RESET_io
+set_location_assignment PIN_Y17 -to slot_IOREQ_o
+set_location_assignment PIN_P22 -to slot_INT_i
+set_location_assignment PIN_D20 -to slot_CLOCK_o
+set_location_assignment PIN_R22 -to slot_RFSH_i
+set_location_assignment PIN_G9 -to slot_A_o[15]
+set_location_assignment PIN_C8 -to slot_A_o[14]
+set_location_assignment PIN_AA15 -to slot_A_o[13]
+set_location_assignment PIN_F9 -to slot_A_o[12]
+set_location_assignment PIN_E9 -to slot_A_o[11]
+set_location_assignment PIN_D10 -to slot_A_o[10]
+set_location_assignment PIN_C10 -to slot_A_o[9]
+set_location_assignment PIN_M20 -to slot_A_o[8]
+set_location_assignment PIN_AB14 -to slot_A_o[7]
+set_location_assignment PIN_E10 -to slot_A_o[6]
+set_location_assignment PIN_AA21 -to slot_A_o[5]
+set_location_assignment PIN_W19 -to slot_A_o[4]
+set_location_assignment PIN_E7 -to slot_A_o[3]
+set_location_assignment PIN_D6 -to slot_A_o[2]
+set_location_assignment PIN_E3 -to slot_A_o[1]
+set_location_assignment PIN_C7 -to slot_A_o[0]
+set_location_assignment PIN_W20 -to slot_D_io[1]
+set_location_assignment PIN_R21 -to slot_D_io[0]
+set_location_assignment PIN_T18 -to slot_D_io[3]
+set_location_assignment PIN_P21 -to slot_D_io[2]
+set_location_assignment PIN_F19 -to slot_D_io[4]
+set_location_assignment PIN_H19 -to slot_D_io[5]
+set_location_assignment PIN_D19 -to slot_D_io[6]
+set_location_assignment PIN_H17 -to slot_D_io[7]
+
+# -----------------
+# start ENTITY(top)
+
+    # Fitter Assignments
+    # ==================
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to btn_n_i[2]
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to btn_n_i[1]
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_clk_io
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_data_io
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_mouse_clk_io
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ps2_mouse_data_io
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to sd_miso_i
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_RD_o
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_WR_o
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_M1_o
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_MERQ_o
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_IOREQ_o
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_WAIT_i
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_INT_i
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to slot_RFSH_i
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to VGA_HS
+    set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to VGA_VS
+    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to LED
+    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ps2_clk_io
+    set_instance_assignment -name CURRENT_STRENGTH_NEW 4MA -to ps2_data_io
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[0]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[1]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[2]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[3]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[4]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[5]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[6]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[7]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[8]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[9]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[10]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[11]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[12]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[13]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[14]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQ[15]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[0]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[1]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[2]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[3]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[4]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[5]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[6]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[7]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[8]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[9]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[10]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[11]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_A[12]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_BA[0]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_BA[1]
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQMH
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_DQML
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_nRAS
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_nCAS
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_nWE
+    set_instance_assignment -name FAST_OUTPUT_REGISTER ON -to SDRAM_nCS
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[0]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[1]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[2]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[3]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[4]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[5]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[6]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[7]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[8]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[9]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[10]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[11]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[12]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[13]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[14]
+    set_instance_assignment -name FAST_OUTPUT_ENABLE_REGISTER ON -to SDRAM_DQ[15]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[0]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[1]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[2]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[3]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[4]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[5]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[6]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[7]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[8]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[9]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[10]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[11]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[12]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[13]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[14]
+    set_instance_assignment -name FAST_INPUT_REGISTER ON -to SDRAM_DQ[15]
+    set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to SDRAM_CLK
+    set_instance_assignment -name GLOBAL_SIGNAL "GLOBAL CLOCK" -to SPI_SCK
+
+# end ENTITY(top)
+# ---------------

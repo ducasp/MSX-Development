@@ -1,5 +1,5 @@
 --
--- sm_emsx_top.vhd
+-- multisx_emsx_top.vhd
 --   ESE MSX-SYSTEM3 / MSX clone on a Cyclone FPGA (ALTERA)
 --   Revision 1.00
 --
@@ -30,6 +30,13 @@
 -- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --
 ------------------------------------------------------------------------------------
+-- OCM-PLD Pack v3.9.2plus by Ducasp (2024.XX.YY)
+-- First version for Multi SX
+--
+-- OCM-PLD Pack v3.9.2 by KdL (2024.XX.YY)
+-- ??
+-- ??
+--
 -- OCM-PLD Pack v3.9.1 by KdL (2022.11.27)
 -- MSX2+ Stable Release for SM-X (regular), SM-X Mini and SX-2 / MSXtR Experimental
 -- Special thanks to t.hara, caro, mygodess & all MRC users (http://www.msx.org)
@@ -51,7 +58,7 @@
 --
 -- OCM-PLD Pack v3.9.1plus by Ducasp (2023.12.29)
 -- Bringing build up to speed with KdL 3.9.1
---
+-- 
 -- OCM-PLD Pack v3.9.2plus by Ducasp (2024.XX.YY)
 -- Bringing build up to speed with KdL 3.9.1
 -- Improvements on Franky
@@ -73,12 +80,12 @@ library ieee;
 entity emsx_top is
     generic(
         use_8gb_sdram_g : boolean   := false;
-        use_wifi_g      : boolean   := false;
-        use_midi_g      : boolean   := false;
-        use_opl3_g      : boolean   := false;
-        use_dualpsg_g   : boolean   := false;
-        use_franky_vdp_g: boolean   := false;
-        use_franky_psg_g: boolean   := false
+        use_wifi_g      : boolean   := true;
+        use_midi_g      : boolean   := true;
+        use_opl3_g      : boolean   := true;
+        use_dualpsg_g   : boolean   := true;
+        use_franky_vdp_g: boolean   := true;
+        use_franky_psg_g: boolean   := true
     );
     port(
         -- Clock, Reset ports
@@ -116,6 +123,7 @@ entity emsx_top is
         BusDir_o        : inout std_logic;
 
         -- SDRAM ports
+        pSdrClk         : out   std_logic;                                      -- SDRAM_CLK
         pMemClk         : out   std_logic;                                      -- SDRAM Clock
         pMemCke         : out   std_logic;                                      -- SDRAM Clock enable
         pMemCs_n        : out   std_logic;                                      -- SDRAM Chip select
@@ -184,9 +192,9 @@ entity emsx_top is
 
         -- SM-X, Multicore 2 and SX-2 ports
         clk21m_out      : out   std_logic;
+        clk_hdmi        : out   std_logic;
         esp_rx_o        : out   std_logic := 'Z';
         esp_tx_i        : in    std_logic := 'Z';
-        pcm_o           : out   std_logic_vector( 15 downto 0 );
         blank_o         : out   std_logic;
         ear_i           : in    std_logic;
         mic_o           : out   std_logic;
@@ -198,19 +206,24 @@ entity emsx_top is
         caps_led_o      : out   std_logic;
         joy_deb         : inout std_logic;
         DisBiDir        : in    std_logic := '0';
-        clkSMSVDP       : in    std_logic := '0';
-        clkPIXSMS       : in    std_logic := '0';
+        EnAltMap        : in    std_logic_vector(  1 downto 0 );
+        osd_o           : out   std_logic_vector(  7 downto 0 );
+        opl3_enabled    : in    std_logic;
+        opl3_mono       : in    std_logic;
+        kbd_layout      : in    std_logic_vector(  1 downto 0 );
+        clkSMSVDP       : in    std_logic;
+        clkPIXSMS       : in    std_logic;
         clkSYSSMS       : out   std_logic;
-        clkSMSSP        : in    std_logic := '0';
-        colorSMSVDP     : out   std_logic_vector( 11 downto 0 ) := "000000000000";
+        clkSMSSP        : in    std_logic;
+        colorSMSVDP     : out   std_logic_vector( 11 downto 0 );
         sms_mask_column : out   std_logic;
-        sms_x           : in    std_logic_vector( 8  downto 0 ) := "000000000";
-        sms_y           : in    std_logic_vector( 8  downto 0 ) := "000000000";
+        sms_x           : in    std_logic_vector( 8  downto 0 );
+        sms_y           : in    std_logic_vector( 8  downto 0 );
         sms_smode_M1    : out   std_logic;
         sms_smode_M3    : out   std_logic;
+        sms_pal         : in    std_logic;
         sms_video_active: out   std_logic;
-        model_expert_n  : in    std_logic := '1';
-        EnAltMap        : in std_logic := '0'
+        pll_locked      : out   std_logic
     );
 end emsx_top;
 
@@ -313,35 +326,6 @@ architecture RTL of emsx_top is
         );
     end component;
 
-    component eseps2smx
-        port(
-            clk21m      : in     std_logic;
-            reset       : in     std_logic;
-            clkena      : in     std_logic;
-
-            Kmap        : in     std_logic;
-
-            Caps        : inout  std_logic;
-            Kana        : inout  std_logic;
-            Paus        : inout  std_logic;
-            Scro        : inout  std_logic;
-            Reso        : inout  std_logic;
-
-            FKeys       : buffer std_logic_vector(  7 downto 0 );
-
-            pPs2Clk     : inout  std_logic;
-            pPs2Dat     : inout  std_logic;
-
-            PpiPortC    : in     std_logic_vector(  7 downto 0 );
-            pKeyX       : out    std_logic_vector(  7 downto 0 );
-
-            CmtScro     : inout  std_logic;
-            DisBiDir    : in     std_logic;
-            HB_Model    : in     std_logic;
-            EnAltMap    : in     std_logic
-        );
-    end component;
-
     component rtc
         port(
             clk21m      : in    std_logic;
@@ -418,7 +402,6 @@ architecture RTL of emsx_top is
 
             -- Display resolution (0=15kHz, 1=31kHz)
             DispReso        : in    std_logic;
-
             ntsc_pal_type   : in    std_logic;
             forced_v_mode   : in    std_logic;
             legacy_vga      : in    std_logic;
@@ -742,38 +725,6 @@ architecture RTL of emsx_top is
         );
     end component;
 
-    -- Franky  VDP
-    component smsvdp is
-    generic (
-        MAX_SPPL : integer := 7
-    );
-        port (
-            clk_sys         : in  std_logic;
-            ce_vdp          : in  std_logic;
-            ce_pix          : in  std_logic;
-            ce_sp           : in  std_logic;
-            gg              : in  std_logic;
-            sp64            : in  std_logic;
-            HL              : in  std_logic;
-            RD_n            : in  std_logic;
-            WR_n            : in  std_logic;
-            IRQ_n           : out std_logic;
-            A               : in  std_logic_vector ( 7 downto 0 );
-            D_in            : in  std_logic_vector ( 7 downto 0 );
-            D_out           : out std_logic_vector ( 7 downto 0 );
-            x               : in  std_logic_vector ( 8 downto 0 );
-            y               : in  std_logic_vector ( 8 downto 0 );
-            color           : out std_logic_vector (11 downto 0 );
-            mask_column     : out std_logic;
-            smode_M1        : out std_logic;
-            smode_M2        : out std_logic;
-            smode_M3        : out std_logic;
-            smode_M4        : out std_logic;
-            reset_n         : in  std_logic
-        );
-    end component;
-
-
     -- Switched I/O ports
     signal  swio_req        : std_logic;
     signal  swio_dbi        : std_logic_vector(  7 downto 0 );
@@ -1063,8 +1014,10 @@ architecture RTL of emsx_top is
 
     -- Sound signals
     constant DAC_msbi       : integer := 13;
-    signal  DACin           : std_logic_vector(DAC_msbi downto 0);
-    signal  DACout          : std_logic;
+    signal  DACin_l         : std_logic_vector(DAC_msbi downto 0);
+    signal  DACin_r         : std_logic_vector(DAC_msbi downto 0);
+    signal  DACout_l        : std_logic;
+    signal  DACout_r        : std_logic;
 
     signal  OpllVol         : std_logic_vector(  2 downto 0 ) := "100";
     signal  SccVol          : std_logic_vector(  2 downto 0 ) := "100";
@@ -1144,29 +1097,33 @@ architecture RTL of emsx_top is
     signal  ff_prepsg       : std_logic_vector(  8 downto 0 );
     signal  ff_prepsg2      : std_logic_vector(  8 downto 0 );
     signal  ff_prescc       : std_logic_vector( 15 downto 0 );
-    signal  ff_psg          : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_psg2         : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_scc          : std_logic_vector( DACin'high + 2 downto DACin'low );
+    signal  ff_psg          : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_psg2         : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_scc          : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
     signal  w_scc           : std_logic_vector( 18 downto 0 );
     signal  m_SccVol        : std_logic_vector(  2 downto 0 );
-    signal  ff_opll         : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_psg_offset   : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_scc_offset   : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_tr_pcm       : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_opl3         : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_sn76489      : std_logic_vector( DACin'high + 2 downto DACin'low );
-    signal  ff_pre_dacin    : std_logic_vector( DACin'high + 2 downto DACin'low );
-    constant c_opll_offset  : std_logic_vector( DACin'high + 2 downto DACin'low ) := ( ff_pre_dacin'high => '1', others => '0' );
+    signal  ff_opll         : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_psg_offset   : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_scc_offset   : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_tr_pcm       : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_opl3_l       : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_opl3_r       : std_logic_vector( DACin_r'high + 2 downto DACin_r'low );
+    signal  ff_sn76489      : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_pre_dacin_l  : std_logic_vector( DACin_l'high + 2 downto DACin_l'low );
+    signal  ff_pre_dacin_r  : std_logic_vector( DACin_r'high + 2 downto DACin_r'low );
+    constant c_opll_offset  : std_logic_vector( DACin_l'high + 2 downto DACin_l'low ) := ( ff_pre_dacin_l'high => '1', others => '0' );
     constant c_opll_zero    : std_logic_vector( OpllAmp'range ) := ( OpllAmp'high => '1', others => '0' );
 
     -- Sound output filter
-    signal  lpf1_wave       : std_logic_vector( DACin'high downto 0 );
-    signal  lpf5_wave       : std_logic_vector( DACin'high downto 0 );
+    signal  lpf1_wave_l     : std_logic_vector( DACin_l'high downto 0 );
+    signal  lpf1_wave_r     : std_logic_vector( DACin_r'high downto 0 );
+    signal  lpf5_wave_l     : std_logic_vector( DACin_l'high downto 0 );
+    signal  lpf5_wave_r     : std_logic_vector( DACin_r'high downto 0 );
 --  signal  ff_lpf_div      : std_logic_vector( 3 downto 0 );                       -- sccic
 --  signal  w_lpf2ena       : std_logic;                                            -- sccic
 
     -- SMS signals
-    signal  clk_sms_s       : std_logic;
+    signal  clk_sms_s      : std_logic;
     signal  reset54m        : std_logic := '1';
 
     -- ESP signals
@@ -1177,9 +1134,9 @@ architecture RTL of emsx_top is
 
     -- OPL3 signals
     signal  opl3_dout_s     : std_logic_vector(  7 downto 0 ) := (others => '1');
-    signal  opl3_sound_s    : std_logic_vector( 15 downto 0 ) := (others => '0');
+    signal  opl3_sound_r    : std_logic_vector( 15 downto 0 ) := (others => '0');
+    signal  opl3_sound_l    : std_logic_vector( 15 downto 0 ) := (others => '0');
     signal  opl3_ce         : std_logic := '0';
-    signal  opl3_enabled    : std_logic := '0';
     signal  opl3_Int_n      : std_logic := '1';
 
     -- SN76489/Franky signals
@@ -1224,17 +1181,13 @@ architecture RTL of emsx_top is
 begin
 
     -- Internal OPL3 On/Off toggle
-    process( clk21m )
-    begin
-        if( clk21m'event and clk21m = '1' )then
-            -- OPL3 can be managed by the SCRLK key or by the CmtScro signal
-            if( use_opl3_g )then
-                opl3_enabled <= CmtScro;
-            else
-                opl3_enabled <= '0';
-            end if;
-        end if;
-    end process;
+--    process( clk21m )
+--    begin
+--        if( clk21m'event and clk21m = '1' )then
+--            -- OPL3 can be managed by the SCRLK key or by the CmtScro signal
+--            opl3_enabled <= CmtScro;
+--        end if;
+--    end process;
 
     clk21m_out <= clk21m;
     vga_status <= DisplayMode(1);
@@ -1321,22 +1274,6 @@ begin
             clkdiv <= "10";                                                             -- 5.37MHz sync
         elsif( clk21m'event and clk21m = '1' )then
             clkdiv <= clkdiv - 1;
-        end if;
-    end process;
-
-    -- hybrid clock start counter
-    process( reset, clk21m )
-    begin
-        if( reset = '1' )then
-            hybstartcnt <= (others => '0');
-        elsif( clk21m'event and clk21m = '1' )then
-            if( ff_clk21m_cnt( 16 downto 0 ) = "00000000000000000" )then
-                if( mmcena = '0' )then
-                    hybstartcnt <= "111";                                               -- begin after 48ms
-                elsif( hybstartcnt /= "000" )then
-                    hybstartcnt <= hybstartcnt - 1;
-                end if;
-            end if;
         end if;
     end process;
 
@@ -1469,7 +1406,7 @@ begin
     begin
         if( clk21m'event and clk21m = '0' )then
             if( cpuclk = '0' and clkdiv = "00" and wait_n_s = '0' )then
-                if( logo_timeout = "00" )then                      -- ultra-fast boot
+                if( logo_timeout = "00" )then                                           -- ultra-fast boot
                     ff_clksel5m_n   <=  '1';
                     ff_clksel       <=  '1';
                 elsif( logo_timeout = "10" )then
@@ -1607,7 +1544,7 @@ begin
     process( memclk )
     begin
         if( memclk'event and memclk = '1' )then
-            if( HardRst_cnt = "0010" or bios_reload_ack = '1' )then                     -- long click > 800ms
+            if( HardRst_cnt = "0010" or bios_reload_ack = '1' )then                     -- long click > 1000ms
                 RstSeq <= "00000";                                                      -- RstSeq is required
                 ff_reload_n <= '0';                                                     -- OCM-BIOS is partial
             elsif( ff_mem_seq = "00" and FreeCounter = X"FFFF" and RstSeq /= "11111" )then
@@ -1843,7 +1780,6 @@ begin
 
     pSltRsv5    <=  'Z';
     pSltRsv16   <=  'Z';
-
     pSltSw1     <=  'Z';
     pSltSw2     <=  'Z';
 
@@ -1974,9 +1910,9 @@ begin
             elsif( mem = '0' and adr(  7 downto 2 ) = "110110" and JIS2_ena = '1' )then                     -- Kanji-data (JIS1+JIS2)
                 dlydbi <= KanDbi;           
             elsif( mem = '0' and adr(  7 downto 1 ) = "1101100" )then                                       -- Kanji-data (JIS1 only)
-                dlydbi <= KanDbi;
-            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" and (FullRAM or iSlt0_1) = '1' )then         -- Memory-mapper 4096 kB | Extra-mapper 4096 kB
-                dlydbi <= MapDbi;
+                dlydbi <= KanDbi;           
+            elsif( mem = '0' and adr(  7 downto 2 ) = "111111" and FullRAM = '1' )then                      -- Memory-mapper 4096 kB | Extra-mapper 4096 kB
+                dlydbi <= MapDbi;           
             elsif( mem = '0' and adr(  7 downto 2 ) = "111111" )then                                        -- Memory-mapper 2048 kB
                 dlydbi <= "1" & MapDbi(  6 downto 0 );          
             elsif( mem = '0' and adr(  7 downto 1 ) = "1011010" )then                                       -- RTC (RP-5C01)
@@ -1992,23 +1928,23 @@ begin
                    adr(  7 downto 1 ) /= "0100100" )                                                        -- Switched I/O ports
             then
                 dlydbi <= swio_dbi;
-            elsif( mem = '0' and adr(  7 downto 0 ) = "10100111" and portF4_mode = '1' )then    -- Pause R800 (read only)
-                dlydbi <= (others => '0');
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11110010" and use_wifi_g )then           -- Port F2 (ESP8266 BIOS)
-                dlydbi <= portF2;
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" and portF4_mode = '1' )then    -- Port F4 normal (Z80 mode)
-                dlydbi <= portF4_bit7 & "0000000";
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" )then                          -- Port F4 inverted
-                dlydbi <= portF4_bit7 & "1111111";
-            elsif( mem = '0' and adr(  7 downto 1 ) = "0000011" and use_wifi_g )then            -- ESP ports 06-07h
-                dlydbi <= esp_dout_s;
-            elsif( mem = '0' and adr(  7 downto 3 ) = "11000" and opl3_enabled = '1' )then      -- OPL3 ports C0-C3h / C4-C7h
-                dlydbi <= opl3_dout_s;
---          elsif( mem = '0' and adr(  7 downto 1 ) = "0111110" and opl3_enabled = '1' )then    -- OPLL ports 7C-7Dh via OPL3
---              dlydbi <= opl3_dout_s;
-            elsif( mem = '0' and adr(  7 downto 0 ) = "11101001" and use_midi_g )then           -- MIDI port E9h
-                dlydbi <= midi_dout_s;
-            elsif( mem = '0' and adr(  7 downto 1 ) = "1000100" and use_franky_vdp_g )then      -- Franky ports 88-89
+            elsif( mem = '0' and adr(  7 downto 0 ) = "10100111" and portF4_mode = '1' )then                -- Pause R800 (read only)
+                dlydbi <= (others => '0');          
+            elsif( mem = '0' and adr(  7 downto 0 ) = "11110010" and use_wifi_g )then                       -- Port F2 (ESP8266 BIOS)
+                dlydbi <= portF2;           
+            elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" and portF4_mode = '1' )then                -- Port F4 normal (Z80 mode)
+                dlydbi <= portF4_bit7 & "0000000";          
+            elsif( mem = '0' and adr(  7 downto 0 ) = "11110100" )then                                      -- Port F4 inverted
+                dlydbi <= portF4_bit7 & "1111111";          
+            elsif( mem = '0' and adr(  7 downto 1 ) = "0000011" and use_wifi_g )then                        -- ESP ports 06-07h
+                dlydbi <= esp_dout_s;           
+            elsif( mem = '0' and adr(  7 downto 3 ) = "11000" and opl3_enabled = '1' )then                  -- OPL3 ports C0-C3h / C4-C7h
+                dlydbi <= opl3_dout_s;          
+--          elsif( mem = '0' and adr(  7 downto 1 ) = "0111110" and opl3_enabled = '1' )then                -- OPLL ports 7C-7Dh via OPL3
+--              dlydbi <= opl3_dout_s;          
+            elsif( mem = '0' and adr(  7 downto 0 ) = "11101001" and use_midi_g )then                       -- MIDI port E9h
+                dlydbi <= midi_dout_s;          
+            elsif( mem = '0' and adr(  7 downto 1 ) = "1000100" and use_franky_vdp_g )then                  -- Franky ports 88-89
                 dlydbi <= franky_v_dout_s;            
             elsif( mem = '0' and adr(  7 downto 1 ) = "0100100" and use_franky_psg_g
               -- will return franky related output IF Pana Switched IO, no Switched IO or Franky forced on 49 and 49
@@ -2315,31 +2251,31 @@ begin
     RamReq  <=  Scc1Ram or Scc2Ram or ErmRam or MapRam or RomReq or KanRom;
 
     -- access request to component
-    VdpReq  <=  req when( mem = '0' and adr(7 downto 2) = "100110"                                                  )else '0';  -- I/O:98-9Bh   / VDP (V9938/V9958)
-    PsgReq  <=  req when( mem = '0' and adr(7 downto 2) = "101000"                                                  )else '0';  -- I/O:A0-A3h   / PSG (AY-3-8910)
-    Psg2Req <=  req when( mem = '0' and adr(7 downto 2) = "000100" and iPsg2_ena = '1' and use_dualpsg_g            )else '0';  -- I/O:10-13h / PSG2 (AY-3-8910)
-    PpiReq  <=  req when( mem = '0' and adr(7 downto 2) = "101010"                                                  )else '0';  -- I/O:A8-ABh   / PPI (8255)
-    OpllReq <=  req when( mem = '0' and adr(7 downto 1) = "0111110" and Slot0Mode = '1'                             )else '0';  -- I/O:7C-7Dh   / OPLL (YM2413)
-    KanReq  <=  req when( mem = '0' and adr(7 downto 2) = "110110"                                                  )else '0';  -- I/O:D8-DBh   / Kanji-data
-    RomReq  <=  req when( (rom_main or rom_opll or rom_extd or rom_xbas or rom_free or iSltLin1 or iSltLin2) = '1'  )else '0';
-    MapReq  <=  req when( mem = '0' and adr(7 downto 2) = "111111"                                                  )else       -- I/O:FC-FFh   / Memory-mapper
-                    req when( iSltMap0 = '1' or iSltMap  = '1'                                                      )else '0';  -- MEM:       / Extra-mapper, Memory-mapper
-    Scc1Req <=  req when(               iSltScc1 = '1'                                                              )else '0';  -- MEM:         / ESE-SCC1
-    Scc2Req <=  req when(               iSltScc2 = '1'                                                              )else '0';  -- MEM:         / ESE-SCC2
-    ErmReq  <=  req when(               iSltErm = '1'                                                               )else '0';  -- MEM:         / ESE-RAM, MegaSD
-    RtcReq  <=  req when( mem = '0' and adr(7 downto 1) = "1011010"                                                 )else '0';  -- I/O:B4-B5h   / RTC (RP-5C01)
-    systim_req  <=  req when( mem = '0' and adr(7 downto 1) = "1110011"                                             )else '0';  -- I/O:E6-E7h   / System timer (S1990)
-    swio_req    <=  req when( ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '0'                         ) or
+    VdpReq      <=  req when( mem = '0' and adr(7 downto 2) = "100110"                                                  )else '0';  -- I/O:98-9Bh   / VDP (V9938/V9958)
+    PsgReq      <=  req when( mem = '0' and adr(7 downto 2) = "101000"                                                  )else '0';  -- I/O:A0-A3h   / PSG (AY-3-8910)
+    Psg2Req     <=  req when( mem = '0' and adr(7 downto 2) = "000100" and iPsg2_ena = '1' and use_dualpsg_g            )else '0';  -- I/O:10-13h / PSG2 (AY-3-8910)
+    PpiReq      <=  req when( mem = '0' and adr(7 downto 2) = "101010"                                                  )else '0';  -- I/O:A8-ABh   / PPI (8255)
+    OpllReq     <=  req when( mem = '0' and adr(7 downto 1) = "0111110" and Slot0Mode = '1'                             )else '0';  -- I/O:7C-7Dh   / OPLL (YM2413)
+    KanReq      <=  req when( mem = '0' and adr(7 downto 2) = "110110"                                                  )else '0';  -- I/O:D8-DBh   / Kanji-data
+    RomReq      <=  req when( (rom_main or rom_opll or rom_extd or rom_xbas or rom_free or iSltLin1 or iSltLin2) = '1'  )else '0';
+    MapReq      <=  req when( mem = '0' and adr(7 downto 2) = "111111"                                                  )else       -- I/O:FC-FFh / Memory-mapper
+                    req when( iSltMap0 = '1' or iSltMap  = '1'                                                          )else '0';  -- MEM:       / Extra-mapper, Memory-mapper
+    Scc1Req     <=  req when(               iSltScc1 = '1'                                                              )else '0';  -- MEM:         / ESE-SCC1
+    Scc2Req     <=  req when(               iSltScc2 = '1'                                                              )else '0';  -- MEM:         / ESE-SCC2
+    ErmReq      <=  req when(               iSltErm = '1'                                                               )else '0';  -- MEM:         / ESE-RAM, MegaSD
+    RtcReq      <=  req when( mem = '0' and adr(7 downto 1) = "1011010"                                                 )else '0';  -- I/O:B4-B5h   / RTC (RP-5C01)
+    systim_req  <=  req when( mem = '0' and adr(7 downto 1) = "1110011"                                                 )else '0';  -- I/O:E6-E7h   / System timer (S1990)
+    swio_req    <=  req when( ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '0'                             ) or
                      ( mem = '0' and adr(7 downto 4) = "0100" and swioFranky = '1' and adr(  7 downto 1 ) /= "0100100") )else '0';  -- I/O:40-4Fh   / Switched I/O ports
-    portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010" and use_wifi_g                             )else '0';  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
-    portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                            )else '0';  -- I/O:F4h      / Port F4 device
-    tr_pcm_req  <=  req when( mem = '0' and adr(7 downto 1) = "1010010"                                             )else '0';  -- I/O:A4-A5h  / turboR PCM device
+    portF2_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110010" and use_wifi_g                                 )else '0';  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
+    portF4_req  <=  req when( mem = '0' and adr(7 downto 0) = "11110100"                                                )else '0';  -- I/O:F4h      / Port F4 device
+    tr_pcm_req  <=  req when( mem = '0' and adr(7 downto 1) = "1010010"                                                 )else '0';  -- I/O:A4-A5h   / turboR PCM device
     sn76489Req  <=  req when( mem = '0' and adr(7 downto 1) = "0100100" and CpuM1_n = '1'
-                         and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                  )else '0';  -- I/O:48-49h   / Franky SN76489
+                         and ( (io40_n = "11111111" or io40_n = "11110111" ) or swioFranky = '1' )                      )else '0';  -- I/O:48-49h   / Franky SN76489
 
     BusDir  <=  '1' when( pSltAdr(7 downto 2) = "100110"                                        )else  -- I/O:98-9Bh / VDP (V9938/V9958)
                 '1' when( pSltAdr(7 downto 2) = "101000"                                        )else  -- I/O:A0-A3h / PSG (AY-3-8910)
-                '1' when( pSltAdr(7 downto 2) = "000100" and iPsg2_ena = '1' and use_dualpsg_g  )else  -- I/O:10-13h / PSG2 (AY-3-8910)
+                '1' when( pSltAdr(7 downto 2) = "000100" and iPsg2_ena = '1' and use_dualpsg_g  )else   -- I/O:10-13h / PSG2 (AY-3-8910)
                 '1' when( pSltAdr(7 downto 2) = "101010"                                        )else  -- I/O:A8-ABh / PPI (8255)
                 '1' when( pSltAdr(7 downto 2) = "110110" and JIS2_ena = '1'                     )else  -- I/O:D8-DBh / Kanji-data (JIS1+JIS2)
                 '1' when( pSltAdr(7 downto 1) = "1101100"                                       )else  -- I/O:D8-D9h / Kanji-data (JIS1 only)
@@ -2348,10 +2284,10 @@ begin
                 '1' when( pSltAdr(7 downto 1) = "1110011"                                       )else  -- I/O:E6-E7h / System timer (S1990)
                 '1' when( pSltAdr(7 downto 4) = "0100" and io40_n /= "11111111"                 )else  -- I/O:40-4Fh / Switched I/O ports and Franky PSG when S/W I/O is on
                 '1' when( pSltAdr(7 downto 0) = "10100111" and portF4_mode = '1'                )else  -- I/O:A7h    / Pause R800 (read only)
-                '1' when( pSltAdr(7 downto 0) = "11110010" and use_wifi_g                       )else  -- I/O:F2h   / Port F2 device (ESP8266 BIOS)
+                '1' when( pSltAdr(7 downto 0) = "11110010" and use_wifi_g                       )else  -- I/O:F2h    / Port F2 device (ESP8266 BIOS)
                 '1' when( pSltAdr(7 downto 0) = "11110100"                                      )else  -- I/O:F4h    / Port F4 device
                 '1' when( pSltAdr(7 downto 1) = "1010010"                                       )else  -- I/O:A4-A5h / turboR PCM device
-                '1' when( pSltAdr(7 downto 1) = "0000011" and use_wifi_g                        )else   -- I/O:06-07h / ESP
+                '1' when( pSltAdr(7 downto 1) = "0000011" and use_wifi_g                        )else  -- I/O:06-07h / ESP
                 '1' when( pSltAdr(7 downto 3) = "11000" and opl3_enabled = '1'                  )else  -- I/O:C0-C7h / OPL3
 --              '1' when( pSltAdr(7 downto 1) = "0111110" and opl3_enabled = '1'                )else  -- I/O:7C-7Dh / OPLL via OPL3
                 '1' when( pSltAdr(7 downto 1) = "0100100" and use_franky_psg_g                  )else  -- I/O:48-49h / Franky SN76489
@@ -2385,7 +2321,7 @@ begin
     ----------------------------------------------------------------
     -- Video output
     ----------------------------------------------------------------
---  V9938_n <= '0';         -- '0' is V9938 VDP core
+--  V9938_n <= '0';         -- '0' is V9938 MSX2 VDP
     V9938_n <= '1';         -- '1' is TH9958 VDP core
 
     process( clk21m )
@@ -2398,7 +2334,7 @@ begin
                 pDac_VB     <= videoV;                              -- Composite Video Out
                 Reso_v      <= '0';                                 -- Hsync:15kHz
                 pVideoHS_n  <= 'Z';                                 -- CSync Disabled
-                pVideoVS_n  <= DACout;                              -- Audio Out (Mono)
+                pVideoVS_n  <= DACout_l;                            -- Audio Out (Mono)
 --              legacy_vga  <= '0';                                 -- behaves like vAllow_n        (for V9938 VDP core)
 
             when "01" =>                                            -- RGB 15kHz
@@ -2407,7 +2343,7 @@ begin
                 pDac_VB     <= VideoB;
                 Reso_v      <= '0';                                 -- Hsync:15kHz
                 pVideoHS_n  <= VideoCS_n;                           -- CSync Enabled
-                pVideoVS_n  <= DACout;                              -- Audio Out (Mono)
+                pVideoVS_n  <= DACout_l;                            -- Audio Out (Mono)
 --              legacy_vga  <= '0';                                 -- behaves like vAllow_n        (for V9938 VDP core)
 
             when others =>                                          -- VGA / VGA+ 31kHz
@@ -2442,10 +2378,8 @@ begin
     ----------------------------------------------------------------
     -- Sound output
     ----------------------------------------------------------------
-
     -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
     -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map Added the CTRL status by t.hara, 2021/Aug/6th
-    -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap / Internal SMX-HB Keyboard by Ducasp 2022/Apr/21st
     process( clk21m )
     begin
         if( clk21m'event and clk21m = '1' )then
@@ -2473,7 +2407,7 @@ begin
         variable c_Opll     : std_logic_vector(  3 downto  0 );     -- combine OpllVol and MstrVol
         variable chPsg      : std_logic_vector( ff_prepsg'range );
         variable chPsg2     : std_logic_vector( ff_prepsg2'range );
-        variable chOpll     : std_logic_vector( ff_pre_dacin'range );
+        variable chOpll     : std_logic_vector( ff_pre_dacin_l'range );
         variable opl3_vol   : std_logic_vector(  2 downto  0 );
         variable tr_pcm_vol : std_logic_vector(  2 downto  0 );
     begin
@@ -2555,20 +2489,24 @@ begin
             opl3_vol    := not (opl3_enabled & opl3_enabled & opl3_enabled) or MstrVol;
             case opl3_vol is
                 when "000" | "001"         =>
-                    ff_opl3(           11 downto  0 ) <= opl3_sound_s( 15 downto  4 );
-                    ff_opl3( ff_opl3'high downto 12 ) <= (others => opl3_sound_s(15));
+                    ff_opl3_r(             11 downto  0 ) <= opl3_sound_r( 15 downto  4 );
+                    ff_opl3_r( ff_opl3_r'high downto 12 ) <= (others => opl3_sound_r(15));
+                    ff_opl3_l(             11 downto  0 ) <= opl3_sound_l( 15 downto  4 );
+                    ff_opl3_l( ff_opl3_l'high downto 12 ) <= (others => opl3_sound_l(15));
                 when "010" | "011" | "100" =>
-                    ff_opl3(           10 downto  0 ) <= opl3_sound_s( 15 downto  5 );
-                    ff_opl3( ff_opl3'high downto 11 ) <= (others => opl3_sound_s(15));
+                    ff_opl3_r(             10 downto  0 ) <= opl3_sound_r( 15 downto  5 );
+                    ff_opl3_r( ff_opl3_r'high downto 11 ) <= (others => opl3_sound_r(15));
+                    ff_opl3_l(             10 downto  0 ) <= opl3_sound_l( 15 downto  5 );
+                    ff_opl3_l( ff_opl3_l'high downto 11 ) <= (others => opl3_sound_l(15));
                 when "101" | "110"         =>
-                    ff_opl3(            9 downto  0 ) <= opl3_sound_s( 15 downto  6 );
-                    ff_opl3( ff_opl3'high downto 10 ) <= (others => opl3_sound_s(15));
+                    ff_opl3_r(              9 downto  0 ) <= opl3_sound_r( 15 downto  6 );
+                    ff_opl3_r( ff_opl3_r'high downto 10 ) <= (others => opl3_sound_r(15));
+                    ff_opl3_l(              9 downto  0 ) <= opl3_sound_l( 15 downto  6 );
+                    ff_opl3_l( ff_opl3_l'high downto 10 ) <= (others => opl3_sound_l(15));
                 when others                =>
-                    ff_opl3                           <= (others => opl3_sound_s(15));
+                    ff_opl3_l                             <= (others => opl3_sound_l(15));
+                    ff_opl3_r                             <= (others => opl3_sound_r(15));
             end case;
-
-            -- OPLL via OPL3
---          OpllAmp <= not opl3_sound_s(15) & opl3_sound_s( 14 downto 6 );
 
             -- amplitude ramp of the SN76489 (mixer level equivalences: off, 4, 7 and 10 out of 13)
             case MstrVol is
@@ -2609,16 +2547,24 @@ begin
 
             -- ff_pre_dacin assignment
             if( sn76489NoIO = '0' ) then
-                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3 + ff_sn76489;
+                ff_pre_dacin_l <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3_l + ff_sn76489;
+                ff_pre_dacin_r <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3_r + ff_sn76489;
             else
-                ff_pre_dacin <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3;
+                ff_pre_dacin_l <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3_l;
+                ff_pre_dacin_r <= (not ff_psg) + (not ff_psg2) + ff_scc + ff_opll + ff_tr_pcm + ff_opl3_r;
             end if;
 
             -- amplitude limiter
-            case ff_pre_dacin( ff_pre_dacin'high downto ff_pre_dacin'high - 2 ) is
-                when "100" => DACin <= ff_pre_dacin( ff_pre_dacin'high ) & ff_pre_dacin( ff_pre_dacin'high - 3 downto 0 );
-                when "011" => DACin <= ff_pre_dacin( ff_pre_dacin'high ) & ff_pre_dacin( ff_pre_dacin'high - 3 downto 0 );
-                when others => DACin <= (others => ff_pre_dacin( ff_pre_dacin'high ));
+            case ff_pre_dacin_l( ff_pre_dacin_l'high downto ff_pre_dacin_l'high - 2 ) is
+                when "100" =>
+                    DACin_l <= ff_pre_dacin_l( ff_pre_dacin_l'high ) & ff_pre_dacin_l( ff_pre_dacin_l'high - 3 downto 0 );
+                    DACin_r <= ff_pre_dacin_r( ff_pre_dacin_r'high ) & ff_pre_dacin_r( ff_pre_dacin_r'high - 3 downto 0 );
+                when "011" =>
+                    DACin_l <= ff_pre_dacin_l( ff_pre_dacin_l'high ) & ff_pre_dacin_l( ff_pre_dacin_l'high - 3 downto 0 );
+                    DACin_r <= ff_pre_dacin_r( ff_pre_dacin_r'high ) & ff_pre_dacin_r( ff_pre_dacin_r'high - 3 downto 0 );
+                when others =>
+                    DACin_l <= (others => ff_pre_dacin_l( ff_pre_dacin_l'high ));
+                    DACin_r <= (others => ff_pre_dacin_r( ff_pre_dacin_r'high ));
             end case;
 
         end if;
@@ -2627,7 +2573,7 @@ begin
     -- left audio channel
     pDac_SL <= null                                         when( power_on_reset = '0' )else
                "ZZZZZZ"                                     when( pseudoStereo = '1' )else
-               DACout & "ZZZZ" & DACout;                    -- multiple DACout lines are used to balance the audio cartridges on Cyclone I machines
+               DACout_l & "ZZZZ" & DACout_l;                -- multiple DACout lines are used to balance the audio cartridges on Cyclone I machines
 
     -- Cassette Magnetic Tape (CMT) interface
     CmtIn   <= null                                         when( power_on_reset = '0' )else
@@ -2640,8 +2586,8 @@ begin
 
     -- right audio channel
     pDac_SR <= null                                         when( power_on_reset = '0' )else
-               not DACout & "ZZZZ" & not DACout             when( right_inverse = '1' )else
-               DACout & "ZZZZ" & DACout;
+               not DACout_r & "ZZZZ" & not DACout_r         when( right_inverse = '1' )else
+               DACout_r & "ZZZZ" & DACout_r;
 
     -- SCRLK key
     process( clk21m )
@@ -3024,14 +2970,16 @@ begin
     ----------------------------------------------------------------
     U00 : work.pll
         port map(
-            inclk0   => pClk21m,
+            inclk0   => pClk21m,                -- In fact receiving 50 MHz
             c0       => clk21m,                 -- 21.48MHz internal
             c1       => memclk,                 -- 85.92MHz = 21.48MHz x 4
-            c2       => pMemClk,                -- 85.92MHz external
-            c3       => clk_sms_s               -- 53.6931
+            c2       => pSdrClk,                -- 85.92MHz external
+            c3       => clk_sms_s,              -- 53.6931
+            locked   => pll_locked              -- Locked signal for Multicore2
         );
 
     clkSYSSMS <= clk_sms_s;
+    pMemClk  <= memclk;
 
     U01 : t80a
         port map(
@@ -3092,10 +3040,10 @@ begin
         port map(clk21m, reset, clkena, MapReq, open, mem, wrt, adr, MapDbi, dbo,
                         MapRam, MapWrt, MapAdr, RamDbi, open);
 
-    U06 : entity work.eseps2smx
+    U06 : entity work.eseps2mcp
         port map(clk21m, reset, clkena, Kmap, Caps, Kana, Paus, Scro, Reso, Fkeys,
                         pPs2Clk, pPs2Dat, PpiPortC, w_PpiPortB, CmtScro, DisBiDir,
-                        model_expert_n, EnAltMap);
+                        EnAltMap,osd_o);
 
     U07 : rtc
         port map(clk21m, '0', rtcena, RtcReq, open, wrt, adr, RtcDbi, dbo);
@@ -3130,6 +3078,7 @@ begin
                             "111111", open, open, "111111", open, open, open, '0', '0', Psg2Amp);
     end generate;
 
+
     U31_1 : megaram
         port map(clk21m, reset, clkena, Scc1Req, Scc1Ack, wrt, adr, Scc1Dbi, dbo,
                         Scc1Ram, Scc1Wrt, Scc1Adr, RamDbi, open, Scc1Type, Scc1AmpL, open);
@@ -3158,39 +3107,64 @@ begin
 --      end if;
 --  end process;
 
-    u_interpo : interpo
+    u_interpo_l : interpo
         generic map(
-            msbi    => DACin'high
+            msbi    => DACin_l'high
         )
         port map(
             clk21m  => clk21m               ,
             reset   => not power_on_reset   ,
             clkena  => clkena               ,
-            idata   => DACin                ,
-            odata   => lpf1_wave
+            idata   => DACin_l              ,
+            odata   => lpf1_wave_l
+        );
+
+    u_interpo_r : interpo
+        generic map(
+            msbi    => DACin_r'high
+        )
+        port map(
+            clk21m  => clk21m       ,
+            reset   => reset        ,
+            clkena  => clkena       ,
+            idata   => DACin_r        ,
+            odata   => lpf1_wave_r
         );
 
     --  low pass filter
 --  w_lpf2ena <= '1' when( ff_lpf_div(         0) = '1'    and clkena = '1' ) else '0';     -- sccic
 
-    u_lpf2 : lpf2
+    u_lpf2_l : lpf2
         generic map(
-            msbi    => DACin'high
+            msbi    => DACin_l'high
         )
         port map(
             clk21m  => clk21m               ,
             reset   => not power_on_reset   ,
 --          clkena  => w_lpf2ena            ,   -- sccic
             clkena  => clkena               ,   -- no sccic
-            idata   => lpf1_wave            ,
-            odata   => lpf5_wave
+            idata   => lpf1_wave_l          ,
+            odata   => lpf5_wave_l
         );
 
-    U33 : esepwm
-        generic map(DAC_msbi) port map(clk21m, not power_on_reset, lpf5_wave, DACout);
+    u_lpf2_r : lpf2
+        generic map(
+            msbi    => DACin_r'high
+        )
+        port map(
+            clk21m  => clk21m       ,
+            reset   => reset        ,
+--          clkena  => w_lpf2ena    ,   -- sccic
+            clkena  => clkena       ,   -- no sccic
+            idata   => lpf1_wave_r  ,
+            odata   => lpf5_wave_r
+        );
 
-    -- HDMI sound output
-    pcm_o <= "00" & lpf5_wave;
+    U33_l : esepwm
+        generic map(DAC_msbi) port map(clk21m, not power_on_reset, lpf5_wave_l, DACout_l);
+
+    U33_r : esepwm
+        generic map(DAC_msbi) port map(clk21m, reset, lpf5_wave_r, DACout_r);
 
     U34 : system_timer
         port map(
@@ -3318,8 +3292,8 @@ begin
             );
     end generate;
 
-    sms_vdp : if use_franky_vdp_g generate
-        usmsvdp : smsvdp
+    smsvdp : if use_franky_vdp_g generate
+        usmsvdp : work.smsvdp
             generic map(
                 MAX_SPPL => 7
             )
@@ -3343,7 +3317,7 @@ begin
                 mask_column     => sms_mask_column,
                 smode_M1        => sms_smode_M1,
                 smode_M3        => sms_smode_M3,
-                reset_n         => (not reset54m)
+                reset_n         => (not reset)
             );
     end generate;
 
@@ -3394,10 +3368,10 @@ begin
             dout                => opl3_dout_s,
             din                 => dbo,
             we                  => opl3_ce,
-            mono                => '1',
+            mono                => opl3_mono,
 
-            sample_l            => opl3_sound_s,
-            sample_r            => open
+            sample_l            => opl3_sound_l,
+            sample_r            => opl3_sound_r
         );
     end generate;
 
@@ -3422,7 +3396,6 @@ begin
 
     -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
     -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map Added the CTRL status by t.hara, 2021/Aug/6th
-    -- | SHI | CTRL | SEL+Up | SEL+Dn | SEL+F1 | SEL+F2 | SEL+F3 | SEL+F4 | on EnAltMap / Internal SMX-HB Keyboard by Ducasp 2022/Apr/21st
     af_on_off_led    <=      vFkeys(7)  and vFkeys(6) and (vFkeys(5) xor Fkeys(5)); -- [CTRL+SHIFT+PGUP]
     af_on_off_toggle <=      vFkeys(7)  and vFkeys(6) and (vFkeys(4) xor Fkeys(4)); -- [CTRL+SHIFT+PGDOWN]
     af_increment     <= (not vFkeys(7)) and vFkeys(6) and (vFkeys(5) xor Fkeys(5)); -- [CTRL+PGUP]
