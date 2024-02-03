@@ -1130,6 +1130,7 @@ emsx_top emsx
 
         // SM-X
         .clk21m_out      ( clk_sys        ),
+        .vga_status      ( vga_status     ),
         .esp_rx_o        ( esp_rx_o       ),
         .esp_tx_i        ( esp_tx_i       ),
         .ear_i           ( ear_i          ),
@@ -1146,6 +1147,7 @@ wire  [ 3:0] R_O_SMS;
 wire  [ 3:0] G_O_SMS;
 wire  [ 3:0] B_O_SMS;
 wire         HSync, VSync;
+wire         vga_status;
 wire  [11:0] color;
 wire         sms_HSync, sms_VSync, sms_CSync;
 wire  [ 4:0] MSX_VGA_R, MSX_VGA_G, MSX_VGA_B, SMS_VGA_R , SMS_VGA_B , SMS_VGA_G;
