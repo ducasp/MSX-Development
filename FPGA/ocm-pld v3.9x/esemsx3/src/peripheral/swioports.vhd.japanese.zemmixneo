@@ -1,5 +1,5 @@
 --
--- sm_swioports.vhd
+-- swioports.vhd
 --   Switched I/O ports ($40-$4F)
 --   Revision 12
 --
@@ -50,14 +50,14 @@ entity switched_io_ports is
         io40_n          : inout std_logic_vector(  7 downto 0 );            -- ID Manufacturers/Devices :   $08 (008), $D4 (212=OCM ID, now MSX++ ID), $FF (255=null)
         io41_id212_n    : inout std_logic_vector(  7 downto 0 );            -- $41 ID212 states         :   Smart Commands
         io42_id212      : inout std_logic_vector(  7 downto 0 );            -- $42 ID212 states         :   Virtual DIP-SW states
-        io43_id212      : inout std_logic_vector(  7 downto 0 );            -- $43 ID212 states         :   Lock Mask for port $42 functions, OPL3 and reset key
+        io43_id212      : inout std_logic_vector(  7 downto 0 );            -- $43 ID212 states         :   Lock Mask for port $42 functions, CMT and reset key
         io44_id212      : inout std_logic_vector(  7 downto 0 );            -- $44 ID212 states         :   Lights Mask have the green leds control when Lights Mode is On
         OpllVol         : inout std_logic_vector(  2 downto 0 );            -- OPLL Volume
         SccVol          : inout std_logic_vector(  2 downto 0 );            -- SCC-I Volume
         PsgVol          : inout std_logic_vector(  2 downto 0 );            -- PSG Volume
         MstrVol         : inout std_logic_vector(  2 downto 0 );            -- Master Volume
         CustomSpeed     : inout std_logic_vector(  3 downto 0 );            -- Counter limiter of CPU wait control
-        tMegaSD         : inout std_logic;                                  -- Turbo on MegaSD access   :   3.58MHz to 5.37MHz autoselection
+        tMegaSD         : inout std_logic;                                  -- Turbo on MegaSD access   :   3.58MHz to 5.37MHz auto selection
         tPanaRedir      : inout std_logic;                                  -- tPana Redirection switch
         VdpSpeedMode    : inout std_logic;                                  -- VDP Speed Mode           :   0=Normal, 1=Fast
         V9938_n         : inout std_logic;                                  -- VDP core installed       :   0=V9938, 1=TH9958
@@ -67,10 +67,8 @@ entity switched_io_ports is
         MegaSD_ack      : out   std_logic;                                  -- Current MegaSD state
         io41_id008_n    : inout std_logic;                                  -- $41 ID008 BIT-0 state    :   0=5.37MHz, 1=3.58MHz (write_n only)
         swioKmap        : inout std_logic;                                  -- Keyboard layout selector
-        CmtScro         : inout std_logic;                                  -- Internal OPL3 state
-        swioCmt         : inout std_logic;                                  -- Internal OPL3 enabler    :   No toggle is required to use CMT in this firmware
-        swioJoyDeb      : inout std_logic;                                  -- Internal Joystick Debounce enabler, SMX-HB uses joystick port debounce that affects some devices
-        swioFranky      : inout std_logic;                                  -- If set to 1, Franky will be using I/Os 48 and 49 even w/ Switched I/O selected
+        CmtScro         : inout std_logic;                                  -- CMT state
+        swioCmt         : inout std_logic;                                  -- CMT enabler              :   This toggle is used for the Internal OPL3 on SM-X and SX-2
         LightsMode      : inout std_logic;                                  -- Custom green led states
         Red_sta         : inout std_logic;                                  -- Custom red led state
         LastRst_sta     : inout std_logic;                                  -- Last reset state         :   0=Cold Reset, 1=Warm Reset (MSX2+) / 1=Cold Reset, 0=Warm Reset (MSXtR)
@@ -124,20 +122,18 @@ entity switched_io_ports is
         -- 'VARIABLES' group
         SdrSize         : in    std_logic_vector(  1 downto 0 );
         VDP_ID          : out   std_logic_vector(  4 downto 0 );
-        OFFSET_Y        : out   std_logic_vector(  6 downto 0 );
-        pad_emu         : out   std_logic := '0';                           -- Paddle Emulation over PS/2 Mouse required
-        pad_mode        : out   std_logic := '0'                            -- Paddle Mode: 0 is VAUS 1 is MSX
+        OFFSET_Y        : out   std_logic_vector(  6 downto 0 )
     );
 end switched_io_ports;
 
 architecture RTL of switched_io_ports is
 
-    signal  swio_ack    : std_logic;
-    signal  prev_scan   : std_logic_vector(  1 downto 0 ) := "11";
+    signal  swio_ack        : std_logic;
+    signal  prev_scan       : std_logic_vector(  1 downto 0 ) := "11";
     signal  bios_reload_req : std_logic := '0';                             -- OCM-BIOS Reloading req
 
-    -- Machine Type ID (0-15)                                               -- 0=1chipMSX, 1=Zemmix Neo / SX-1, 2=SM-X, 3=SX-2, 4=SM-X Mini, 5=DE0CV, 6=SMX-HB ..., 15=Unknown
-    constant MachineID  : std_logic_vector(  3 downto 0 ) :=     "0110";    -- 2 - SM-X as MC2P mimics that device
+    -- Machine Type ID (0-15) : 0=1chipMSX, 1=Zemmix Neo / SX-1 and related, 2=SM-X (regular) / MC2P, 3=SX-2, 4=SM-X Mini / SMX-HB, 5=DE0CV, ..., 15=Unknown
+    constant MachineID  : std_logic_vector(  3 downto 0 ) :=     "0001";    -- 1
 
     -- OCM-PLD version number (x \ 10).(y mod 10).(z[0~3])                  -- OCM-PLD version 0.0(.0) ~ 25.5(.3)
     constant ocm_pld_xy : std_logic_vector(  7 downto 0 ) := "00100111";    -- 39
@@ -214,7 +210,7 @@ begin
     ack <=  swio_ack;
 
 --  =============================================================================================================
-    DefKmap     <=  '1';                        -- Default Keyboard     0=Japanese Layout   1=Non-Japanese Layout
+    DefKmap     <=  '0';                        -- Default Keyboard     0=Japanese Layout   1=Non-Japanese Layout
 --  =============================================================================================================
 
     process( reset, clk21m, power_on_reset )
@@ -253,7 +249,7 @@ begin
                     MegaSD_ack      <=  ff_dip_req(7);      -- Prevent system crash using DIP-SW8
                     io41_id008_n    <=  '1';                -- CPU Clock is 3.58MHz
                     swioKmap        <=  DefKmap;            -- Keyboard Layout to Default
-                    swioCmt         <=  '0';                -- Internal OPL3 is Off
+                    swioCmt         <=  '0';                -- CMT is Off
                     LightsMode      <=  '0';                -- Lights Mode is Auto
                     Red_sta         <=  not io41_id008_n;   -- Red Led is Turbo 5.37MHz
                     LastRst_sta     <=  portF4_mode;        -- Cold state
@@ -271,7 +267,7 @@ begin
                     Slot0Mode       <=  '1';                -- Prevent system crash using Reset Key
                     Mapper0_req     <=  '0';                -- Set Extra-Mapper state is Off
                     Mapper0_ack     <=  '0';                -- Prevent system crash using a toggle
-                    iPsg2_ena       <=  '1';                -- Internal PSG2 is On
+                    iPsg2_ena       <=  '0';                -- Internal PSG2 is Off
                     xmr_ena         <=  '0';                -- Extended MegaROM Reading is Off
                 else
                     -- Warm Reset
@@ -361,7 +357,7 @@ begin
                     end if;
                     -- in assignment: 'Toggle Keys' (keyboard)
                     if( Fkeys(7) = '0' )then                                    -- SHIFT key    is  Off
-                        if( io43_id212(2) = '0' and Fkeys(6) = '0' )then        -- BIT[2]=0     of  Lock Mask   +   LCTRL key    is Off
+                        if( io43_id212(2) = '0' )then                           -- BIT[2]=0     of  Lock Mask
                             if( Fkeys(5 downto 4) /= vFKeys(5 downto 4) )then
                                 GreenLvEna  <=  '1';
                                 LevCtrl <= "111";
@@ -382,21 +378,20 @@ begin
                             end if;
                         end if;
                         if( io43_id212(0) = '0' and Fkeys(6) = '0' )then        -- BIT[0]=0     of  Lock Mask   +   LCTRL key   is Off
-                            -- MC2P - Turbo is set only through smart commands or OSD, not F12 that is OSD key
-                            -- if( Fkeys(0) /= vFKeys(0) )then                     -- F12          is  TURBO selector
-                            --     if( io41_id008_n = '1' and io42_id212(0) = '0' )then
-                            --         io41_id008_n    <=  '0';                    -- 3.58MHz      >>  5.37MHz
-                            --     elsif( io41_id008_n = '0' and io42_id212(0) = '0' )then
-                            --         if( extclk3m = '0' )then                    -- Off          is  Triple Step
-                            --             io41_id008_n    <=  '1';
-                            --             io42_id212(0)   <=  '1';                -- 5.37MHz      >>  Custom Turbo
-                            --         else                                        -- On           is  Double Step (cartridge safeguard mode)
-                            --             io41_id008_n    <=  '1';                -- 5.37MHz      >>  3.58MHz
-                            --         end if;
-                            --     else
-                            --         io42_id212(0)   <=  '0';                    -- Custom Turbo >>  3.58MHz
-                            --     end if;
-                            -- end if;
+                            if( Fkeys(0) /= vFKeys(0) )then                     -- F12          is  TURBO selector
+                                if( io41_id008_n = '1' and io42_id212(0) = '0' )then
+                                    io41_id008_n    <=  '0';                    -- 3.58MHz      >>  5.37MHz
+                                elsif( io41_id008_n = '0' and io42_id212(0) = '0' )then
+                                    if( extclk3m = '0' )then                    -- Off          is  Triple Step
+                                        io41_id008_n    <=  '1';
+                                        io42_id212(0)   <=  '1';                -- 5.37MHz      >>  Custom Turbo
+                                    else                                        -- On           is  Double Step (cartridge safeguard mode)
+                                        io41_id008_n    <=  '1';                -- 5.37MHz      >>  3.58MHz
+                                    end if;
+                                else
+                                    io42_id212(0)   <=  '0';                    -- Custom Turbo >>  3.58MHz
+                                end if;
+                            end if;
                         end if;
                         if( io43_id212(1) = '0' )then                           -- BIT[1]=0     of  Lock Mask
                             if( ff_Reso /= Reso )then                           -- PRTSCR       is  DISPLAY selector (next)
@@ -431,12 +426,12 @@ begin
                                     PsgVol  <= PsgVol + 1;
                                 end if;
                             end if;
-                            if( ff_Scro /= Scro )then                           -- SCRLK        is  Internal OPL3 toggle
+                            if( ff_Scro /= Scro and portF4_mode = '0' )then     -- SCRLK        is  CMT toggle
                                 swioCmt     <= not swioCmt;
                             end if;
                         end if;
                     else                                                        -- SHIFT key    is  On (held down)
-                        if( io43_id212(2) = '0' and Fkeys(6) = '0' )then        -- BIT[2]=0     of  Lock Mask   +   LCTRL key    is Off
+                        if( io43_id212(2) = '0' )then                           -- BIT[2]=0     of  Lock Mask
                             if( Fkeys(5 downto 4) /= vFKeys(5 downto 4) )then
                                 GreenLvEna  <=  '1';
                                 LevCtrl <= "111";
@@ -637,9 +632,9 @@ begin
                             when "00011100" =>                                  -- VDP Speed Mode is Fast (TH9958 only)
                                 VdpSpeedMode    <=  '1' and V9938_n;
                             -- SMART CODES  #029, #030
-                            when "00011101" =>                                  -- MegaSD Off       (warm reset to go)
+                            when "00011101" =>                                  -- MegaSD Off (warm reset to go)
                                 MegaSD_req      <=  '0';
-                            when "00011110" =>                                  -- MegaSD On        (warm reset to go)
+                            when "00011110" =>                                  -- MegaSD On (warm reset to go)
                                 MegaSD_req      <=  '1';
                             -- SMART CODES  #031, #032, #033, #034, #035
                             when "00011111" =>                                  -- MegaSD Blink Off + DIP-SW8 State On
@@ -670,19 +665,19 @@ begin
                                 SccVol          <=  "100";
                                 PsgVol          <=  "100";
                                 MstrVol         <=  "000";
---                          -- SMART CODES  #039, #040  (not available on this machine)
---                          when "00100111" =>
---                              if( portF4_mode = '0' )then
---                                  swioCmt         <=  '0';                    -- CMT Off (default)
---                              else
---                                  io41_id212_n    <=  "11111111";             -- (MSX turboR does not have CMT)
---                              end if;
---                          when "00101000" =>
---                              if( portF4_mode = '0' )then
---                                  swioCmt         <=  '1';                    -- CMT On
---                              else
---                                  io41_id212_n    <=  "11111111";             -- (MSX turboR does not have CMT)
---                              end if;
+                            -- SMART CODES  #039, #040
+                            when "00100111" =>
+                                if( portF4_mode = '0' )then
+                                    swioCmt         <=  '0';                    -- CMT Off (default)
+                                else
+                                    io41_id212_n    <=  "11111111";             -- (MSX turboR does not have CMT)
+                                end if;
+                            when "00101000" =>
+                                if( portF4_mode = '0' )then
+                                    swioCmt         <=  '1';                    -- CMT On
+                                else
+                                    io41_id212_n    <=  "11111111";             -- (MSX turboR does not have CMT)
+                                end if;
                             -- SMART CODES  #041, #042
                             when "00101001" =>                                  -- Turbo Locked
                                 io43_id212(0)   <=  '1';
@@ -791,20 +786,20 @@ begin
                                 OFFSET_Y        <=  "0010111";
                             when "01001111" =>                                  -- Vertical Offset 24 (useful for Space Manbow)
                                 OFFSET_Y        <=  "0011000";
-                            -- SMART CODES  #080, #081, #082, #083
-                            when "01010000" =>                                  -- VGA Scanlines 0% (default)
-                                vga_scanlines <= "00";
-                            when "01010001" =>                                  -- VGA Scanlines 25%
-                                vga_scanlines <= "01";
-                            when "01010010" =>                                  -- VGA Scanlines 50%
-                                vga_scanlines <= "10";
-                            when "01010011" =>                                  -- VGA Scanlines 75%
-                                vga_scanlines <= "11";
-                            -- SMART CODES  #084, #085
-                            when "01010100" =>                                  -- Internal PSG2 Off (default)
-                                iPsg2_ena       <=  '0';
-                            when "01010101" =>                                  -- Internal PSG2 On (this second PSG acts as an external PSG)
-                                iPsg2_ena       <=  '1';
+--                          -- SMART CODES  #080, #081, #082, #083  (not available on this machine)
+--                          when "01010000" =>                                  -- VGA Scanlines 0% (default)
+--                              vga_scanlines   <=  "00";
+--                          when "01010001" =>                                  -- VGA Scanlines 25%
+--                              vga_scanlines   <=  "01";
+--                          when "01010010" =>                                  -- VGA Scanlines 50%
+--                              vga_scanlines   <=  "10";
+--                          when "01010011" =>                                  -- VGA Scanlines 75%
+--                              vga_scanlines   <=  "11";
+--                          -- SMART CODES  #084, #085  (not available on this machine)
+--                          when "01010100" =>                                  -- Internal PSG2 Off (default)
+--                              iPsg2_ena       <=  '0';
+--                          when "01010101" =>                                  -- Internal PSG2 On (this second PSG acts as an external PSG)
+--                              iPsg2_ena       <=  '1';
                             -- SMART CODES  #086, #087
                             when "01010110" =>                                  -- Extra-Mapper 4096 kB Off (warm reset to go) (default)
                                 if( SdrSize /= "00" )then
@@ -838,42 +833,24 @@ begin
                                 null;
                             -- SMART CODES   #129, #130
                             when "10000001" =>                                  -- Legacy Output is assigned to VGA
-                                legacy_sel <=  '0';
+                                legacy_sel      <=  '0';
                             when "10000010" =>                                  -- Legacy Output is assigned to VGA+ (default)
-                                legacy_sel <=  '1';
+                                legacy_sel      <=  '1';
                             -- SMART CODES   #131, #132, #133, #134
                             when "10000011" =>                                  -- Internal Slot1 Linear Off (default)
-                                iSlt1_linear <=  '0';
+                                iSlt1_linear    <=  '0';
                             when "10000100" =>                                  -- Internal Slot1 Linear On (requires SCC-I preset)
-                                iSlt1_linear <=  io42_id212(3);
+                                iSlt1_linear    <=  io42_id212(3);
                             when "10000101" =>                                  -- Internal Slot2 Linear Off (default)
-                                iSlt2_linear <=  '0';
+                                iSlt2_linear    <=  '0';
                             when "10000110" =>                                  -- Internal Slot2 Linear On (requires SCC-I or ASCII-8K/16K preset)
-                                iSlt2_linear <=  io42_id212(4) or io42_id212(5);
-                            -- SMART CODES  #135, #136
-                            when "10000111" =>
-                                swioCmt         <=  '0';                        -- Internal OPL3 Off (default)
-                            when "10001000" =>
-                                swioCmt         <=  '1';                        -- Internal OPL3 On
-                            -- SMART CODES  #137, #138
-                            when "10001001" =>
-                                swioJoyDeb      <=  '0';                        -- Joy Debounce     is Off (only SMX-HB)
-                            when "10001010" =>
-                                swioJoyDeb      <=  '1';                        -- Joy Debounce     is On (only SMX-HB)
-                            -- SMART CODES  #139, #140
-                            when "10001011" =>
-                                swioFranky      <=  '0';                        -- s/w i/o on 48-49 is On (default)
-                            when "10001100" =>
-                                swioFranky      <=  '1';                        -- s/w i/o on 48-49 is Off
-                            -- SMART CODES  #141, #143
-                            when "10001101" =>
-                                pad_emu         <=  '0';                        -- Paddle Emulation on PS/2 Mouse off
-                            when "10001110" =>
-                                pad_emu         <=  '1';                        -- Paddle Emulation on PS/2 Mouse on
-                                pad_mode        <=  '0';                        -- Paddle Emulation mode is VAUS
-                            when "10001111" =>
-                                pad_emu         <=  '1';                        -- Paddle Emulation on PS/2 Mouse on
-                                pad_mode        <=  '1';                        -- Paddle Emulation mode is MSX
+                                iSlt2_linear    <=  io42_id212(4) or io42_id212(5);
+--                          -- SMART CODES  #135, #136  (not available on this machine)
+--                          when "10000111" =>
+--                              swioCmt         <=  '0';                        -- Internal OPL3 Off (default)
+--                          when "10001000" =>
+--                              swioCmt         <=  '1';                        -- Internal OPL3 On
+                            -- SMART CODES  #137, #..., #143                    -- Reserved (Ducasp)
                             -- SMART CODES  #144, #..., #175                    -- Free Group
                             -- SMART CODES  #176, #177, #178, #179, #180, #181, #182, #183
                             when "10110000" =>                                  -- Master Volume 0 (mute)
@@ -1042,7 +1019,7 @@ begin
                                 iSlt2_linear    <=  '0';
                                 Slot0_req       <=  '1';
                                 Mapper0_req     <=  '0';
-                                iPsg2_ena       <=  '1';
+                                iPsg2_ena       <=  '0';
                                 xmr_ena         <=  '0';
                             -- NULL CODES
                             when others     =>
@@ -1099,9 +1076,9 @@ begin
                     end if;
                     -- in assignment: 'Scanlines button'
                     if( btn_scan = '1' )then                                    -- Released
-                        prev_scan <= vga_scanlines;
+                        prev_scan           <= vga_scanlines;
                     elsif( vga_scanlines = prev_scan )then                      -- Held down
-                        vga_scanlines <= vga_scanlines + 1;
+                        vga_scanlines       <= vga_scanlines + 1;
                     end if;
                     -- in assignment: 'Cold Reset combination'
                     if( cold_reset_comb = '1' )then

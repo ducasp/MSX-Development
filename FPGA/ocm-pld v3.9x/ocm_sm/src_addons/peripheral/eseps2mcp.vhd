@@ -79,8 +79,8 @@ entity eseps2mcp is
     Scro     : inout std_logic;
     Reso     : inout std_logic;
 
-    -- | b7  | b6   | b5     | b4     | b3     | b2     | b1     | b0  |
-    -- | SHI | CTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map
+    -- | b7    | b6    | b5     | b4     | b3     | b2     | b1     | b0  |
+    -- | SHIFT | LCTRL | PgUp   | PgDn   | F9     | F10    | F11    | F12    | on regular map
     Fkeys    : buffer std_logic_vector(7 downto 0);
 
     pPs2Clk  : inout std_logic;
@@ -404,7 +404,7 @@ begin
               oFkeys(7) := Ps2Shif;
               Ps2Chg := '1';
             -- Added from sm_eseps2.v adapted here:
-            -- CTRL Left == 'h14, CTRL Right == 'hE0:'h14 (CTRL Right is EXECUTE, not CTRL)
+            -- CTRL Left == 'h14   (memo: CTRL Right == 'hE0:'h14 is EXECUTE, not CTRL)
             elsif( Ps2Dat = X"14" and Ps2xE1 = '0' and Ps2xE0 = '0' )then -- control make, Added by t.hara, 2021/Aug/6th
               Ps2Ctrl:= not Ps2brk;
               oFkeys(6) := Ps2Ctrl;

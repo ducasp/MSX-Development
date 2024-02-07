@@ -1,5 +1,5 @@
 //
-// eseps2.v
+// sm_eseps2.v
 //   PS/2 keyboard interface for OCM-PLD/OCM-Kai
 //   Revision 2.00
 //
@@ -30,10 +30,11 @@
 // ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //------------------------------------------------------------------------------
-// Update note 更新メモ
+// Update note
 //------------------------------------------------------------------------------
 // MMM-DD-YYYY Rev.   Information
 // Apl-24-2022 2.00 - Newly redesigned by t.hara
+// Oct-22-2022 2.01 - Modified signal timing by t.hara
 //------------------------------------------------------------------------------
 
 module eseps2 #(
@@ -66,9 +67,9 @@ module eseps2 #(
 
 //  output  [15:0]  debug_sig
 );
-    reg     [3:0]   ff_div;
-    wire            w_clkena;
-    reg     [14:0]  ff_timer;
+    localparam      enable_debug    = 0;        //  0: release mode, 1: debug mode
+
+    reg     [18:0]  ff_timer;
     wire            w_timeout;
     reg     [7:0]   ff_ps2_rcv_dat;
     reg             ff_f0_detect;
@@ -77,80 +78,162 @@ module eseps2 #(
     reg             ff_ps2_send;
     reg             ff_ps2_virtual_shift;
     reg             ff_e0_detect_dl;
+    reg             ff_error;
+    reg             ff_no_send;
+    reg     [1:0]   ff_ps2_clk_count;
+    reg             ff_ps2_clk_latch;
+    reg             ff_ps2_clk_delay;
+    reg     [3:0]   ff_ps2_state;
+    reg     [4:0]   ff_ps2_sub_state;
+    wire            w_ps2_host_phase;
+    wire            w_ps2_rise_edge;
+    wire            w_ps2_fall_edge;
+    wire            w_ps2_led_change;
+    reg             ff_ps2_dat;
+    reg     [7:0]   ff_ps2_snd_dat;
 
-    // ------------------------------------------------------------------------
-    //  PS2 State Machine
-    // ------------------------------------------------------------------------
     localparam      PS2_ST_RESET        = 4'd0;
     localparam      PS2_ST_SND_RESET    = 4'd1;
     localparam      PS2_ST_RCV_ACK1     = 4'd2;
     localparam      PS2_ST_RCV_BATCMP   = 4'd3;
-    localparam      PS2_ST_SND_IDREAD   = 4'd4;
-    localparam      PS2_ST_RCV_ACK2     = 4'd5;
-    localparam      PS2_ST_RCV_IDL      = 4'd6;
-    localparam      PS2_ST_RCV_IDH      = 4'd7;
-    localparam      PS2_ST_SND_SETMON   = 4'd8;
-    localparam      PS2_ST_RCV_ACK3     = 4'd9;
-    localparam      PS2_ST_SND_OPT      = 4'd10;
-    localparam      PS2_ST_RCV_ACK4     = 4'd11;
-    localparam      PS2_ST_IDLE         = 4'd12;
-    localparam      PS2_ST_RCV_SCAN     = 4'd13;
+    localparam      PS2_ST_SND_SETMON   = 4'd4;
+    localparam      PS2_ST_RCV_ACK3     = 4'd5;
+    localparam      PS2_ST_SND_OPT      = 4'd6;
+    localparam      PS2_ST_RCV_ACK4     = 4'd7;
+    localparam      PS2_ST_IDLE         = 4'd8;
+    localparam      PS2_ST_RCV_SCAN     = 4'd9;
+    localparam      PS2_ST_RECOVERY     = 4'd10;
 
-    localparam      PS2_SUB_IDLE        = 5'd0;
-    localparam      PS2_SUB_RCV_START   = 5'd1;
-    localparam      PS2_SUB_RCV_D0      = 5'd2;
-    localparam      PS2_SUB_RCV_D1      = 5'd3;
-    localparam      PS2_SUB_RCV_D2      = 5'd4;
-    localparam      PS2_SUB_RCV_D3      = 5'd5;
-    localparam      PS2_SUB_RCV_D4      = 5'd6;
-    localparam      PS2_SUB_RCV_D5      = 5'd7;
-    localparam      PS2_SUB_RCV_D6      = 5'd8;
-    localparam      PS2_SUB_RCV_D7      = 5'd9;
-    localparam      PS2_SUB_RCV_PARITY  = 5'd10;
-    localparam      PS2_SUB_RCV_STOP    = 5'd11;
-    localparam      PS2_SUB_SND_REQUEST = 5'd12;
-    localparam      PS2_SUB_SND_START   = 5'd13;
-    localparam      PS2_SUB_SND_D0      = 5'd14;
-    localparam      PS2_SUB_SND_D1      = 5'd15;
-    localparam      PS2_SUB_SND_D2      = 5'd16;
-    localparam      PS2_SUB_SND_D3      = 5'd17;
-    localparam      PS2_SUB_SND_D4      = 5'd18;
-    localparam      PS2_SUB_SND_D5      = 5'd19;
-    localparam      PS2_SUB_SND_D6      = 5'd20;
-    localparam      PS2_SUB_SND_D7      = 5'd21;
-    localparam      PS2_SUB_SND_PARITY  = 5'd22;
-    localparam      PS2_SUB_SND_STOP    = 5'd23;
-    localparam      PS2_SUB_SND_ACK     = 5'd24;
-    localparam      PS2_SUB_WAIT        = 5'd25;
+    localparam      PS2_SUB_IDLE            = 5'd0;
+    localparam      PS2_SUB_RCV_START       = 5'd1;
+    localparam      PS2_SUB_RCV_D0          = 5'd2;
+    localparam      PS2_SUB_RCV_D1          = 5'd3;
+    localparam      PS2_SUB_RCV_D2          = 5'd4;
+    localparam      PS2_SUB_RCV_D3          = 5'd5;
+    localparam      PS2_SUB_RCV_D4          = 5'd6;
+    localparam      PS2_SUB_RCV_D5          = 5'd7;
+    localparam      PS2_SUB_RCV_D6          = 5'd8;
+    localparam      PS2_SUB_RCV_D7          = 5'd9;
+    localparam      PS2_SUB_RCV_PARITY      = 5'd10;
+    localparam      PS2_SUB_RCV_STOP        = 5'd11;
+    localparam      PS2_SUB_SND_REQUEST     = 5'd12;
+    localparam      PS2_SUB_SND_START       = 5'd13;
+    localparam      PS2_SUB_SND_D0          = 5'd14;
+    localparam      PS2_SUB_SND_D1          = 5'd15;
+    localparam      PS2_SUB_SND_D2          = 5'd16;
+    localparam      PS2_SUB_SND_D3          = 5'd17;
+    localparam      PS2_SUB_SND_D4          = 5'd18;
+    localparam      PS2_SUB_SND_D5          = 5'd19;
+    localparam      PS2_SUB_SND_D6          = 5'd20;
+    localparam      PS2_SUB_SND_D7          = 5'd21;
+    localparam      PS2_SUB_SND_PARITY      = 5'd22;
+    localparam      PS2_SUB_SND_STOP        = 5'd23;
+    localparam      PS2_SUB_SND_ACK         = 5'd24;
+    localparam      PS2_SUB_WAIT            = 5'd25;
 
-    reg     [4:0]   ff_ps2_clk_delay;
-    reg     [3:0]   ff_ps2_state;
-    reg     [4:0]   ff_ps2_sub_state;
-    wire            w_ps2_host_phase;
-    wire            w_ps2_device_phase;
-    wire            w_ps2_rise_edge;
-    wire            w_ps2_fall_edge;
-    wire            w_ps2_led_change;
+    localparam      MATUPD_ST_RESET             = 4'd0;
+    localparam      MATUPD_ST_IDLE              = 4'd1;
+    localparam      MATUPD_ST_KEYMAP_READ1      = 4'd2;
+    localparam      MATUPD_ST_MATRIX_READ1_REQ  = 4'd3;
+    localparam      MATUPD_ST_MATRIX_READ1_RES  = 4'd4;
+    localparam      MATUPD_ST_MATRIX_WRITE1     = 4'd5;
+    localparam      MATUPD_ST_KEYMAP_READ2      = 4'd6;
+    localparam      MATUPD_ST_MATRIX_READ2_REQ  = 4'd7;
+    localparam      MATUPD_ST_MATRIX_READ2_RES  = 4'd8;
+    localparam      MATUPD_ST_MATRIX_WRITE2     = 4'd9;
+    reg     [3:0]   ff_matupd_state;
+    reg             ff_matupd_we;
+    reg             ff_matupd_ppi_c;
+    reg     [3:0]   ff_matupd_rows;
+    reg     [7:0]   ff_matupd_keys;
+    reg     [10:0]  ff_keymap_index;
+    reg             ff_key_unpress;         //  0: pressed, 1: unpressed
+    reg     [3:0]   ff_key_bits;
+    wire    [7:0]   w_keymap_dat;
+    reg     [7:0]   ff_key_x;
+    wire    [7:0]   w_mask;
+    wire    [7:0]   w_matrix_pre;
+    wire    [7:0]   w_matrix;
+    reg     [5:0]   ff_func_keys;
 
+    // --------------------------------------------------------------------
+    //  debugger
+    //
+    generate
+        if( enable_debug ) begin
+            reg     [7:0]   debug_ram   [0:15];
+            reg     [4:0]   ff_debug_ptr;
+            reg     [7:0]   ff_debug_data;
+            reg     [7:0]   ff_debug_read;
+            reg             ff_debug_inc;
+
+            //  debug RAM
+            always @( posedge reset or posedge clk21m ) begin
+                if( reset ) begin
+                    ff_debug_ptr    <= 5'd0;
+                end
+                else if( clkena ) begin
+                    if( ff_debug_inc && (ff_debug_ptr[4] == 1'b0) ) begin
+                        ff_debug_ptr                    <= ff_debug_ptr + 5'd1;
+                        debug_ram[ff_debug_ptr[3:0]]    <= ff_debug_data;
+                    end
+                end
+            end
+
+            always @( posedge clk21m ) begin
+                if( clkena ) begin
+                    if( PpiPortC[4] == 1'b0 ) begin
+                        ff_debug_read                   <= debug_ram[PpiPortC[3:0]];
+                    end
+                end
+            end
+
+            always @( posedge reset or posedge clk21m ) begin
+                if( reset ) begin
+                    ff_debug_inc    <= 1'b0;
+                end
+                else if( clkena ) begin
+                    if( w_timeout && (ff_ps2_sub_state == PS2_SUB_SND_REQUEST) ) begin
+                        ff_debug_data   <= ff_ps2_snd_dat;
+                        ff_debug_inc    <= 1'b1;
+                    end
+                    else if( w_ps2_rise_edge && (ff_ps2_sub_state == PS2_SUB_RCV_STOP) ) begin
+                        ff_debug_data   <= ff_ps2_rcv_dat;
+                        ff_debug_inc    <= 1'b1;
+                    end
+                    else begin
+                        ff_debug_data   <= 8'd0;
+                        ff_debug_inc    <= 1'b0;
+                    end
+                end
+            end
+
+            assign pKeyX = (PpiPortC[4] == 1'b0) ? ff_debug_read : ff_key_x;
+        end
+        else begin
+
+            assign pKeyX = ff_key_x;
+        end
+    endgenerate
+
+    // --------------------------------------------------------------------
+
+    // ------------------------------------------------------------------------
+    //  PS2 State Machine
+    // ------------------------------------------------------------------------
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
-            ff_div <= 4'd0;
+            ff_ps2_clk_count <= 2'd0;
         end
         else if( clkena ) begin
-            ff_div <= ff_div + 4'd1;
-        end
-    end
-
-    //  3.579545MHz / 16 = 223.7215625kHz : 1clock = 4.469usec
-    assign w_clkena = (ff_div == 4'd15) ? clkena : 1'b0;
-
-    always @( posedge clk21m ) begin
-        if( w_clkena ) begin
-            if( pPs2Clk == 1'b0 ) begin
-                ff_ps2_clk_delay <= { ff_ps2_clk_delay[3:0], 1'b0 };
+            if(      pPs2Clk == 1'b0 && ff_ps2_clk_count != 2'd0 ) begin
+                ff_ps2_clk_count <= ff_ps2_clk_count - 2'd1;
+            end
+            else if( pPs2Clk == 1'b1 && ff_ps2_clk_count != 2'd3 ) begin
+                ff_ps2_clk_count <= ff_ps2_clk_count + 2'd1;
             end
             else begin
-                ff_ps2_clk_delay <= { ff_ps2_clk_delay[3:0], 1'b1 };
+                //  hold
             end
         end
         else begin
@@ -158,20 +241,42 @@ module eseps2 #(
         end
     end
 
-    assign w_ps2_host_phase     = (ff_ps2_clk_delay[3] != 1'b0 && ff_ps2_clk_delay[4] != 1'b0) ? 1'b1 : 1'b0;
-    assign w_ps2_device_phase   = (ff_ps2_clk_delay[3] == 1'b0 && ff_ps2_clk_delay[4] == 1'b0) ? 1'b1 : 1'b0;
-    assign w_ps2_rise_edge      = (ff_ps2_clk_delay[3] != 1'b0 && ff_ps2_clk_delay[4] == 1'b0) ? 1'b1 : 1'b0;
-    assign w_ps2_fall_edge      = (ff_ps2_clk_delay[3] == 1'b0 && ff_ps2_clk_delay[4] != 1'b0) ? 1'b1 : 1'b0;
+    always @( posedge reset or posedge clk21m ) begin
+        if( reset ) begin
+            ff_ps2_clk_latch    <= 1'b0;
+            ff_ps2_clk_delay    <= 1'b0;
+        end
+        else if( clkena ) begin
+            if( ff_ps2_clk_count == 2'd0 ) begin
+                ff_ps2_clk_latch <= 1'b0;
+            end
+            else if( ff_ps2_clk_count == 2'd3 ) begin
+                ff_ps2_clk_latch <= 1'b1;
+            end
+            else begin
+                //  hold
+            end
+            ff_ps2_clk_delay <= ff_ps2_clk_latch;
+        end
+        else begin
+            //  hold
+        end
+    end
+
+    assign w_ps2_host_phase     = (                             ff_ps2_clk_latch == 1'b1 ) ? 1'b1 : 1'b0;
+    assign w_ps2_rise_edge      = ( ff_ps2_clk_delay == 1'b0 && ff_ps2_clk_latch == 1'b1 ) ? 1'b1 : 1'b0;
+    assign w_ps2_fall_edge      = ( ff_ps2_clk_delay == 1'b1 && ff_ps2_clk_latch == 1'b0 ) ? 1'b1 : 1'b0;
 
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
             ff_ps2_state    <= PS2_ST_RESET;
             ff_ps2_send     <= 1'b0;
+            ff_no_send      <= 1'b0;
         end
-        else if( w_clkena ) begin
-            if( w_timeout && ff_ps2_state != PS2_ST_RESET && ff_ps2_sub_state != PS2_SUB_SND_REQUEST ) begin
-                ff_ps2_state    <= PS2_ST_RESET;
-                ff_ps2_send     <= 1'b0;
+        else if( clkena ) begin
+            if( w_timeout && ff_ps2_state != PS2_ST_RESET && ff_ps2_state != PS2_ST_SND_RESET && ff_ps2_state != PS2_ST_IDLE && ff_ps2_sub_state != PS2_SUB_SND_REQUEST ) begin
+                //  for illegal keyboard
+                ff_ps2_state    <= PS2_ST_IDLE;
             end
             else begin
                 case( ff_ps2_state )
@@ -188,18 +293,32 @@ module eseps2 #(
                 PS2_ST_SND_RESET:
                     begin
                         ff_ps2_send     <= 1'b0;
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            //  reset command error
+                            ff_ps2_state    <= PS2_ST_SND_SETMON;
+                            ff_ps2_send     <= 1'b1;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             ff_ps2_state    <= PS2_ST_RCV_ACK1;
+                        end
+                        else begin
+                            //  hold
                         end
                     end
                 PS2_ST_RCV_ACK1:
                     begin
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            //  for illegal keyboard
+                            ff_ps2_state    <= PS2_ST_SND_SETMON;
+                            ff_ps2_send     <= 1'b1;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             if( ff_ps2_rcv_dat == 8'hFA ) begin
                                 ff_ps2_state    <= PS2_ST_RCV_BATCMP;
                             end
                             else begin
-                                ff_ps2_state    <= PS2_ST_SND_RESET;
+                                //  reset command error
+                                ff_ps2_state    <= PS2_ST_SND_SETMON;
                                 ff_ps2_send     <= 1'b1;
                             end
                         end
@@ -208,98 +327,85 @@ module eseps2 #(
                     begin
                         if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             if( ff_ps2_rcv_dat == 8'hAA ) begin
-                                ff_ps2_state    <= PS2_ST_SND_IDREAD;
+                                ff_ps2_state    <= PS2_ST_SND_SETMON;
                                 ff_ps2_send     <= 1'b1;
                             end
                             else begin
-                                ff_ps2_state    <= PS2_ST_SND_RESET;
+                                //  for illegal keyboard
+                                ff_ps2_state    <= PS2_ST_SND_SETMON;
                                 ff_ps2_send     <= 1'b1;
                             end
                         end
                         else begin
                             ff_ps2_send     <= 1'b0;
-                        end
-                    end
-                PS2_ST_SND_IDREAD:
-                    begin
-                        ff_ps2_send     <= 1'b0;
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
-                            ff_ps2_state    <= PS2_ST_RCV_ACK2;
-                        end
-                    end
-                PS2_ST_RCV_ACK2:
-                    begin
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
-                            if( ff_ps2_rcv_dat == 8'hFA ) begin
-                                ff_ps2_state    <= PS2_ST_RCV_IDL;
-                            end
-                            else begin
-                                ff_ps2_state    <= PS2_ST_SND_RESET;
-                                ff_ps2_send     <= 1'b1;
-                            end
-                        end
-                        else begin
-                            ff_ps2_send     <= 1'b0;
-                        end
-                    end
-                PS2_ST_RCV_IDL:
-                    begin
-                        ff_ps2_send     <= 1'b0;
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
-                            ff_ps2_state    <= PS2_ST_RCV_IDH;
-                        end
-                    end
-                PS2_ST_RCV_IDH:
-                    begin
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
-                            ff_ps2_state    <= PS2_ST_SND_SETMON;
-                            ff_ps2_send     <= 1'b1;
                         end
                     end
                 PS2_ST_SND_SETMON:
                     begin
                         ff_ps2_send     <= 1'b0;
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            ff_ps2_state    <= PS2_ST_RECOVERY;
+                            ff_no_send      <= 1'b1;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             ff_ps2_state    <= PS2_ST_RCV_ACK3;
                         end
                     end
                 PS2_ST_RCV_ACK3:
                     begin
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            ff_ps2_state    <= PS2_ST_RECOVERY;
+                            ff_no_send      <= 1'b1;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             if( ff_ps2_rcv_dat == 8'hFA ) begin
                                 ff_ps2_state    <= PS2_ST_SND_OPT;
                                 ff_ps2_send     <= 1'b1;
                             end
                             else begin
-                                ff_ps2_state    <= PS2_ST_SND_RESET;
-                                ff_ps2_send     <= 1'b1;
+                                //  for illegal keyboard
+                                ff_ps2_state    <= PS2_ST_RECOVERY;
+                                ff_no_send      <= 1'b1;
                             end
                         end
                     end
                 PS2_ST_SND_OPT:
                     begin
                         ff_ps2_send     <= 1'b0;
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            ff_ps2_state    <= PS2_ST_RECOVERY;
+                            ff_no_send      <= 1'b1;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             ff_ps2_state    <= PS2_ST_RCV_ACK4;
                         end
                     end
                 PS2_ST_RCV_ACK4:
                     begin
-                        if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                        if( ff_error ) begin
+                            ff_ps2_state    <= PS2_ST_IDLE;
+                        end
+                        else if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                             if( ff_ps2_rcv_dat == 8'hFA ) begin
                                 ff_ps2_state    <= PS2_ST_IDLE;
                             end
                             else begin
-                                ff_ps2_state    <= PS2_ST_SND_RESET;
-                                ff_ps2_send     <= 1'b1;
+                                //  for illegal keyboard
+                                ff_ps2_state    <= PS2_ST_RECOVERY;
+                                ff_no_send      <= 1'b1;
                             end
                         end
                     end
                 PS2_ST_IDLE:
                     begin
                         if( w_ps2_host_phase && w_ps2_led_change && !ff_f0_detect && !ff_e0_detect && !ff_e1_detect ) begin
-                            ff_ps2_state    <= PS2_ST_SND_SETMON;
-                            ff_ps2_send     <= 1'b1;
+                            if( !ff_no_send ) begin
+                                ff_ps2_state    <= PS2_ST_SND_SETMON;
+                                ff_ps2_send     <= 1'b1;
+                            end
+                            else begin
+                                //  hold
+                            end
                         end
                         else if( w_ps2_fall_edge ) begin
                             ff_ps2_state    <= PS2_ST_RCV_SCAN;
@@ -312,6 +418,12 @@ module eseps2 #(
                 PS2_ST_RCV_SCAN:
                     begin
                         if( ff_ps2_sub_state == PS2_SUB_WAIT ) begin
+                            ff_ps2_state    <= PS2_ST_IDLE;
+                        end
+                    end
+                PS2_ST_RECOVERY:
+                    begin
+                        if( w_timeout ) begin
                             ff_ps2_state    <= PS2_ST_IDLE;
                         end
                     end
@@ -328,8 +440,9 @@ module eseps2 #(
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
             ff_ps2_sub_state    <= PS2_SUB_IDLE;
+            ff_error            <= 1'b0;
         end
-        else if( w_clkena ) begin
+        else if( clkena ) begin
             if( ff_ps2_state == PS2_ST_RESET ) begin
                 ff_ps2_sub_state    <= PS2_SUB_IDLE;
             end
@@ -354,6 +467,10 @@ module eseps2 #(
                     begin
                         if( w_ps2_fall_edge ) begin
                             ff_ps2_sub_state <= ff_ps2_sub_state + 5'd1;
+                        end
+                        else if( w_timeout ) begin
+                            ff_ps2_sub_state    <= PS2_SUB_WAIT;
+                            ff_error            <= 1'b1;
                         end
                         else begin
                             //  hold
@@ -385,22 +502,22 @@ module eseps2 #(
                         if( w_ps2_fall_edge ) begin
                             ff_ps2_sub_state <= ff_ps2_sub_state + 5'd1;
                         end
+                        else if( w_timeout ) begin
+                            ff_ps2_sub_state    <= PS2_SUB_WAIT;
+                            ff_error            <= 1'b1;
+                        end
                         else begin
                             //  hold
                         end
                     end
                 PS2_SUB_SND_ACK:
                     begin
-//                      if( w_ps2_rise_edge ) begin
-                            ff_ps2_sub_state <= PS2_SUB_WAIT;
-//                      end
-//                      else begin
-                            //  hold
-//                      end
+                        ff_ps2_sub_state <= PS2_SUB_WAIT;
                     end
                 PS2_SUB_WAIT:
                     begin
-                        ff_ps2_sub_state <= PS2_SUB_IDLE;
+                        ff_ps2_sub_state    <= PS2_SUB_IDLE;
+                        ff_error            <= 1'b0;
                     end
                 default:
                     ff_ps2_sub_state    <= PS2_SUB_IDLE;
@@ -412,32 +529,55 @@ module eseps2 #(
     // ------------------------------------------------------------------------
     //  Timer
     // ------------------------------------------------------------------------
-    localparam      TIMER_107USEC = 15'd24;         //  4.469usec * 24clock    = 107.256usec
-    localparam      TIMER_146MSEC = 15'd32767;      //  4.469usec * 32767clock = 146.435msec
+    localparam      TIMER_M36USEC = 19'd384;        //  0.2794usec * 128clock       = 35.7632usec (512 - 128 clock)
+    localparam      TIMER_143USEC = 19'd512;        //  0.2794usec * 512clock       = 143.053usec (PS/2 spec. minimum 100usec)
+    localparam      TIMER_12MSEC = 19'd42949;       //  0.2794usec * 42949clock     = 12msec
+    localparam      TIMER_20MSEC = 19'd71582;       //  0.2794usec * 71582clock     = 20msec
+    localparam      TIMER_120MSEC = 19'd429492;     //  0.2794usec * 429492clock    = 120msec
 
-    assign w_timeout    = (ff_timer == 15'h0000) ? 1'b1 : 1'b0;
+    assign w_timeout    = (ff_timer == 19'h00000) ? 1'b1 : 1'b0;
 
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
-            ff_timer <= TIMER_107USEC;
+            ff_timer <= TIMER_120MSEC;
         end
-        else if( w_clkena ) begin
-            if( w_timeout && ff_ps2_state == PS2_ST_RESET ) begin
-                ff_timer <= TIMER_146MSEC;
+        else if( clkena ) begin
+            if( w_timeout && (ff_ps2_state == PS2_ST_RESET || ff_ps2_state == PS2_ST_SND_RESET) ) begin
+                ff_timer <= TIMER_120MSEC;
             end
             else if( w_timeout && ff_ps2_sub_state == PS2_SUB_SND_REQUEST ) begin
-                ff_timer <= TIMER_146MSEC;
+                ff_timer <= TIMER_12MSEC;
+            end
+            else if( w_ps2_rise_edge && (
+                    ff_ps2_sub_state == PS2_SUB_SND_D0 || ff_ps2_sub_state == PS2_SUB_SND_D1 ||
+                    ff_ps2_sub_state == PS2_SUB_SND_D2 || ff_ps2_sub_state == PS2_SUB_SND_D3 ||
+                    ff_ps2_sub_state == PS2_SUB_SND_D4 || ff_ps2_sub_state == PS2_SUB_SND_D5 ||
+                    ff_ps2_sub_state == PS2_SUB_SND_D6 || ff_ps2_sub_state == PS2_SUB_SND_D7 ||
+                    ff_ps2_sub_state == PS2_SUB_SND_PARITY ) ) begin
+                ff_timer <= TIMER_143USEC;
+            end
+            else if( w_ps2_fall_edge && (
+                    ff_ps2_sub_state == PS2_SUB_RCV_START ||
+                    ff_ps2_sub_state == PS2_SUB_RCV_D0 || ff_ps2_sub_state == PS2_SUB_RCV_D1 ||
+                    ff_ps2_sub_state == PS2_SUB_RCV_D2 || ff_ps2_sub_state == PS2_SUB_RCV_D3 ||
+                    ff_ps2_sub_state == PS2_SUB_RCV_D4 || ff_ps2_sub_state == PS2_SUB_RCV_D5 ||
+                    ff_ps2_sub_state == PS2_SUB_RCV_D6 || ff_ps2_sub_state == PS2_SUB_RCV_D7 ||
+                    ff_ps2_sub_state == PS2_SUB_RCV_PARITY ) ) begin
+                ff_timer <= TIMER_143USEC;
             end
             else if( ff_ps2_state != PS2_ST_RESET && ff_ps2_sub_state == PS2_SUB_IDLE ) begin
+                if( ff_error ) begin
+                    ff_timer <= TIMER_20MSEC;
+                end
                 if( ff_ps2_send ) begin
-                    ff_timer <= TIMER_107USEC;
+                    ff_timer <= TIMER_143USEC;
                 end
                 else begin
-                    ff_timer <= TIMER_146MSEC;
+                    ff_timer <= TIMER_20MSEC;
                 end
             end
             else if( !w_timeout ) begin
-                ff_timer <= ff_timer - 15'd1;
+                ff_timer <= ff_timer - 19'd1;
             end
             else begin
                 //  hold
@@ -452,13 +592,15 @@ module eseps2 #(
 
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
-            ff_ps2_clk <= 1'b0;
+            //  This must be set to 1'bZ. This is because setting it to 1'b0 will make the G300 unstable.
+            ff_ps2_clk <= 1'bZ;
         end
-        else if( w_clkena ) begin
-            if( ff_ps2_state == PS2_ST_RESET ) begin
-                ff_ps2_clk <= 1'b0;
+        else if( clkena ) begin
+            if( ff_ps2_state == PS2_ST_RESET  ) begin
+                //  This must be set to 1'bZ. This is because setting it to 1'b0 will make the G300 unstable.
+                ff_ps2_clk <= 1'bZ;
             end
-            else if( ff_ps2_sub_state == PS2_SUB_SND_REQUEST ) begin
+            else if( (ff_ps2_sub_state == PS2_SUB_SND_REQUEST) || (ff_ps2_state == PS2_ST_SND_RESET && ff_ps2_sub_state == PS2_SUB_IDLE) || (ff_ps2_state == PS2_ST_RECOVERY) ) begin
                 ff_ps2_clk <= 1'b0;
             end
             else begin
@@ -488,7 +630,7 @@ module eseps2 #(
             ff_reso_toggle_key  <= 1'b0;
             ff_scrlk_toggle_key <= 1'b0;
         end
-        else if( w_clkena ) begin
+        else if( clkena ) begin
             if( (ff_ps2_state == PS2_ST_RCV_SCAN) && (ff_ps2_sub_state == PS2_SUB_WAIT) ) begin
                 if( ff_e1_detect == 1'b0 && ff_e0_detect == 1'b0 && (ff_ps2_rcv_dat == 8'h12 || ff_ps2_rcv_dat == 8'h59) ) begin
                     //  Shift Left == 'h12, Shift Right == 'h59
@@ -525,29 +667,23 @@ module eseps2 #(
     // ------------------------------------------------------------------------
     //  PS2 Data (Sender)
     // ------------------------------------------------------------------------
-    reg             ff_ps2_dat;
-    reg     [7:0]   ff_ps2_snd_dat;
-
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
             ff_ps2_dat <= 1'bZ;
         end
-        else if( w_clkena ) begin
-            if( ff_ps2_sub_state == PS2_SUB_SND_REQUEST ) begin
+        else if( clkena ) begin
+            if( ff_ps2_sub_state == PS2_ST_RESET || ff_ps2_sub_state == PS2_SUB_IDLE ) begin
+                ff_ps2_dat <= 1'bZ;
+            end
+            else if( ff_timer == TIMER_M36USEC && ff_ps2_sub_state == PS2_SUB_SND_REQUEST ) begin
                 ff_ps2_dat <= 1'b0;
             end
-            else if( w_ps2_device_phase ) begin
+            else if( w_ps2_fall_edge ) begin
                 case( ff_ps2_sub_state )
-                PS2_SUB_SND_START:      ff_ps2_dat <= 1'b0;
-                PS2_SUB_SND_D0:         ff_ps2_dat <= ff_ps2_snd_dat[0] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D1:         ff_ps2_dat <= ff_ps2_snd_dat[1] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D2:         ff_ps2_dat <= ff_ps2_snd_dat[2] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D3:         ff_ps2_dat <= ff_ps2_snd_dat[3] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D4:         ff_ps2_dat <= ff_ps2_snd_dat[4] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D5:         ff_ps2_dat <= ff_ps2_snd_dat[5] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D6:         ff_ps2_dat <= ff_ps2_snd_dat[6] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_D7:         ff_ps2_dat <= ff_ps2_snd_dat[7] ? 1'bZ : 1'b0;
-                PS2_SUB_SND_PARITY:     ff_ps2_dat <= (~(^ff_ps2_snd_dat)) ? 1'bZ : 1'b0;
+                PS2_SUB_SND_START, PS2_SUB_SND_D0, PS2_SUB_SND_D1, PS2_SUB_SND_D2, PS2_SUB_SND_D3,
+                PS2_SUB_SND_D4, PS2_SUB_SND_D5, PS2_SUB_SND_D6:
+                                        ff_ps2_dat <= ff_ps2_snd_dat[0]    ? 1'bZ : 1'b0;
+                PS2_SUB_SND_D7:         ff_ps2_dat <= (~(^ff_ps2_snd_dat)) ? 1'bZ : 1'b0;
                 default:                ff_ps2_dat <= 1'bZ;
                 endcase
             end
@@ -560,13 +696,10 @@ module eseps2 #(
     end
 
     always @( posedge clk21m ) begin
-        if( w_clkena ) begin
+        if( clkena ) begin
             if( ff_ps2_sub_state == PS2_SUB_SND_REQUEST ) begin
                 if( ff_ps2_state == PS2_ST_SND_RESET ) begin
                     ff_ps2_snd_dat <= 8'hFF;
-                end
-                else if( ff_ps2_state == PS2_ST_SND_IDREAD ) begin
-                    ff_ps2_snd_dat <= 8'hF2;
                 end
                 else if( ff_ps2_state == PS2_ST_SND_SETMON ) begin
                     ff_ps2_snd_dat <= 8'hED;
@@ -583,6 +716,14 @@ module eseps2 #(
                     //  hold
                 end
             end
+            else if( ff_ps2_sub_state >= PS2_SUB_SND_START && ff_ps2_sub_state <= PS2_SUB_SND_D6 ) begin
+                if( w_ps2_fall_edge ) begin
+                    ff_ps2_snd_dat <= { ff_ps2_snd_dat[0], ff_ps2_snd_dat[7:1] };
+                end
+            end
+            else begin
+                //  hold
+            end
         end
     end
 
@@ -595,7 +736,7 @@ module eseps2 #(
         if( reset ) begin
             ff_ps2_rcv_dat <= 8'h00;
         end
-        else if( w_clkena ) begin
+        else if( clkena ) begin
             if( w_ps2_fall_edge ) begin
                 case( ff_ps2_sub_state )
                 PS2_SUB_RCV_START,
@@ -619,7 +760,7 @@ module eseps2 #(
             ff_e0_detect <= 1'b0;
             ff_e1_detect <= 1'b0;
         end
-        else if( w_clkena ) begin
+        else if( clkena ) begin
             if( ff_ps2_state == PS2_ST_RCV_SCAN && ff_ps2_sub_state == PS2_SUB_WAIT ) begin
                 if( ff_ps2_rcv_dat == 8'hF0 ) begin
                     ff_f0_detect <= 1'b1;
@@ -656,8 +797,8 @@ module eseps2 #(
             ff_led_scroll_lock  <= CmtScro;
             ff_led_num_lock     <= ~numlk_initial;
         end
-        else if( w_clkena ) begin
-            if( ff_ps2_state == PS2_ST_SND_OPT && ff_ps2_sub_state == PS2_SUB_SND_ACK ) begin
+        else if( clkena ) begin
+            if( ff_ps2_state == PS2_ST_SND_SETMON && ff_ps2_send ) begin
                 ff_led_caps_lock    <= Caps;
                 ff_led_kana_lock    <= Kana;
                 ff_led_scroll_lock  <= CmtScro;
@@ -673,31 +814,6 @@ module eseps2 #(
     // ------------------------------------------------------------------------
     //  MSX Key Matrix Updater
     // ------------------------------------------------------------------------
-    localparam      MATUPD_ST_RESET             = 4'd0;
-    localparam      MATUPD_ST_IDLE              = 4'd1;
-    localparam      MATUPD_ST_KEYMAP_READ1      = 4'd2;
-    localparam      MATUPD_ST_MATRIX_READ1_REQ  = 4'd3;
-    localparam      MATUPD_ST_MATRIX_READ1_RES  = 4'd4;
-    localparam      MATUPD_ST_MATRIX_WRITE1     = 4'd5;
-    localparam      MATUPD_ST_KEYMAP_READ2      = 4'd6;
-    localparam      MATUPD_ST_MATRIX_READ2_REQ  = 4'd7;
-    localparam      MATUPD_ST_MATRIX_READ2_RES  = 4'd8;
-    localparam      MATUPD_ST_MATRIX_WRITE2     = 4'd9;
-    reg     [3:0]   ff_matupd_state;
-    reg             ff_matupd_we;
-    reg             ff_matupd_ppi_c;
-    reg     [3:0]   ff_matupd_rows;
-    reg     [7:0]   ff_matupd_keys;
-    reg     [10:0]  ff_keymap_index;
-    reg             ff_key_unpress;         //  0: pressed, 1: unpressed
-    reg     [3:0]   ff_key_bits;
-    wire    [7:0]   w_keymap_dat;
-    reg     [7:0]   ff_key_x;
-    wire    [7:0]   w_mask;
-    wire    [7:0]   w_matrix_pre;
-    wire    [7:0]   w_matrix;
-    reg     [5:0]   ff_func_keys;
-
     always @( posedge reset or posedge clk21m ) begin
         if( reset ) begin
             ff_matupd_state         <= MATUPD_ST_RESET;
@@ -707,6 +823,7 @@ module eseps2 #(
             ff_ps2_virtual_shift    <= 1'b0;
             ff_func_keys            <= 6'b000000;
             ff_matupd_ppi_c         <= 1'b0;
+            ff_e0_detect_dl         <= 1'b0;
         end
         else begin
             if( ff_matupd_state == MATUPD_ST_RESET ) begin
@@ -718,7 +835,7 @@ module eseps2 #(
             end
             else if( ff_matupd_state == MATUPD_ST_IDLE ) begin
                 ff_matupd_we    <= 1'b0;
-                if( w_clkena && (ff_ps2_state == PS2_ST_RCV_SCAN) && (ff_ps2_sub_state == PS2_SUB_WAIT) && !ff_e1_detect ) begin
+                if( clkena && (ff_ps2_state == PS2_ST_RCV_SCAN) && (ff_ps2_sub_state == PS2_SUB_WAIT) && !ff_e1_detect ) begin
                     ff_matupd_state <= MATUPD_ST_KEYMAP_READ1;
                     ff_key_unpress  <= ff_f0_detect;
                     ff_e0_detect_dl <= ff_e0_detect;
@@ -828,10 +945,6 @@ module eseps2 #(
             //  hold
         end
     end
-    assign pKeyX = ff_key_x;
-//  assign pKeyX = (PpiPortC[3:0] == 4'd12) ? ff_ps2_rcv_dat:
-//                 (PpiPortC[3:0] == 4'd13) ? { 3'd0, ff_ps2_sub_state }:
-//                 (PpiPortC[3:0] == 4'd14) ? { 4'd0, ff_ps2_state }:  ff_key_x;
 
     ram u_matrix_ram (
     .adr    ( { 4'd0, ff_matupd_rows }  ),
@@ -850,6 +963,4 @@ module eseps2 #(
     .clk    ( clk21m            ),
     .dbi    ( w_keymap_dat      )
     );
-
-//  assign debug_sig    = { Caps, Kana, CmtScro, ff_numlk_key,3'd0, ff_ps2_sub_state, ff_ps2_state };
 endmodule

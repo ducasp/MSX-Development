@@ -1,5 +1,5 @@
 # Files
-set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/videohbfranky/vdp.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_colordec.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_command.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_doublebuf.vhd
@@ -10,7 +10,7 @@ set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_interrupt.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_linebuf.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_ntsc_pal.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_package.vhd
-set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_register.vhd
+set_global_assignment -name VHDL_FILE ../esemsx3/src/videohbfranky/vdp_register.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_spinforam.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_sprite.vhd
 set_global_assignment -name VHDL_FILE ../esemsx3/src/video/vdp_ssg.vhd

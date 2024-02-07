@@ -22,7 +22,7 @@ set_global_assignment -name TOP_LEVEL_ENTITY top
 set_global_assignment -name FORCE_SYNCH_CLEAR OFF
 set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS ON
 set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE AREA
-set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "NORMAL COMPILATION"
+set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "EXTRA EFFORT"
 
 # Fitter Assignments
 # ==================

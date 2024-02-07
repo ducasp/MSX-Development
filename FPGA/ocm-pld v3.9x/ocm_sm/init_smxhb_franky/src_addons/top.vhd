@@ -255,7 +255,6 @@ architecture Behavior of top is
 
     -- misc
     signal blink_s          : std_logic;
-    signal joy_deb          : std_logic;
 
     begin
 
@@ -354,17 +353,6 @@ architecture Behavior of top is
         pSltCs12_n              => slot_CS12_o,
         BusDir_o                => BusDir_s,
 
-        -- Reserved ports
-        pSltClk                 => '0',
-        pIopRsv14               => '0',
-        pIopRsv15               => '0',
-        pIopRsv16               => '0',
-        pIopRsv17               => '0',
-        pIopRsv18               => '0',
-        pIopRsv19               => '0',
-        pIopRsv20               => '0',
-        pIopRsv21               => '0',
-
         -- Franky VDP
         clkSYSSMS               => clk_sms,
         clkSMSVDP               => ce_vdp,
@@ -389,7 +377,6 @@ architecture Behavior of top is
         vga_scanlines           => vga_scanlines,
         btn_scan                => btn_scan_s,
         caps_led_o              => caps_led_o,
-        joy_deb                 => joy_deb,
         DisBiDir                => dip_i(9),
         model_expert_n          => is_expert_n,
         EnAltMap                => dip_i(9)
@@ -419,11 +406,9 @@ architecture Behavior of top is
 
     sdram_clk_o     <= clk_sdram;
 
-    joy1_s          <= joy1_d_s; -- when( joy_deb = '1' )else
-                       --( joy1_p7_io & joy1_p6_io & joy1_right_io & joy1_left_io & joy1_down_io & joy1_up_io );
+    joy1_s          <= joy1_d_s;
 
-    joy2_s          <= joy2_d_s; -- when( joy_deb = '1' )else
-                       --( joy2_p7_io & joy2_p6_io & joy2_right_io & joy2_left_io & joy2_down_io & joy2_up_io );
+    joy2_s          <= joy2_d_s;
 
     -- VIDEO
     vga_r_o         <= vga_r_out_s_21 when ( sms_active = '0' ) else SMS_VGA_R;
