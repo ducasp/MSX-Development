@@ -11,12 +11,18 @@
 ; setup menus and functionality, he has helped quite a lot to get it to the
 ; final format and functionality, thanks!
 ;
+; The MSX PICO version of this code has contribution from Jeroen Taverne That
+; helped making some MACROs on the fixed / non speed optimized loop I/O parts
+; of the code so we can easily switch this from I/O based to Memory Based.
+;
 ; Note: this implementation depends upon ESP8266 having the UNAPI
 ; firmware flashed. This firmware has been developed by me as well.
 ;
-; Comercial usage of this code or derivative works of this code are
-; allowed ONLY upon agreement with the author.
-; Non-comercial usage is free as long as you publish your code changes.
+; Usage is free as long as you publish your code changes. If you make a profit
+; selling something using this code, a suggestion is that you donate one or two
+; pieces of the hardware to the MSX DEV contest to be awarded to MSX DEV winners
+; as this shouldn't cost much and perhaps will bring interest on developers to
+; make games that support internet :)
 ;
 ; Design details:
 ; There are five instances of this ROM
@@ -121,13 +127,15 @@
 ;      for F1/F2 or try to update RTC, being faster
 ; EF - Set when ESP8266 was not found or by user at runtime to disable UNAPI
 ;      next warm boot
+;
+; MSX Pico also implements the F2 device
 
 ;*************************
 ;***  BUILD DEFINITIONS **
 ;*************************
 
 ;--- verbose rom...?
-VERBOSE_ROM:            equ 0
+NON_VERBOSE_ROM:        equ 0
 ;--- Use memory mapped IO or not...
 USE_MEM_IO:             equ 1
 
@@ -414,7 +422,7 @@ BOOT_FROM_POWER_OFF:
     bit 5,a                         ; Test [F1]
     jp  z,ENTERING_ESPSETUP         ; If F1 is pressed, let's execute our setup menu
     ; F1 is not pressed, continue
-    if  VERBOSE_ROM = 0
+    if  NON_VERBOSE_ROM = 0
     ld  hl,WELCOME
     call    PRINTHL
     ld  hl,WELCOME_SF
@@ -591,7 +599,7 @@ PATCH2:
     ld  hl,HOKVLD
     set 0,(hl)                      ; And set HOKVLD properly to indicate an EXTBIOS is installed
 INIT_OK:
-    if  VERBOSE_ROM = 0
+    if  NON_VERBOSE_ROM = 0
     ld  hl,OK_S                     ; All done and set, nice exit message
     call    PRINTHL
     endif
