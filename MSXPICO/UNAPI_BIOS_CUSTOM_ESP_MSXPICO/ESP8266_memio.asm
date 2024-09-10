@@ -172,7 +172,7 @@ MEM_OUT_CMD_PORT:       equ #7F06
 MEM_OUT_TX_PORT:        equ #7F07
 MEM_IN_DATA_PORT:       equ #7F06
 MEM_IN_STS_PORT:        equ #7F07
-MEM_PORT_F2:            equ #7FF2
+MEM_PORT_F2:            equ #7F05
 
 ;--- I/O ports:
 OUT_CMD_PORT:           equ #06
@@ -208,6 +208,11 @@ PORT_F2:                equ #F2
   MACRO CHECK_DATA
     ld  a,(MEM_IN_STS_PORT)
     bit 0,a                         ; If nz has data
+  ENDM
+
+  MACRO CHECK_QUICK_RECEIVE
+    ld  a,(MEM_IN_STS_PORT)
+    bit 3,a                         ; Quick Receive Supported?
   ENDM
 
   MACRO CHECK_BUFFER_UNDERRUN
@@ -249,6 +254,11 @@ PORT_F2:                equ #F2
   MACRO CHECK_DATA
     in  a,(IN_STS_PORT)
     bit 0,a                         ; If nz has data
+  ENDM
+
+  MACRO CHECK_QUICK_RECEIVE
+    ld  a,(IN_STS_PORT)
+    bit 3,a                         ; Quick Receive Supported?
   ENDM
 
   MACRO CHECK_BUFFER_UNDERRUN
@@ -425,8 +435,15 @@ BOOT_FROM_POWER_OFF:
     if  NON_VERBOSE_ROM = 0
     ld  hl,WELCOME
     call    PRINTHL
+    CHECK_QUICK_RECEIVE
+    jr  nz,BOOT_FROM_POWER_OFF.1    ; QR Supported
+    ld  hl,WELCOME_SF2
+    call    PRINTHL
+    jr  BOOT_FROM_POWER_OFF.2
+BOOT_FROM_POWER_OFF.1:
     ld  hl,WELCOME_SF
     call    PRINTHL
+BOOT_FROM_POWER_OFF.2:
     endif
     ld  a,6
     call    SNSMAT
@@ -674,10 +691,15 @@ ESPSETUP:
     ; Well, if reset successful, continue
     ld  hl,WELCOME
     call    PRINTHL
-    ld  hl,WELCOME
-    call    PRINTHL
+    CHECK_QUICK_RECEIVE
+    jr  nz,ESPSETUP.2NF             ; If yes, tells Quick Receive support
+    ld  hl,WELCOME_SF2
+    call    PRINTHL                 ; Print Welcome message no QR
+    jr  ESPSETUP.3NF
+ESPSETUP.2NF:
     ld  hl,WELCOME_SF
-    call    PRINTHL                 ; Print Welcome message
+    call    PRINTHL                 ; Print Welcome message QR
+ESPSETUP.3NF:
     ld  hl,WELCOME_CS
     call    PRINTHL                 ; Print Wi-Fi is reconnecting to:
 ESPSETUP_NEXT:
@@ -3629,6 +3651,9 @@ TCPIP_UDP_RCV_PORT_ST2.1:
     if USE_MEM_IO = 0
     ld  c,IN_DATA_PORT
     endif
+    CHECK_QUICK_RECEIVE
+    jr  z,TCPIP_UDP_RCV_R_NSF       ; If not, go to the old, slower route
+    ; Otherwise, let's speed it up baby!
 TCPIP_UDP_RCV_R:
     if USE_MEM_IO = 0
     inir
@@ -3643,6 +3668,28 @@ TCPIP_UDP_RCV_R:
     CHECK_BUFFER_UNDERRUN
     jp  nz,TCPIP_TCP_UDP_RETRY_QRCV ; If yes, retry
     ; Otherwise, done
+    ; done, restore return data in DE BC and HL
+    call    REGRESTORE
+    xor a
+    ret
+    ; Slower route if Interface doesn't implement quick receive
+TCPIP_UDP_RCV_R_NSF:
+    CHECK_DATA
+    jr  nz,TCPIP_UDP_RCV_R_NSF.1
+    call    TCPIP_UDP_RCV_CHECK_TIME_OUT
+    jr  TCPIP_UDP_RCV_R_NSF
+TCPIP_UDP_RCV_R_NSF.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,TCPIP_UDP_RCV_R_NSF          ; We do not use INIR because we don't know if there is more data, avoiding geting a junk 0xFF
+    dec d
+    jr  nz,TCPIP_UDP_RCV_R_NSF
     ; done, restore return data in DE BC and HL
     call    REGRESTORE
     xor a
@@ -4505,7 +4552,7 @@ TCPIP_TCP_RCV_UDC_ST2:
     jr  nz,TCPIP_TCP_RCV_UDC_ST2.1
     call    TCPIP_TCP_RCV_CHECK_TIME_OUT
     jr  TCPIP_TCP_RCV_UDC_ST2
-TCPIP_TCP_RCV_UDC_ST2.1
+TCPIP_TCP_RCV_UDC_ST2.1:
     ; nz, get it
     RECEIVE_DATA
 
@@ -4521,9 +4568,15 @@ TCPIP_TCP_RCV_UDC_ST2.1
     inc d
     if USE_MEM_IO = 0
     ld  c,IN_DATA_PORT
+    CHECK_QUICK_RECEIVE
+    jr  z,TCPIP_TCP_RCV_R_NSF       ; If not, go to the old, slower route
+    ; Otherwise, let's speed it up baby!
 TCPIP_TCP_RCV_R:
     inir
     else
+    CHECK_QUICK_RECEIVE
+    jr  z,TCPIP_TCP_RCV_R_NSF       ; If not, go to the old, slower route
+    ; Otherwise, let's speed it up baby!
 TCPIP_TCP_RCV_R:
     ld  a,(MEM_IN_DATA_PORT)
     ld  (hl),a
@@ -4535,6 +4588,28 @@ TCPIP_TCP_RCV_R:
     CHECK_BUFFER_UNDERRUN
     jp  nz,TCPIP_TCP_RCV_RETRY_QRCV ; If yes, retry
     ; Otherwise, done
+    call    BCRESTORE               ; done, restore return data in BC
+    ; no urgent data support
+    ld  hl,0
+    xor a
+    ret
+TCPIP_TCP_RCV_R_NSF:
+    CHECK_DATA
+    jr  nz,TCPIP_TCP_RCV_R_NSF.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  TCPIP_TCP_RCV_R_NSF
+TCPIP_TCP_RCV_R_NSF.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,TCPIP_TCP_RCV_R_NSF
+    dec d
+    jr nz,TCPIP_TCP_RCV_R_NSF
     call    BCRESTORE               ; done, restore return data in BC
     ; no urgent data support
     ld  hl,0
@@ -5802,6 +5877,10 @@ WELCOME_SF:
     db  "Quick Receive supported."      ,CR,LF,LF,STTERMINATOR
 ;---
 
+WELCOME_SF2:
+    db  "Quick Receive not supported."      ,CR,LF,LF,STTERMINATOR
+;---
+
 WELCOME_CS:
     db  "Wi-Fi is reconnecting to:    " ,GOLEFT,CR,LF
     db  "(",1,88,1,90,1,89,") "         ,STTERMINATOR
@@ -6115,7 +6194,7 @@ ID_END: ds  #7FE0-ID_END,#C9
 BUILD_NAME:             db  "[ ESP8266P.ROM ]"
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 
-BUILD_DATE:             db  "BUILD 2024/09/06"
+BUILD_DATE:             db  "BUILD 2024/09/10"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
