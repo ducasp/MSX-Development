@@ -1,0 +1,37 @@
+# depslib dependency file v1.0
+1562971340 source:c:\fusion-c\updt8266.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"msx_fusion.h"
+	"io.h"
+	"asm.h"
+
+1615574330 c:\fusion-c\fusion-c\header\msx_fusion.h
+
+1615574330 c:\fusion-c\fusion-c\header\io.h
+
+1615574330 c:\fusion-c\fusion-c\header\asm.h
+
+1597330264 source:c:\ducasp_git\msx-development\msx-sm\wifi\cfg8266\src\updt8266.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"../../fusion-c/header/msx_fusion.h"
+	"../../fusion-c/header/io.h"
+	"../../fusion-c/header/asm.h"
+	"UPDT8266.h"
+
+1597330358 c:\ducasp_git\msx-development\msx-sm\wifi\updt8266\src\updt8266.h
+
+1726149197 source:c:\ducasp_git\msx-development\msxpico\updt8266\src\updt8266.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+	"../../fusion-c/header/msx_fusion.h"
+	"../../fusion-c/header/io.h"
+	"../../fusion-c/header/asm.h"
+	"UPDT8266.h"
+
+1726149378 c:\ducasp_git\msx-development\msxpico\updt8266\src\updt8266.h
+
