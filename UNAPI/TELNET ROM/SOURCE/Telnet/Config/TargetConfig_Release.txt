@@ -1,0 +1,48 @@
+;----------------------------------------------------------
+;	TargetConfig_Debug.txt - by Danilo Angelo, 2020-2023
+;
+;	Configuration for the RELEASE profile
+;----------------------------------------------------------
+
+;----------------------------------------------------------
+;	Build settings
+;   Determine operation of the build tools
+.BUILD
+BUILD_DEBUG			        100 				; DBG_MUTE=0
+                                                ; DBG_ERROR=10
+                                                ; DBG_OPENING=40
+                                                ; DBG_STEPS=50
+                                                ; DBG_SETTING=70
+                                                ; DBG_OUTPUT=100
+                                                ; DBG_DETAIL=120
+                                                ; DBG_CALL1=150
+                                                ; DBG_CALL2=160
+                                                ; DBG_CALL3=170
+                                                ; DBG_TOOLSDETAIL=190
+                                                ; DBG_EXTROVERT=200
+                                                ; DBG_PARAMS=230
+                                                ; DBG_VERBOSE=255
+
+ASSEMBLER_EXTRA_DIRECTIVES  -l
+COMPILER_EXTRA_DIRECTIVES
+LINKER_EXTRA_DIRECTIVES     --opt-code-size --disable-warning 196
+EXECGEN_EXTRA_DIRECTIVES
+
+
+;----------------------------------------------------------
+;	Application settings
+;   Macros & constants
+.APPLICATION
+DEBUG				        _OFF				; _OFF: not defined ; _ON: defined; 1-n defined with debug level
+ 
+
+;----------------------------------------------------------
+;	Filesystem settings
+;	The values below are also default, if ommited.
+.FILESYSTEM
+MSX_FILE_NAME		        MSXAPP
+MSX_FILE_EXTENSION          ROM
+MSX_BIN_PATH		        [PROFILE]\bin
+MSX_OBJ_PATH		        [PROFILE]\objs
+MSX_DEV_PATH		        ..\..\..
+MSX_LIB_PATH		        [MSX_DEV_PATH]\libs

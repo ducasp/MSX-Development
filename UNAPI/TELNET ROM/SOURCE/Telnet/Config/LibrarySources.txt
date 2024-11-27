@@ -1,0 +1,12 @@
+;----------------------------------------------------------
+;	LibrarySources.txt - by Danilo Angelo, 2020
+;
+;	List of all libraries used by your application
+;	These will be processed by Rebuild/Make all commands,
+;	but will be reused by Build/Make commands.
+;----------------------------------------------------------
+
+;[MSX_LIB_PATH]\util\putchar.s
+;[MSX_LIB_PATH]\util\getchar.s
+;[MSX_LIB_PATH]\util\printf.c
+;[MSX_LIB_PATH]\util\types.c

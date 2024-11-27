@@ -1,0 +1,52 @@
+;----------------------------------------------------------
+;	ApplicationSources.txt - by Danilo Angelo, 2020
+;
+;	List of all specific application C and ASM sources
+;	These will always be processed by any build actions
+;----------------------------------------------------------
+
+;----------------------------------------------------------
+;	General structure of a MSX BIN application
+;	Do NOT remove.
+;	This MUST be the first entry in this file.
+MSX\ROM\msxromcrt0.s
+
+;----------------------------------------------------------
+;	MSX ROM application source files, in C and ASM formats
+;	This is where your main function is.
+;	THIS IS YOUR PROGRAM!
+;	Choose ONE and ONLY ONE of the lines below,
+;	and leave the other commented!
+telnetrom.c
+UnapiHelper.c
+
+;----------------------------------------------------------
+;	BASIC's CALL handler implementation example
+;	When CALL_EXPANSION is "_ON" on
+;	ApplicationSettings.txt, choose ONE and ONLY ONE of
+;	the examples below, and leave the other commented!
+;callhandler.s
+;callhandler.c
+
+;----------------------------------------------------------
+;	BASIC's DEVICE handler implementation example
+;	When DEVICE_EXPANSION is "_ON" on
+;	ApplicationSettings.txt, choose ONE and ONLY ONE of
+;	the examples below, and leave the other commented!
+;devicehandler.s
+;devicehandler.c
+
+;----------------------------------------------------------
+;	Disk access example
+;	Only included if LATE_EXECUTION is "_ON" on
+;	ApplicationSettings.txt.
+;	If your ROM doesn't need disk access, comment or
+;	remove the line below.
+;diskaccess.s
+
+;----------------------------------------------------------
+;	Additional source files
+;	Add below additional source files for your application
+;	using relative paths from the project folder
+print.s
+inkey.s

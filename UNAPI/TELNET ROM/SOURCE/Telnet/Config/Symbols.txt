@@ -1,0 +1,14 @@
+;----------------------------------------------------------
+;	Symbols.txt - by Danilo Angelo, 2021
+;
+;	Symbol export configuration.
+;   Add python-like matching regex expressions
+;   in one of the formats below:
+;
+;   <symbol match regex>
+;   <symbol match regex> <substring search regex>  <substring replace string>
+;----------------------------------------------------------
+
+[a-zA-Z0-9]*_init
+[a-zA-Z0-9]*_romInit
+_main _m m

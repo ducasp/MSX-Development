@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{38f53bfe-01dd-47ab-bf92-ee15b0d372e4}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeBuildCommandLine>python Make\make.py $(Configuration)</NMakeBuildCommandLine>
+    <NMakeOutput>$(ProjectName).BIN</NMakeOutput>
+    <NMakeCleanCommandLine>python Make\make.py $(Configuration) clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>python Make\make.py $(Configuration) clean all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <IncludePath>$(Configuration)\obj\;$(IncludePath)</IncludePath>
+    <SourcePath>$(Configuration)\obj\;$(SourcePath)</SourcePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>python Make\make.py $(Configuration)</NMakeBuildCommandLine>
+    <NMakeOutput>$(ProjectName).BIN</NMakeOutput>
+    <NMakeCleanCommandLine>python Make\make.py $(Configuration) clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>python Make\make.py $(Configuration) clean all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <IncludePath>$(Configuration)\obj\;$(IncludePath)</IncludePath>
+    <SourcePath>$(Configuration)\obj\;$(SourcePath)</SourcePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="asm.h" />
+    <ClInclude Include="callhandler.c" />
+    <ClInclude Include="inkey.h" />
+    <ClInclude Include="msx2ansi.h" />
+    <ClInclude Include="MSX\BIOS\msxbios.h" />
+    <ClInclude Include="printinterface.h" />
+    <ClInclude Include="Telnet.h" />
+    <ClInclude Include="UnapiHelper.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="inkey.s" />
+    <None Include="Make\make.py" />
+    <None Include="Make\symbol.py" />
+    <None Include="MSX\BIOS\msxbios.s" />
+    <None Include="MSX\ROM\msxromcrt0.s" />
+    <None Include="print.s" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="devicehandler.c" />
+    <ClCompile Include="telnetrom.c" />
+    <ClCompile Include="UnapiHelper.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Config\ApplicationSettings.txt" />
+    <Text Include="Config\ApplicationSources.txt" />
+    <Text Include="Config\BuildEvents.txt" />
+    <Text Include="Config\IncludeDirectories.txt" />
+    <Text Include="Config\Libraries.txt" />
+    <Text Include="Config\LibrarySources.txt" />
+    <Text Include="Config\Symbols.txt" />
+    <Text Include="Config\TargetConfig_Debug.txt" />
+    <Text Include="Config\TargetConfig_Release.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="asm.lib" />
+    <Library Include="msx2ansi.lib" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

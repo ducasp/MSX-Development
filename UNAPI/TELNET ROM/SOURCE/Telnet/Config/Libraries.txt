@@ -1,0 +1,17 @@
+;----------------------------------------------------------
+;	Libraries.txt - by Danilo Angelo, 2020
+;
+;	List of all compiled libraries used by your application.
+;	These will be not be processed by any
+;	build/make actions, only linked in the final binary.
+;----------------------------------------------------------
+
+;----------------------------------------------------------
+;	Include here your project's LIB files
+;[MSX_LIB_PATH]\fusion-c\lib\fusion.lib
+
+;----------------------------------------------------------
+;	Include here your project's REL files
+;[MSX_LIB_PATH]\fusion-c\include\printf.rel
+asm.lib
+msx2ansi.lib

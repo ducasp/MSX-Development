@@ -1,0 +1,141 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Make">
+      <UniqueIdentifier>{3ef91682-59b4-4500-8b1e-472a09b82231}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Project Config">
+      <UniqueIdentifier>{dd93d829-192d-46c9-8f5b-f39bb2d68324}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ASM Source Files">
+      <UniqueIdentifier>{52835113-377d-4d52-ba1a-d14fcb244687}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ASM Source Files\MSX">
+      <UniqueIdentifier>{5e121c30-2210-4202-8196-2d8ca96c05f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ASM Source Files\MSX\ROM">
+      <UniqueIdentifier>{152b7ecc-9ada-4429-af0d-616f3f076e6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="C Header Files\MSX">
+      <UniqueIdentifier>{74a0b57a-c1be-4402-85d0-168788c6be08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C Header Files\MSX\BIOS">
+      <UniqueIdentifier>{a28f4563-9c19-4eb8-8b3a-b326d570df42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ASM Header Files">
+      <UniqueIdentifier>{15cd77b0-8ac8-4155-9caf-9c85b1e6ca11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ASM Header Files\MSX">
+      <UniqueIdentifier>{d0bef130-ae78-438e-ac5a-a0f37b83991c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ASM Header Files\MSX\BIOS">
+      <UniqueIdentifier>{9a550870-19f7-4aa4-9d94-69e2ce1f9403}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="C Source Files\MSX">
+      <UniqueIdentifier>{8386e127-4217-4c91-81ff-1370d032e036}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Libraries">
+      <UniqueIdentifier>{cb70de47-9f8f-45c0-bf41-a0916b3d3819}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MSX\BIOS\msxbios.h">
+      <Filter>C Header Files\MSX\BIOS</Filter>
+    </ClInclude>
+    <ClInclude Include="callhandler.c">
+      <Filter>C Source Files\MSX</Filter>
+    </ClInclude>
+    <ClInclude Include="UnapiHelper.h">
+      <Filter>C Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="asm.h">
+      <Filter>C Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="msx2ansi.h">
+      <Filter>C Header Files\MSX</Filter>
+    </ClInclude>
+    <ClInclude Include="Telnet.h">
+      <Filter>C Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="printinterface.h">
+      <Filter>ASM Header Files\MSX</Filter>
+    </ClInclude>
+    <ClInclude Include="inkey.h">
+      <Filter>ASM Header Files\MSX</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MSX\BIOS\msxbios.s">
+      <Filter>ASM Header Files\MSX\BIOS</Filter>
+    </None>
+    <None Include="MSX\ROM\msxromcrt0.s">
+      <Filter>ASM Source Files\MSX\ROM</Filter>
+    </None>
+    <None Include="Make\symbol.py">
+      <Filter>Make</Filter>
+    </None>
+    <None Include="print.s">
+      <Filter>ASM Source Files\MSX</Filter>
+    </None>
+    <None Include="Make\make.py">
+      <Filter>Make</Filter>
+    </None>
+    <None Include="inkey.s" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="telnetrom.c">
+      <Filter>C Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="devicehandler.c">
+      <Filter>C Source Files\MSX</Filter>
+    </ClCompile>
+    <ClCompile Include="UnapiHelper.c">
+      <Filter>C Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Config\ApplicationSettings.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\ApplicationSources.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\IncludeDirectories.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\Libraries.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\LibrarySources.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\Symbols.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\TargetConfig_Debug.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\TargetConfig_Release.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+    <Text Include="Config\BuildEvents.txt">
+      <Filter>Project Config</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="asm.lib">
+      <Filter>Libraries</Filter>
+    </Library>
+    <Library Include="msx2ansi.lib">
+      <Filter>Libraries</Filter>
+    </Library>
+  </ItemGroup>
+</Project>

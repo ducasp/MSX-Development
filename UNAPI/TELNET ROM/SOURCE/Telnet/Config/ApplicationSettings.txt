@@ -1,0 +1,86 @@
+;----------------------------------------------------------
+;	ApplicationSettings.txt - by Danilo Angelo, 2021-2023
+;
+;	MSX ROM project general configuration.
+;----------------------------------------------------------
+
+;----------------------------------------------------------
+;	Project Type
+PROJECT_TYPE			ROM
+
+;----------------------------------------------------------
+;	crt0 features
+GLOBALS_INITIALIZER		_ON 						; _ON: Includes routine to initialize global variables; _OFF: Don't include
+RETURN_TO_BASIC			_ON 						; _ON: Returns to basic; _OFF: Don't return (if main returns, the MSX is rebooted)
+STACK_HIMEM				_OFF 						; _ON: Sets stack to HIMEM (RETURN_TO_BASIC *MUST* be _OFF); _OFF: Don't set
+SET_PAGE_2				_OFF     					; _ON: Enables page 2 on the same slot/subslot as page 1 (useful for 32kb ROMs on pages 1 and 2); _OFF: Leaves page 2 as is
+LATE_EXECUTION			_OFF     					; _ON: Enables other carts to be initialized before running (based on H.STKE hook)
+                                                    ;      Provides, among other things, disk support for ROMS.
+                                                    ;      WARNING: To experience all funcionalities of the example application in diskaccess.s:
+                                                    ;       - Set LATE_EXECUTION _ON
+                                                    ;       - Set RETURN_TO_BASIC _OFF
+                                                    ;       - Set FILESTART to 0x8000
+                                                    ;       - Use a floppy interface
+                                                    ;       - Don't plug in a mass storage unit
+
+;----------------------------------------------------------
+;	C Calling Convention
+SDCCCALL                1                           ; SDCCCALL=0    Old C calling convention (STACK)
+                                                    ; SDCCCALL=1    New C calling convention (REGs)
+
+;----------------------------------------------------------
+;	ROM settings
+ROM_SIZE				16k							; 16k/32k
+FILESTART				0x4000						; Typically,    0x4000 for 32kb ROM or 16kb ROM with CALL/DEVICE expansions; or
+                                                    ;               0x8000 for 16kb ROM
+                                                    ;               0x8000 for 16kb ROM with BASIC programs
+CALL_EXPANSION			_OFF 						; _ON: expands BASIC's CALL instruction; _OFF: Don't expand
+DEVICE_EXPANSION		_OFF						; _ON: creates BASIC's device; _OFF: Don't create
+BASIC_PROGRAM			0							; 0 -> no BASIC program; other values: BASIC program address
+
+;----------------------------------------------------------
+;	BASIC CALL expansion
+;
+; NOT MANDATORY!
+; Use this to extend the funcionality of
+; BASIC's CALL command
+;
+; If you don't want to extend BASIC's CALL command,
+; set CALL_EXPANSION above to _OFF and
+; comment or erase the lines below.
+;
+; BASIC usage example (for the standard app)
+; 10 PRINT "Calling CMD1 for the first time:"
+; 20 CALL CMD1("PARAMETER 1 RECEIVED!"):PRINT "Execution returned in the same line."
+; 30 PRINT "Calling CMD1 for the second time:"
+; 40 CALL CMD1("PARAMETER 2 RECEIVED!")
+; 50 PRINT "Running cartridge program:"
+; 60 CALL RUNCART:PRINT "Done."
+;CALL_STATEMENT			CMD1
+;CALL_STATEMENT			RUNCART
+
+;----------------------------------------------------------
+;	BASIC device expansion
+;
+; NOT MANDATORY!
+; Use this to implement a new device in BASIC.
+;
+; If you don't want to implement a new device in BASIC,
+; set DEVICE_EXPANSION above to _OFF and
+; comment or erase the line below.
+;
+;DEVICE					DEV
+
+;----------------------------------------------------------
+;	Code segment (.area _CODE) start address
+;	If you don't know what you are doing,
+;	LEAVE IT COMMENTED for automatic setting.
+;CODE_LOC				0x8100
+
+;----------------------------------------------------------
+;	Data segment (.area _DATA) start address
+;		0 -> data segment immediately after code
+;		other value -> data segment address
+;	If you don't know what you are doing,
+;	LEAVE IT AT 0xC000 (page 3)
+DATA_LOC				0xC000

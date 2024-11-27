@@ -1,0 +1,21 @@
+;----------------------------------------------------------
+;	BuildEvents.txt - by Danilo Angelo, 2021
+;
+;	Actions to be taken during the Build Process
+;	Example: 
+;   BUILD_START_ACTION	"MyStartScript.[SHELL_SCRIPT_EXTENSION]" [PROFILE]
+;----------------------------------------------------------
+
+;----------------------------------------------------------
+;	Always executed in build start
+BUILD_START_ACTION
+
+;----------------------------------------------------------
+;	Not executed if build clean without all
+BEFORE_COMPILE_ACTION
+AFTER_COMPILE_ACTION
+AFTER_BINARY_ACTION
+
+;----------------------------------------------------------
+; Always executed in build end
+BUILD_END_ACTION
