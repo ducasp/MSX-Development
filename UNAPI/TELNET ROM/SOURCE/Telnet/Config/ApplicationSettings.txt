@@ -31,7 +31,7 @@ SDCCCALL                1                           ; SDCCCALL=0    Old C callin
 ;----------------------------------------------------------
 ;	ROM settings
 ROM_SIZE				16k							; 16k/32k
-FILESTART				0x4000						; Typically,    0x4000 for 32kb ROM or 16kb ROM with CALL/DEVICE expansions; or
+FILESTART				0x8000						; Typically,    0x4000 for 32kb ROM or 16kb ROM with CALL/DEVICE expansions; or
                                                     ;               0x8000 for 16kb ROM
                                                     ;               0x8000 for 16kb ROM with BASIC programs
 CALL_EXPANSION			_OFF 						; _ON: expands BASIC's CALL instruction; _OFF: Don't expand
