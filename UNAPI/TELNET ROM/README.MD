@@ -2,6 +2,10 @@
 
 (c)2019-2024 Oduvaldo Pavan Junior - ducasp@gmail.com
 
+Powered by MSX Templates for Visual Studio, which made it a lot, lot easier to
+have the MSX DOS source code moved to a ROM format. You can find it at:
+https://github.com/DamnedAngel/MSX-Templates-for-VisualStudio
+
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 

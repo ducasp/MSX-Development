@@ -11,7 +11,6 @@ My setup to build is:
 - Windows PC
 - Visual Studio Community Edition
 - SDCC 4.3 stable released
-- CodeBlocks as Dev GUI
 - Danilo Angelo MSX Templates for VisualStudio ( https://github.com/DamnedAngel/MSX-Templates-for-VisualStudio )
 
 ***LIBRARIES***
