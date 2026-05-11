@@ -1,0 +1,326 @@
+ASxxxx Linker V03.00 + NoICE + sdld,  page 1.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+.  .ABS.                            00000000    00000000 =           0. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000000  .__.ABS.                           _modulong
+     00000000  l__CABS                         
+     00000000  l__DABS                         
+     00000000  l__HEADER                       
+     00000000  l__HEAP                         
+     00000000  l__OVERLAY                      
+     00000000  s__CABS                         
+     00000000  s__DABS                         
+     00000000  s__HEADER                       
+     00000000  s__HEADER0                      
+     00000001  l__GSFINAL                      
+     0000000F  l__GSINIT                       
+     00000020  l__INITIALIZED                  
+     00000020  l__INITIALIZER                  
+     00000021  l__DATA                         
+     00000078  l__HEADER0                      
+     00000180  s__CODE                         
+     000002C5  l__HOME                         
+     00003EFB  l__CODE                         
+     0000407B  s__DATA                         
+     0000409C  s__GSINIT                       
+     000040AB  s__GSFINAL                      
+     000040AC  s__HEAP                         
+     000040AC  s__INITIALIZED                  
+     000040CC  s__HOME                         
+     00004391  s__INITIALIZER                  
+     000043B1  s__OVERLAY                      
+     0000FC9E  _TickCount                         CFGESP
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    00003EFB =       16123. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000180  _MyRead                            CFGESP
+     00000207  _endUpdate                         CFGESP
+     00000209  _getChipTypeResponse               CFGESP
+     0000020C  _sendChipTypeResponse              CFGESP
+     0000020E  _versionResponse                   CFGESP
+     0000020F  _certificateDone                   CFGESP
+     00000211  _responseOK                        CFGESP
+     00000213  _scanResponse                      CFGESP
+     00000215  _scanresNoNetwork                  CFGESP
+     00000217  _nagleonResponse                   CFGESP
+     00000219  _nagleoffResponse                  CFGESP
+     0000021B  _scanresResponse                   CFGESP
+     0000021D  _apconfigurationResponse           CFGESP
+     0000021F  _apstsResponse                     CFGESP
+     00000222  _responseRSFWUpdate                CFGESP
+     00000224  _responseRSCERTUpdate              CFGESP
+     00000226  _responseWRBlock                   CFGESP
+     00000228  _responseOTAFW                     CFGESP
+     0000022A  _responseOTASPIFF                  CFGESP
+     0000022C  _responseRadioOnTimeout            CFGESP
+     0000022E  _radioOffResponse                  CFGESP
+     00000230  _advance                           CFGESP
+     0000028A  _aDone                             CFGESP
+     00000293  _responseReady2                    CFGESP
+     0000029A  _strUsage                          CFGESP
+     000004FD  _IsValidInput                      CFGESP
+     000007CE  _TxByte                            CFGESP
+     000007DC  _ultostr                           CFGESP
+     00000959  _WaitForRXData                     CFGESP
+     00000C5C  _FinishUpdate                      CFGESP
+     00000F70  _main                              CFGESP
+     00002CA5  _DosCall                           DosCall
+     00002CA5  _DosCall_start                     DosCall
+     00002CDC  _DosCall_end                       DosCall
+     00002CDC  _atoi                              atoi
+     00002D6D  _atol                              atol
+     00002E6A  _FCBs                              
+     00002E74  _GetOSVersion                      
+     00002EA0  __os_ver                           
+     00002EA1  __mx_ver                           
+     00002EA2  __buf8_fcbs                        
+     00002FD2  __io_errno                         
+     0000305B  __setupfcb                         
+     000030AA  _get_fd                            
+     000030BC  _Open                              
+     000030D7  _OpenAttrib                        
+     000030F3  _iopen                             
+     000031BB  _Close                             
+     000031CB  _iclose                            
+     00003200  _Ensure                            
+ASxxxx Linker V03.00 + NoICE + sdld,  page 3.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    00003EFB =       16123. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     0000322F  _Create                            
+     00003244  _CreateAttrib                      
+     00003261  _Read                              
+     0000327D  _iread                             
+     000032C1  _Write                             
+     000032DD  _iwrite                            
+     00003311  _Lseek                             
+     000033AB  _Ltell                             
+     000033C8  _iltell                            
+     0000340B  _GetCWD                            
+     00003428  _igetcwd                           
+     00003465  _Remove                            
+     0000347C  _iremove                           
+     000034A6  _Rename                            
+     000034C3  _irename                           
+     00003502  _ChangeDir                         
+     00003519  _ichdir                            
+     0000352D  _MakeDir                           
+     00003544  _imkdir                            
+     00003560  _RemoveDir                         
+     00003577  _irmdir                            
+     0000358F  _FindFirst                         
+     000035CF  lb_ff1c                            
+     00003603  lb_ff2c                            
+     0000361E  _FindNext                          
+     0000364C  _SetDisk                           
+     00003660  _GetDisk                           
+     0000366D  _DiskLoad                          
+     00003714  _Beep                              beep
+     00003729  _Inkey                             
+     0000374F  _InputString                       
+     000037C8  _puts                              puts
+     000037EE  _Print                             print
+     0000383A  _printf                            printf
+     00003852  _sprintf                           printf
+     00003C8A  _strlen                            
+     00003C99  _AsmCall                           AsmCall
+     00003D3C  __modschar                         
+     00003D49  __modsint                          
+     00003D55  __moduchar                         
+     00003D61  __moduint                          
+     00003D6C  __divsint                          
+     00003D75  __divschar                         
+     00003D7C  __div8                             
+     00003D80  __div_signexte                     
+     00003D84  __div16                            
+     00003DAA  __get_remainder                    
+     00003DB4  _putchar                           
+     00003DB4  _putchar_rr_s                      
+     00003DB9  _putchar_rr_dbs                    
+     00003DBE  __mulint                           
+ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    00003EFB =       16123. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00003DC4  __mul16                            
+     00003DD8  __divuint                          
+     00003DE0  __divuchar                         
+     00003DE7  __divu8                            
+     00003DEA  __divu16                           
+     00003E19  __uitoa                            _itoa
+     00003EDE  __itoa                             _itoa
+     00003F2D  __ultoa                            _ltoa
+     00003FF5  __ltoa                             _ltoa
+     0000405D  _PrintChar                         
+ASxxxx Linker V03.00 + NoICE + sdld,  page 5.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEADER0                            00000000    00000078 =         120. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 6.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_DATA                               0000407B    00000021 =          33. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     0000407B  _heap_top                          
+     0000407D  _ucScan                            CFGESP
+     0000407E  _uiPort                            CFGESP
+     00004080  _lPort                             CFGESP
+     00004084  _ucLocalUpdate                     CFGESP
+     00004085  _ucIsFw                            CFGESP
+     00004086  _ucNagleOff                        CFGESP
+     00004087  _ucNagleOn                         CFGESP
+     00004088  _ucRadioOff                        CFGESP
+     00004089  _ucSetTimeout                      CFGESP
+     0000408A  _uiTimeout                         CFGESP
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 7.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSINIT                             0000409C    0000000F =          15. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 8.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSFINAL                            000040AB    00000001 =           1. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 9.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEAP                               000040AC    00000000 =           0. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     000040AC  _HEAP_start                        
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 10.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_INITIALIZED                        000040AC    00000020 =          32. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     000040AC  _strAPSts                          CFGESP
+     000040B8  _speedStr                          CFGESP
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 11.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HOME                               000040CC    000002C5 =         709. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     000040CC  __divulong                         _divulong
+     0000415E  __mullong                          _mullong
+     000042DB  __modulong                         _modulong
+ASxxxx Linker V03.00 + NoICE + sdld,  page 12.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_INITIALIZER                        00004391    00000020 =          32. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 13.
+
+Files Linked                              [ module(s) ]
+
+C:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel
+                                          [  ]
+obj\Release\src\CFGESP.rel                [ CFGESP ]
+
+
+Libraries Linked                          [ object file ]
+
+C:\fusion-c\fusion-c\lib\asm.lib          [ DosCall ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ atoi.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ atol.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ io.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ beep.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ inkey.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ inputstring.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _divulong.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ puts.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ print.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ printf.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ strlen.rel ]
+C:\fusion-c\fusion-c\lib\asm.lib          [ AsmCall ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _mullong.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ modsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ modunsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ divsigned.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ putchar_msxdos.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ mul.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ divunsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _itoa.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _ltoa.rel ]
+C:\fusion-c\fusion-c\lib\fusion.lib       [ printchar.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _modulong.rel ]
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 14.
+
+User Base Address Definitions
+
+_CODE = 0x0180
+_DATA = 0x0000
+
+
