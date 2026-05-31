@@ -1,0 +1,370 @@
+ASxxxx Linker V03.00 + NoICE + sdld,  page 1.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+.  .ABS.                            00000000    00000000 =           0. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000000  .__.ABS.                           _modulong
+     00000000  l__CABS                         
+     00000000  l__DABS                         
+     00000000  l__HEADER                       
+     00000000  l__HEAP                         
+     00000000  l__INITIALIZED                  
+     00000000  l__INITIALIZER                  
+     00000000  l__OVERLAY                      
+     00000000  s__CABS                         
+     00000000  s__DABS                         
+     00000000  s__HEADER                       
+     00000000  s__HEADER0                      
+     00000001  l__GSFINAL                      
+     0000000F  l__GSINIT                       
+     00000078  l__HEADER0                      
+     00000180  s__CODE                         
+     00000236  l__DATA                         
+     000002C5  l__HOME                         
+     000060C8  l__CODE                         
+     00006248  s__DATA                         
+     0000647E  s__GSINIT                       
+     0000648D  s__GSFINAL                      
+     0000648E  s__HEAP                         
+     0000648E  s__HOME                         
+     0000648E  s__INITIALIZED                  
+     00006753  s__INITIALIZER                  
+     00006753  s__OVERLAY                      
+     00008000  _ucRcvDataMemory                   ssh
+     00008500  _RcvPkt                            XYMODEM
+     00009000  _ucUnsafeDataTXBuffer              XYMODEM
+     0000F3B0  _ucLinLen                          ssh
+     0000FBEB  _ucMT6                             ssh
+     0000FBEC  _ucMT7                             ssh
+     0000FC9E  _uiJiffy                           ssh
+     0000FC9E  _uiTickCount                       XYMODEM
+     0000FCA9  _ucCursorDisplayed                 ssh
+ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00000180  _initPrint                         print
+     00000186  _StartPrintBuffer                  print
+     0000018E  _EndPrintBuffer                    print
+     00000196  _print                             print
+     000001B1  _printChar                         print
+     000001C3  _initAnsi                          print
+     000001D2  _endAnsi                           print
+     000001DA  _SendCursorPosition                ssh
+     0000023F  _ucCrLf                            ssh
+     00000242  _ucUsage                           ssh
+     00000360  _ucSWInfo                          ssh
+     000003BB  _ucSWInfoANSI                      ssh
+     0000041D  _ucCursor_Up                       ssh
+     00000421  _ucCursor_Down                     ssh
+     00000425  _ucCursor_Forward                  ssh
+     00000429  _ucCursor_Backward                 ssh
+     0000042D  _ucCP437Font                       ssh
+     00000C36  _IsValidInput                      ssh
+     00000DDC  _main                              ssh
+     00001514  _InitializeUNAPIS                  UnapiHelper
+     00001772  _RXData                            UnapiHelper
+     000017E2  _IsConnected                       UnapiHelper
+     00001848  _TxByte                            UnapiHelper
+     0000185F  _TxData                            UnapiHelper
+     000018A7  _TxUnsafeData                      UnapiHelper
+     00001920  _CloseConnection                   UnapiHelper
+     0000194E  _Breath                            UnapiHelper
+     00001969  _ResolveDNS                        UnapiHelper
+     00001CE0  _OpenSingleConnection              UnapiHelper
+     00001F6E  _SetTermType                       UnapiHelper
+     00001FA1  _SetTermWindow                     UnapiHelper
+     00001FDB  _ultostr                           XYMODEM
+     000021A2  _GetPacket                         XYMODEM
+     00002538  _XYModemPacketReceive              XYMODEM
+     00002A93  _CancelTransfer                    XYMODEM
+     00002B06  _XYModemGet                        XYMODEM
+     00003044  _UnapiGetCount                     unapigetcount
+     00003044  _UnapiGetCount_start               unapigetcount
+     000030AE  _AnsiInit                          
+     000030AE  _UnapiGetCount_end                 unapigetcount
+     000030C0  _AnsiFinish                        
+     000030CC  _AnsiStartBuffer                   
+     000030D9  _AnsiEndBuffer                     
+     000030ED  _AnsiCallBack                      
+     000030F6  _AnsiGetCursorPosition             
+     00003101  _AnsiPutChar                       
+     000031BC  _AnsiPrint                         
+     000048E6  _atoi                              atoi
+     00004977  _atol                              atol
+     00004A74  _strstr                            _strstr
+ASxxxx Linker V03.00 + NoICE + sdld,  page 3.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00004B28  _FCBs                              
+     00004B32  _GetOSVersion                      
+     00004B5E  __os_ver                           
+     00004B5F  __mx_ver                           
+     00004B60  __buf8_fcbs                        
+     00004C90  __io_errno                         
+     00004D19  __setupfcb                         
+     00004D68  _get_fd                            
+     00004D7A  _Open                              
+     00004D95  _OpenAttrib                        
+     00004DB1  _iopen                             
+     00004E79  _Close                             
+     00004E89  _iclose                            
+     00004EBE  _Ensure                            
+     00004EED  _Create                            
+     00004F02  _CreateAttrib                      
+     00004F1F  _Read                              
+     00004F3B  _iread                             
+     00004F7F  _Write                             
+     00004F9B  _iwrite                            
+     00004FCF  _Lseek                             
+     00005069  _Ltell                             
+     00005086  _iltell                            
+     000050C9  _GetCWD                            
+     000050E6  _igetcwd                           
+     00005123  _Remove                            
+     0000513A  _iremove                           
+     00005164  _Rename                            
+     00005181  _irename                           
+     000051C0  _ChangeDir                         
+     000051D7  _ichdir                            
+     000051EB  _MakeDir                           
+     00005202  _imkdir                            
+     0000521E  _RemoveDir                         
+     00005235  _irmdir                            
+     0000524D  _FindFirst                         
+     0000528D  lb_ff1c                            
+     000052C1  lb_ff2c                            
+     000052DC  _FindNext                          
+     0000530A  _SetDisk                           
+     0000531E  _GetDisk                           
+     0000532B  _DiskLoad                          
+     000053D2  _ReadMSXtype                       readmsxtype
+     00005425  _IntDos                            
+     000054B4  __REGs                             
+     000054B8  _IntBios                           
+     000054C0  _UnapiRead                         UnapiRead
+     000054C0  _UnapiRead_start                   UnapiRead
+     00005510  _UnapiCall                         UnapiCall
+     00005510  _UnapiCall_start                   UnapiCall
+     00005510  _UnapiRead_end                     UnapiRead
+ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00005557  _Inkey                             
+     00005557  _UnapiCall_end                     UnapiCall
+     0000557D  _Width                             width
+     000055D2  _printf                            printf
+     000055EA  _sprintf                           printf
+     00005A22  _InputString                       
+     00005A9B  _memcpy                            _memcpy
+     00005AE8  __uitoa                            _itoa
+     00005BAD  __itoa                             _itoa
+     00005BFC  _InputChar                         
+     00005C12  __ultoa                            _ltoa
+     00005CDA  __ltoa                             _ltoa
+     00005D42  _putchar                           
+     00005D42  _putchar_rr_s                      
+     00005D47  _putchar_rr_dbs                    
+     00005D4C  _UnapiBuildCodeBlock               unapibuildcodeblock
+     00005D4C  _UnapiBuildCodeBlock_start         unapibuildcodeblock
+     00005F58  _GetVramSize                       
+     00005F58  _UnapiBuildCodeBlock_end           unapibuildcodeblock
+     00005F6C  _CopyRamToVram                     
+     00005F9F  _CopyVramToRam                     
+     00006012  _strlen                            
+     00006021  _UnapiGetRamHelper                 UnapiGetRamHelper
+     00006021  _UnapiGetRamHelper_start           UnapiGetRamHelper
+     000060B2  _AsmCall                           AsmCall
+     000060B2  _UnapiGetRamHelper_end             UnapiGetRamHelper
+     00006155  __modschar                         
+     00006162  __modsint                          
+     0000616E  __moduchar                         
+     0000617A  __moduint                          
+     00006185  _Screen                            
+     000061A5  __divuint                          
+     000061AD  __divuchar                         
+     000061B4  __divu8                            
+     000061B7  __divu16                           
+     000061E6  __divsint                          
+     000061EF  __divschar                         
+     000061F6  __div8                             
+     000061FA  __div_signexte                     
+     000061FE  __div16                            
+     00006224  __get_remainder                    
+     0000622E  __mulint                           
+     00006234  __mul16                            
+ASxxxx Linker V03.00 + NoICE + sdld,  page 5.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEADER0                            00000000    00000078 =         120. bytes (ABS,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 6.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_DATA                               00006248    00000236 =         566. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     00006248  _heap_top                          
+     0000624A  _usingAnsiDrv                      print
+     0000624B  _ucEcho                            ssh
+     0000624C  _ucAnsi                            ssh
+     0000624D  _ucCP437                           ssh
+     0000624E  _ucEnterHit                        ssh
+     0000624F  _ucWidth40                         ssh
+     00006250  _ucStandardDataTransfer            ssh
+     00006251  _ucConnNumber                      ssh
+     00006252  _ucRcvData                         ssh
+     000062D2  _uiGetSize                         ssh
+     000062D4  _regs                              ssh
+     000062E0  _helperCodeBlock                   UnapiHelper
+     000062F8  _helperCodeBlockTCP                UnapiHelper
+     00006310  _helperRegs                        UnapiHelper
+     0000631C  _chHelperString                    UnapiHelper
+     0000639C  _filename                          XYMODEM
+     000063B0  _G                                 XYMODEM
+     000063B1  _TestTransfer                      XYMODEM
+     000063B2  _SentFileSize                      XYMODEM
+     000063B6  _chFileSize                        XYMODEM
+     000063D4  _chTransferConn                    XYMODEM
+     000063D5  _chDoubleFF                        XYMODEM
+     000063D6  _chProtocolString                  XYMODEM
+ASxxxx Linker V03.00 + NoICE + sdld,  page 7.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSINIT                             0000647E    0000000F =          15. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 8.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_GSFINAL                            0000648D    00000001 =           1. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+ASxxxx Linker V03.00 + NoICE + sdld,  page 9.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HEAP                               0000648E    00000000 =           0. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     0000648E  _HEAP_start                        
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 10.
+Hexadecimal  [32-Bits]
+
+Area                                    Addr        Size        Decimal Bytes (Attributes)
+--------------------------------        ----        ----        ------- ----- ------------
+_HOME                               0000648E    000002C5 =         709. bytes (REL,CON)
+
+      Value  Global                              Global Defined In Module
+      -----  --------------------------------   ------------------------
+     0000648E  __divulong                         _divulong
+     00006520  __mullong                          _mullong
+     0000669D  __modulong                         _modulong
+ASxxxx Linker V03.00 + NoICE + sdld,  page 11.
+
+Files Linked                              [ module(s) ]
+
+c:\fusion-c\fusion-c\include\crt0_msxdos_advanced.rel
+                                          [  ]
+obj\Release\src\print.rel                 [ print ]
+obj\Release\src\ssh.rel                   [ ssh ]
+obj\Release\src\UnapiHelper.rel           [ UnapiHelper ]
+obj\Release\src\XYMODEM.rel               [ XYMODEM ]
+
+
+Libraries Linked                          [ object file ]
+
+c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiGetCount ]
+c:\fusion-c\fusion-c\lib\msx2ansi.lib     [ msx2ansi.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ atoi.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ atol.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _strstr.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ io.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ readmsxtype.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ intdosbios.rel ]
+c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiRead ]
+c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiCall ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ inkey.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ width.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ printf.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _divulong.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ inputstring.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _memcpy.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _itoa.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ inputchar.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _ltoa.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ putchar_msxdos.rel ]
+c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiBuildCodeBlock ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ vram.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ strlen.rel ]
+c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiGetRamHelper ]
+c:\fusion-c\fusion-c\lib\asm.lib          [ AsmCall ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _mullong.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ modsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ modunsigned.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ screen.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ divunsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ divsigned.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ mul.rel ]
+C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
+                                          [ _modulong.rel ]
+
+ASxxxx Linker V03.00 + NoICE + sdld,  page 12.
+
+User Base Address Definitions
+
+_CODE = 0x0180
+_DATA = 0x0000
+
+
