@@ -1,6 +1,6 @@
 # HOW TO BUILD USING LINUX
 
-Piter Punk was very kind in providing a Makefile that should work with Linux.
+Piter Punk was very kind in providing a Makefile that should worf with Linux.
 It seems you just need to create a folder within fusion-c installation folder
 and move all files, including make file, to it. :)
 

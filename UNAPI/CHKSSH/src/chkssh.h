@@ -40,20 +40,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../fusion-c/header/msx_fusion.h"
+#include "../../fusion-c/header/io.h"
 #include "../../fusion-c/header/asm.h"
 
-const char ucSWInfo[] = "> UNAPI SSH Checker v1.00 <\r\n (c) 2026 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
 //MSX Variables that we will access
 __at 0xF3B0 unsigned char ucLinLen;
 __at 0xFCA9 unsigned char ucCursorDisplayed;
 __at 0xFBEB unsigned char ucMT6;
 __at 0xFBEC unsigned char ucMT7;
 __at 0xFC9E unsigned int uiJiffy;
-
-//IMPORTANT: You need to check the map compiler generates to make sure this
-//address do not overlap functions, variables, etc
-//UNAPI requires memory buffer @ 0x8000 or higher...
-#define RcvMemorySize 1024
-__at 0x8000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
-Z80_registers regs; //auxiliary structure for asm function calling
 #endif // _CHECKSSH_HEADER_INCLUDED

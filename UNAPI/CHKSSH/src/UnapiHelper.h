@@ -43,7 +43,11 @@ enum SSHUnapiFunctions {
     UNAPI_GET_INFO = 0,
     SSH_GET_CAPAB = 1,
     SSH_TERM_TYPE = 7,
-    SSH_WIN_SIZE = 8
+    SSH_WIN_SIZE = 8,
+    SSH_KEY_GEN = 12,
+    SSH_KEY_EXPORT = 13,
+    SSH_KEY_IMPORT = 14,
+    SSH_KEY_INFO = 15
 };
 
 enum SSHErrorCodes {
@@ -65,7 +69,14 @@ enum SSHErrorCodes {
     ERR_INV_OPER
 };
 
+enum SSHSpecificErrorCodes {
+    SSH_ERR_NO_KEY = 133,
+    SSH_ERR_KEY_INV_DATA = 134
+};
+
 __at 0x9000 unsigned char ucUnsafeDataTXBuffer[];
+__at 0x8000 unsigned char ucFingerprintBuffer[64];
+__at 0x8040 unsigned char ucTransferBuffer[2048];
 
 // InitializeSSH
 //
@@ -77,5 +88,9 @@ __at 0x9000 unsigned char ucUnsafeDataTXBuffer[];
 unsigned char InitializeSSH ();
 
 unsigned char GetCapabilities ();
+unsigned char GenerateKey ();
+unsigned char ImportKey (unsigned char *filename);
+unsigned char ExportKey (unsigned char *filename, unsigned char ucWhat);
+unsigned int MyRead (int Handle, unsigned char *Buffer, unsigned int Size);
 
 #endif //#ifndef _UNAPIHELPER_HEADER_INCLUDED

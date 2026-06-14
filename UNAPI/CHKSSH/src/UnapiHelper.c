@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../fusion-c/header/msx_fusion.h"
+#include "../../fusion-c/header/io.h"
 #include "../../fusion-c/header/asm.h"
 #include "UnapiHelper.h"
 
@@ -88,13 +89,138 @@ unsigned char InitializeSSH ()
     return uchRet;
 }
 
+unsigned int MyRead (int Handle, unsigned char *Buffer, unsigned int Size)
+{
+    unsigned int iRet;
+    Z80_registers regs;
+
+    regs.UWords.DE = (unsigned int)Buffer;
+    regs.UWords.HL = Size;
+    regs.Bytes.B = (unsigned char)(Handle & 0xff);
+    DosCall(0x48, &regs, REGS_MAIN, REGS_MAIN);
+
+    if (regs.Bytes.A == 0)
+        iRet = regs.UWords.HL;
+    else
+        iRet = 0;
+
+    return iRet;
+}
+
+unsigned char GenerateKey ()
+{
+    printf("Generating new key pair...\r\n");
+    UnapiCall(&helperCodeBlock, SSH_KEY_GEN, &helperRegs, REGS_NONE, REGS_MAIN);
+    if (helperRegs.Bytes.A == ERR_OK)
+        printf("Key generated successfully\r\n");
+    else if (helperRegs.Bytes.A == ERR_NOT_IMP)
+        printf("Key generation not implemented\r\n");
+    else
+        printf("Error %d generating key\r\n", helperRegs.Bytes.A);
+    return (helperRegs.Bytes.A == ERR_OK) ? 0 : 1;
+}
+
+unsigned char ImportKey(unsigned char *filename)
+{
+    unsigned char ucError = 0;
+    unsigned char ucLastBlock = 0;
+    unsigned int uiBytesRead;
+    unsigned int uiChunkSize;
+    int iFile;
+
+    // Get implementation's max transfer size silently
+    helperRegs.Bytes.B = 1;
+    UnapiCall(&helperCodeBlock, SSH_GET_CAPAB, &helperRegs, REGS_MAIN, REGS_MAIN);
+    if (helperRegs.Bytes.A == ERR_OK && helperRegs.UWords.DE > 0)
+        uiChunkSize = helperRegs.UWords.DE;
+    else
+        uiChunkSize = 2048;
+    if (uiChunkSize > 2048) uiChunkSize = 2048;
+
+    printf("Importing private key from: %s\r\n", filename);
+
+    iFile = Open((char*)filename, O_RDONLY);
+    if (iFile == -1)
+    {
+        printf("Could not open file\r\n");
+        return 1;
+    }
+
+    do {
+        uiBytesRead = MyRead(iFile, ucTransferBuffer, uiChunkSize);
+        if (uiBytesRead == 0) break;
+
+        ucLastBlock = (uiBytesRead < uiChunkSize) ? 1 : 0;
+
+        helperRegs.Bytes.C = ucLastBlock;
+        helperRegs.UWords.DE = (unsigned int)ucTransferBuffer;
+        helperRegs.UWords.HL = uiBytesRead;
+        UnapiCall(&helperCodeBlock, SSH_KEY_IMPORT, &helperRegs, REGS_MAIN, REGS_MAIN);
+
+        if (helperRegs.Bytes.A != ERR_OK)
+        {
+            printf("Error %d importing key\r\n", helperRegs.Bytes.A);
+            ucError = 1;
+            break;
+        }
+    } while (!ucLastBlock);
+
+    Close(iFile);
+
+    if (!ucError) printf("Key imported successfully\r\n");
+    return ucError;
+}
+
+unsigned char ExportKey(unsigned char *filename, unsigned char ucWhat)
+{
+    unsigned char ucError = 0;
+    unsigned char ucLastBlock = 0;
+    unsigned int uiBytesWritten;
+    int iFile;
+
+    printf("Exporting %s key to: %s\r\n", (ucWhat == 0) ? "private" : "public", filename);
+
+    iFile = Open((char*)filename, O_CREAT);
+    if (iFile == -1)
+    {
+        printf("Could not create file\r\n");
+        return 1;
+    }
+
+    do {
+        helperRegs.Bytes.B = ucWhat;
+        helperRegs.UWords.DE = (unsigned int)ucTransferBuffer;
+        helperRegs.UWords.HL = 2048;
+        UnapiCall(&helperCodeBlock, SSH_KEY_EXPORT, &helperRegs, REGS_MAIN, REGS_MAIN);
+
+        if (helperRegs.Bytes.A != ERR_OK)
+        {
+            printf("Error %d exporting key\r\n", helperRegs.Bytes.A);
+            ucError = 1;
+            break;
+        }
+
+        uiBytesWritten = helperRegs.UWords.BC;
+        ucLastBlock = helperRegs.Bytes.H & 0x01;
+
+        if (uiBytesWritten > 0)
+            Write(iFile, ucTransferBuffer, uiBytesWritten);
+    } while (!ucLastBlock);
+
+    Close(iFile);
+
+    if (!ucError) printf("Key exported successfully\r\n");
+    return ucError;
+}
+
 unsigned char GetCapabilities ()
 {
     helperRegs.Bytes.B = 1;
     UnapiCall(&helperCodeBlock, SSH_GET_CAPAB, &helperRegs, REGS_MAIN, REGS_MAIN);
     if (helperRegs.Bytes.A == ERR_OK)
     {
-        printf("Max. Sim. Connections: %d\r\nAvailable Connections: %d\r\n\n",helperRegs.Bytes.B,helperRegs.Bytes.C);
+        printf("Max. Sim. Connections: %d\r\nAvailable Connections: %d\r\n",helperRegs.Bytes.B,helperRegs.Bytes.C);
+        printf("Max data per transfer: %u\r\n\n",helperRegs.UWords.DE);
         if(helperRegs.Bytes.L&0x01)
             printf("Supports PTY\r\n");
         else
@@ -126,9 +252,54 @@ unsigned char GetCapabilities ()
             printf("Connections independent of TCP/IP UNAPI\r\n");
 
         if(helperRegs.Bytes.H&0x4)
-            printf("Supports public key authentication\r\n\n");
+            printf("Supports public key authentication\r\n");
         else
-            printf("Does not support public key authentication\r\n\n");
+            printf("Does not support public key authentication\r\n");
+
+        if(helperRegs.Bytes.H&0x8)
+            printf("Supports keyboard-interactive authentication\r\n");
+        else
+            printf("Does not support keyboard-interactive authentication\r\n");
+
+        if(helperRegs.Bytes.H&0x10)
+            printf("Supports non ANSI escape code filtering\r\n");
+        else
+            printf("Does not support non ANSI escape code filtering\r\n");
+
+        if(helperRegs.Bytes.H&0x20)
+            printf("Supports host key verification\r\n");
+        else
+            printf("Does not support host key verification\r\n");
+
+        if(helperRegs.Bytes.H&0x40)
+            printf("Supports key import/export\r\n\n");
+        else
+            printf("Does not support key import/export\r\n\n");
+
+        if(helperRegs.Bytes.H&0x4)
+        {
+            helperRegs.UWords.DE = 0;
+            UnapiCall(&helperCodeBlock, SSH_KEY_INFO, &helperRegs, REGS_MAIN, REGS_MAIN);
+            if (helperRegs.Bytes.A == ERR_OK)
+            {
+                if (helperRegs.Bytes.B & 0x01)
+                {
+                    printf("Key stored: Yes\r\n");
+                    helperRegs.UWords.DE = (unsigned int)ucFingerprintBuffer;
+                    UnapiCall(&helperCodeBlock, SSH_KEY_INFO, &helperRegs, REGS_MAIN, REGS_MAIN);
+                    if (helperRegs.Bytes.A == ERR_OK)
+                        printf("Fingerprint: %s\r\n\n", (char*)ucFingerprintBuffer);
+                    else
+                        printf("\r\n");
+                }
+                else
+                    printf("Key stored: No\r\n\n");
+            }
+            else if (helperRegs.Bytes.A == SSH_ERR_NO_KEY)
+                printf("Key stored: No\r\n\n");
+            else
+                printf("Error %d checking key info\r\n\n", helperRegs.Bytes.A);
+        }
     }
     else
         printf("Error %d trying to get capabilities...\r\n", helperRegs.Bytes.A);

@@ -1,27 +1,54 @@
-# CHKSSH v1.00
+# CHKSSH v1.10
 
-(c)2026 Oduvaldo Pavan Junior - ducasp@gmail.com
+UNAPI SSH Checker / Key Manager.
 
+(c) 2026 Oduvaldo Pavan Junior - ducasp@gmail.com
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
+## DESCRIPTION
 
-# CHANGELOG v1.00
+CHKSSH detects and displays information about the first available UNAPI SSH implementation on your MSX, and also provides basic SSH key management operations (generate, import, export).
 
-    - First version
+## USAGE
 
-# DESCRIPTION
+```
+CHKSSH
+CHKSSH c
+CHKSSH g
+CHKSSH <file>
+CHKSSH <file> k
+CHKSSH <file> p
+```
 
-This is an utility that will help you to get information from any UNAP SSH
-implementations installed on your system. Just that, nothing else.
+| Command | Action |
+|---|---|
+| `CHKSSH` (no args) | Print this help text |
+| `CHKSSH c` | Show SSH implementation capabilities (connections, supported features, key info) |
+| `CHKSSH g` | Ask the SSH implementation to generate a new key pair |
+| `CHKSSH <file>` | Import a private key PEM file into the ESP32 device |
+| `CHKSSH <file> k` | Export the private key from the ESP32 device to a file |
+| `CHKSSH <file> p` | Export the public key from the ESP32 device to a file |
 
-***IMPORTANT COMPILATION NOTES***
+### Examples
 
-Remember to copy the files in fusion-c\lib and fusion-c\header to your fusion-c lib and header folders!
-You will need the following libraries:
+```
+CHKSSH c
+CHKSSH g
+CHKSSH TESTPK.PEM
+CHKSSH MYKEY.PEM k
+CHKSSH MYKEY.PUB p
+```
 
-    - Konamiman's ASM.LIB ( https://www.konamiman.com/msx/sdcc/asmlib.zip )
+## COMPILATION NOTES
 
-I recommend using Code::Blocks, it is a full featured UI that will allow you to check references, etc.
+Requires SDCC, Fusion-C library and Konamiman's ASM.LIB.
+
+Set the paths in the Makefile to point to your Fusion-C installation, then run:
+
+```
+make
+```
+
+## LICENSE
 
 Redistribution and use of this source code or any derivative works, are
 permitted provided that the following conditions are met:

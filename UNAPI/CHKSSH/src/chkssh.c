@@ -1,8 +1,8 @@
 /*
 --
 -- chkssh.c
---   Simple UNAPI SSH API Detection.
---   Revision 1.00
+--   UNAPI SSH Checker / Key Manager.
+--   Revision 1.10
 --
 -- Requires SDCC and Fusion-C library to compile
 -- Copyright (c) 2026 Oduvaldo Pavan Junior ( ducasp@gmail.com )
@@ -35,21 +35,49 @@
 */
 #include "chkssh.h"
 #include "UnapiHelper.h"
+
+const char ucHelpText[] = "\r\nCHKSSH - UNAPI SSH Checker / Key Manager v1.10\r\n\
+(c) 2026 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n\
+Usage:\r\n\
+  CHKSSH c              Show SSH implementation capabilities\r\n\
+  CHKSSH g              Generate a new key pair\r\n\
+  CHKSSH <file>         Import private key from file\r\n\
+  CHKSSH <file> k       Export private key to file\r\n\
+  CHKSSH <file> p       Export public key to file\r\n\r\n";
+
 /*
  *
  * START OF CODE
  *
  */
 
-// That is where our program goes
 int main(char** argv, int argc)
 {
-	unsigned char ucRet; //return of functions
-    // Time to check for SSH availability
-	if (InitializeSSH())
+    if (argc == 0)
     {
-     GetCapabilities();
+        printf(ucHelpText);
+        return 0;
     }
 
-	return 0;
+    if (!InitializeSSH()) return 1;
+
+    if ((strcmp(argv[0], "c") == 0) || (strcmp(argv[0], "C") == 0))
+        GetCapabilities();
+    else if ((strcmp(argv[0], "g") == 0) || (strcmp(argv[0], "G") == 0))
+        GenerateKey();
+    else if (argc == 1)
+        ImportKey((unsigned char*)argv[0]);
+    else if (argc == 2)
+    {
+        if ((strcmp(argv[1], "k") == 0) || (strcmp(argv[1], "K") == 0))
+            ExportKey((unsigned char*)argv[0], 0);
+        else if ((strcmp(argv[1], "p") == 0) || (strcmp(argv[1], "P") == 0))
+            ExportKey((unsigned char*)argv[0], 1);
+        else
+            printf(ucHelpText);
+    }
+    else
+        printf(ucHelpText);
+
+    return 0;
 }
