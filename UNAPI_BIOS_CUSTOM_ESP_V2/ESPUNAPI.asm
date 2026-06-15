@@ -136,7 +136,7 @@
 ;--- verbose rom...?
 NON_VERBOSE_ROM:        equ 0
 ;--- Use memory mapped IO or not...
-USE_MEM_IO:             equ 1
+USE_MEM_IO:             equ 0
 ;--- FPGA Version can have the Turbo-R logo incorporated or not...
 TURBO_R_LOGO:           equ 1
 ;*******************
@@ -305,7 +305,7 @@ SCAN_MAX_PAGE_SIZE      equ 8
 ;--- TCP-IP Functions
 MAX_FN:                 equ 29
 ;--- SSH Functions
-MAX_FN_S:               equ 8
+MAX_FN_S:               equ 15
 
 ;--- TCP/IP UNAPI error codes:
 ERR_OK:                 equ 0
@@ -2507,6 +2507,13 @@ FN_5_S:                 dw  SSH_SEND
 FN_6_S:                 dw  SSH_RCV
 FN_7_S:                 dw  SSH_TERM_TYPE
 FN_8_S:                 dw  SSH_WIN_SIZE
+FN_9_S:                 dw  SSH_AUTH_GET_CHALLENGE
+FN_10_S:                dw  SSH_AUTH_RESPOND
+FN_11_S:                dw  SSH_ADD_KNOWN_HOST
+FN_12_S:                dw  SSH_KEY_GEN
+FN_13_S:                dw  SSH_KEY_EXPORT
+FN_14_S:                dw  SSH_KEY_IMPORT
+FN_15_S:                dw  SSH_KEY_INFO
 
 ;========================
 ;===  Functions code  ===
@@ -2587,6 +2594,7 @@ UNAPI_GET_INFO_SSH:
 ;            HL = Capabilities flags
 ;            B  = Maximum simultaneous SSH connections supported
 ;            C  = Free SSH connections currently available
+;            DE = Maximum data per command
 SSH_GET_CAPAB:
     ; SSH functions start at 127 on ESP
     set 7,a
@@ -2672,6 +2680,24 @@ SSH_GET_CAPAB_BLK1_ST4.1:
     ; nz, get it
     RECEIVE_DATA
     ld  b,a
+SSH_GET_CAPAB_BLK1_ST5:
+    CHECK_DATA
+    jr  nz,SSH_GET_CAPAB_BLK1_ST5.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_GET_CAPAB_BLK1_ST5
+SSH_GET_CAPAB_BLK1_ST5.1:
+    ; nz, get it
+    RECEIVE_DATA
+    ld  e,a
+SSH_GET_CAPAB_BLK1_ST6:
+    CHECK_DATA
+    jr  nz,SSH_GET_CAPAB_BLK1_ST6.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_GET_CAPAB_BLK1_ST6
+SSH_GET_CAPAB_BLK1_ST6.1:
+    ; nz, get it
+    RECEIVE_DATA
+    ld  d,a
     ; Done
     xor a
     ret
@@ -4235,6 +4261,9 @@ TCPIP_TCP_CLOSE_ST2.1:
 ;+6 (1): Subsystem
 ;+7 (1): Flags
 ;+8 (variable): username (0 terminated) and then password or public key (0 terminated)
+;
+;Parameter block MUST have at least 32 bytes available if doing host key verification
+;as unknown host key hash will be returned in it
 
 SSH_OPEN:
     push    hl                      ; save param block address
@@ -4270,6 +4299,7 @@ SSH_OPEN_SENDCMD:
     ld  a,e
     SEND_DATA                       ; Send the command size lsb
     pop hl                          ; Restore the memory address for the parameters
+    push    hl                      ; we might need it later
 ; Grauw Optimized 16 bit loop, handy for us, mostly since we can use outi :-D
     ld  b,e                         ; Number of loops originaly in DE
     dec de
@@ -4310,6 +4340,9 @@ SSH_OPEN_RC:
 SSH_OPEN_RC.1:
     ; nz, discard
     RECEIVE_DATA
+    pop de                          ; restore memory area address in DE just in case it is needed
+    cp  132
+    jr  z,SSH_OPEN_HOSTHASH
     or  a                           ; 0?
     ret nz
 
@@ -4337,6 +4370,541 @@ SSH_OPEN_CONN_ST1.1:
     RECEIVE_DATA
     ld  b,a
     ; done
+    xor a
+    ret
+
+SSH_OPEN_HOSTHASH:
+    ; HL has memory area to write host fingerprint / hash
+    ; we will receive size, should be 33, 1 byte for connection ID
+    ; 32 bytes for fingerprint / hash
+    CHECK_DATA
+    jr  nz,SSH_OPEN_HOSTHASH.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_OPEN_HOSTHASH
+SSH_OPEN_HOSTHASH.1:
+    ; nz, high byte count of bytes to receive
+    RECEIVE_DATA
+    ld h,a
+SSH_OPEN_HOSTHASHB:
+    CHECK_DATA
+    jr  nz,SSH_OPEN_HOSTHASHB.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_OPEN_HOSTHASHB
+SSH_OPEN_HOSTHASHB.1:
+    ; nz, low byte count of bytes to receive
+    RECEIVE_DATA
+    ld  l,a
+    or  h
+    ; if it was 0, no data
+    if USE_MEM_IO = 1
+    jp  z,TCPIP_TCP_RCV_RET_NODATA  ; not a typo, no need to make the same code again
+    else
+    jp  z,TCPIP_TCP_RCV_RET_NODATA  ; not a typo, no need to make the same code again
+    endif
+    dec hl                          ; decrement one byte, first is connection will go to B
+    ; Now get connection number and save it 
+SSH_OPEN_HOSTHASH_CONN:
+    CHECK_DATA
+    jr  nz,SSH_OPEN_HOSTHASH_CONN.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_OPEN_HOSTHASH_CONN
+SSH_OPEN_HOSTHASH_CONN.1:
+    ; nz, connection number
+    RECEIVE_DATA
+    ld b,a
+    push    bc                      ; save it
+
+    ld  c,l
+    ld  b,h                         ; BC has effective received data size, as well as HL
+
+    ; put effective data size in de
+    ex  de,hl
+    ; address was in de, now in HL, BC effective received size
+
+    ; Grauw Optimized 16 bit loop, handy for us, mostly since we can use ini :-D
+    ld  b,e                         ; Number of loops originaly in DE
+    dec de
+    inc d
+    if USE_MEM_IO = 0
+    ld  c,IN_DATA_PORT
+    endif
+SSH_OPEN_HOSTHASH_NSF:
+    CHECK_DATA
+    jr  nz,SSH_OPEN_HOSTHASH_NSF.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_OPEN_HOSTHASH_NSF
+SSH_OPEN_HOSTHASH_NSF.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,SSH_OPEN_HOSTHASH_NSF
+    dec d
+    jr nz,SSH_OPEN_HOSTHASH_NSF
+    ; restore BC to get conn # in B
+    pop bc
+    ; if we are here, return code is 132, unknown host
+    ld  a,132
+    ret
+
+;==========================
+;=== SSH_ADD_KNOWN_HOST ===
+;==========================
+;Add an unknown host whose connection we tried to open as known
+;
+;Input:  A = 11
+;        B = Connection number
+;Output: A = Error code
+
+SSH_ADD_KNOWN_HOST:
+    set 7,a                         ; ESP SSH commands start at #80
+    SEND_DATA                       ; Send the command
+    xor a
+    SEND_DATA                       ; Send the command size msb
+    ld  a,1
+    SEND_DATA                       ; Send the command size lsb
+    ld  a,b
+    SEND_DATA                       ; Send the connection #
+    ; Now wait up to 180 ticks to get response
+    ld  hl,180
+    call    SETCOUNTER
+SSH_ADD_KNOWN_HOST_ST1:
+    CHECK_DATA
+    jr  nz,SSH_ADD_KNOWN_HOST_ST1.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_ADD_KNOWN_HOST_ST1
+SSH_ADD_KNOWN_HOST_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8b                         ; Is response of our command?
+    jr  nz,SSH_ADD_KNOWN_HOST_ST1
+    ; now get return code, if return code other than 0, it is finished
+SSH_ADD_KNOWN_HOST_RC:
+    CHECK_DATA
+    jr  nz,SSH_ADD_KNOWN_HOST_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_ADD_KNOWN_HOST_RC
+SSH_ADD_KNOWN_HOST_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+
+    ; next two bytes are return code and size bytes, don't care, it is 0
+    ld  b,2
+SSH_ADD_KNOWN_HOST_ST2:
+    CHECK_DATA
+    jr  nz,SSH_ADD_KNOWN_HOST_ST2.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_ADD_KNOWN_HOST_ST2
+SSH_ADD_KNOWN_HOST_ST2.1:
+    ; nz, discard
+    RECEIVE_DATA
+    dec b
+    jr  nz,SSH_ADD_KNOWN_HOST_ST2
+
+    ; done, no return data other than return code
+    xor a
+    ret
+
+;=========================
+;===    SSH_KEY_GEN     ===
+;=========================
+;Generate a new SSH key pair.
+;
+;Input:  A  = 12
+;Output: A  = Error code
+SSH_KEY_GEN:
+    set 7,a                         ; ESP SSH commands start at #80
+    SEND_DATA                       ; Send the command
+    xor a
+    SEND_DATA                       ; Send the command size msb
+    SEND_DATA                       ; Send the command size lsb (0)
+    ; Now wait up to 600 ticks to get response
+    ld  hl,600
+    call    SETCOUNTER
+SSH_KEY_GEN_ST1:
+    CHECK_DATA
+    jr  nz,SSH_KEY_GEN_ST1.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_GEN_ST1
+SSH_KEY_GEN_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8c                         ; Is response of our command?
+    jr  nz,SSH_KEY_GEN_ST1
+    ; now get return code, if return code other than 0, it is finished
+SSH_KEY_GEN_RC:
+    CHECK_DATA
+    jr  nz,SSH_KEY_GEN_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_GEN_RC
+SSH_KEY_GEN_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+    ; next two bytes are size bytes, don't care, it is 0
+    ld  b,2
+SSH_KEY_GEN_ST2:
+    CHECK_DATA
+    jr  nz,SSH_KEY_GEN_ST2.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_GEN_ST2
+SSH_KEY_GEN_ST2.1:
+    ; nz, discard
+    RECEIVE_DATA
+    dec b
+    jr  nz,SSH_KEY_GEN_ST2
+    ; done, no return data other than return code
+    xor a
+    ret
+
+;=========================
+;===   SSH_KEY_EXPORT   ===
+;=========================
+;Export SSH key data.
+;
+;Input:  A  = 13
+;        B  = What to export (0/1/2)
+;        DE = Output buffer address
+;        HL = Max data per chunk
+;Output: A  = Error code
+;        BC = Number of bytes written
+;        H  = Status flags (bit 0 = last block)
+SSH_KEY_EXPORT:
+    ex  de,hl
+    call    SETWORD                 ; Save output buffer address
+    ex  de,hl
+    ld  a,#8d
+    SEND_DATA                       ; Send the command
+    xor a
+    SEND_DATA                       ; Send the command size msb
+    ld  a,3
+    SEND_DATA                       ; Send the command size lsb
+    ld  a,b
+    SEND_DATA                       ; Send B (what to export)
+    ld  a,l
+    SEND_DATA                       ; Send max data LSB
+    ld  a,h
+    SEND_DATA                       ; Send max data MSB
+    ; Now wait up to 600 ticks to get response
+    ld  hl,600
+    call    SETCOUNTER
+SSH_KEY_EXPORT_ST1:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_ST1.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_ST1
+SSH_KEY_EXPORT_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8d                        ; Is response of our command?
+    jr  nz,SSH_KEY_EXPORT_ST1
+    ; At this point, all data is being buffered in ESP
+    di
+    ld  hl,30
+    call    SETCOUNTER
+    ei
+    ; now get return code, if return code other than 0, it is finished
+SSH_KEY_EXPORT_RC:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_RC
+SSH_KEY_EXPORT_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+    ; next two bytes are response size, save to HL
+SSH_KEY_EXPORT_SIZE_A:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_SIZE_A.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_SIZE_A
+SSH_KEY_EXPORT_SIZE_A.1:
+    RECEIVE_DATA
+    ld  h,a
+SSH_KEY_EXPORT_SIZE_B:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_SIZE_B.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_SIZE_B
+SSH_KEY_EXPORT_SIZE_B.1:
+    RECEIVE_DATA
+    ld  l,a                         ; HL = response size (unused)
+    ; Read BC bytes written (LSB then MSB)
+SSH_KEY_EXPORT_BC_L:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_BC_L.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_BC_L
+SSH_KEY_EXPORT_BC_L.1:
+    RECEIVE_DATA
+    ld  c,a
+SSH_KEY_EXPORT_BC_H:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_BC_H.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_BC_H
+SSH_KEY_EXPORT_BC_H.1:
+    RECEIVE_DATA
+    ld  b,a                         ; BC = bytes written
+    ; Read H flags
+SSH_KEY_EXPORT_HF:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_HF.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_HF
+SSH_KEY_EXPORT_HF.1:
+    RECEIVE_DATA
+    push    af                      ; Save H flags on stack
+    ; Now receive BC bytes of data into buffer
+    call    BCBACKUP                ; save BC (bytes written count)
+    ld  a,b
+    or  c
+    jr  z,SSH_KEY_EXPORT_NODATA    ; if 0 bytes, skip receive
+    push    bc                      ; push BC for loop counter
+    call    GETWORD                 ; HL = output buffer address
+    pop     de                      ; DE = bytes to receive
+    ; Grauw Optimized 16 bit loop, regular receive only
+    ld  b,e                         ; B = LSB of count
+    dec de
+    inc d                           ; D = MSB+1
+    if USE_MEM_IO = 0
+    ld  c,IN_DATA_PORT
+    endif
+SSH_KEY_EXPORT_RCV:
+    CHECK_DATA
+    jr  nz,SSH_KEY_EXPORT_RCV.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_EXPORT_RCV
+SSH_KEY_EXPORT_RCV.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,SSH_KEY_EXPORT_RCV
+    dec d
+    jr  nz,SSH_KEY_EXPORT_RCV
+SSH_KEY_EXPORT_NODATA:
+    call    BCRESTORE               ; restore BC = bytes written
+    pop     hl                      ; H = status flags, L = don't care
+    xor a                           ; A = 0 (OK)
+    ret
+
+;=========================
+;===   SSH_KEY_IMPORT   ===
+;=========================
+;Import SSH key data.
+;
+;Input:  A  = 14
+;        C  = Control flags (bit 0 = last block)
+;        DE = Address of input data
+;        HL = Data length
+;Output: A  = Error code
+SSH_KEY_IMPORT:
+    push    hl                      ; save original data length
+    ld  a,#8e
+    SEND_DATA                       ; Send the command
+    ; total size = 3 (C + HL overhead) + HL (data)
+    pop     hl                      ; restore data length
+    push    hl                      ; save again
+    ld  a,3
+    add a,l
+    ld  l,a
+    jr  nc,SSH_KEY_IMPORT_SIZE
+    inc h
+SSH_KEY_IMPORT_SIZE:
+    ld  a,h
+    SEND_DATA                       ; Send total size msb
+    ld  a,l
+    SEND_DATA                       ; Send total size lsb
+    pop     hl                      ; restore data length
+    ld  a,c
+    SEND_DATA                       ; Send C flags
+    ld  a,l
+    SEND_DATA                       ; Send data length LSB
+    ld  a,h
+    SEND_DATA                       ; Send data length MSB
+    ex  de,hl                       ; HL = data address, DE = data length
+    ; now outi the data starting at hl, size is in DE
+    ; Grauw Optimized 16 bit loop
+    ld  b,e                         ; Number of loops originaly in DE
+    dec de
+    inc d
+    if USE_MEM_IO = 0
+    ld  c,OUT_TX_PORT
+SSH_KEY_IMPORT_SEND:
+    outi
+    jr  nz,SSH_KEY_IMPORT_SEND
+    else
+SSH_KEY_IMPORT_SEND:
+    ld  a,(hl)
+    ld  (MEM_OUT_TX_PORT),a
+    inc hl
+    djnz SSH_KEY_IMPORT_SEND
+    endif
+    dec d
+    jr  nz,SSH_KEY_IMPORT_SEND
+    ; Now wait up to 600 ticks to get response
+    ld  hl,600
+    call    SETCOUNTER
+SSH_KEY_IMPORT_ST1:
+    CHECK_DATA
+    jr  nz,SSH_KEY_IMPORT_ST1.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_IMPORT_ST1
+SSH_KEY_IMPORT_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8e                        ; Is response of our command?
+    jr  nz,SSH_KEY_IMPORT_ST1
+    ; now get return code, if return code other than 0, it is finished
+SSH_KEY_IMPORT_RC:
+    CHECK_DATA
+    jr  nz,SSH_KEY_IMPORT_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_IMPORT_RC
+SSH_KEY_IMPORT_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+    ; next two bytes are size bytes, don't care, it is 0
+    ld  b,2
+SSH_KEY_IMPORT_ST2:
+    CHECK_DATA
+    jr  nz,SSH_KEY_IMPORT_ST2.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_IMPORT_ST2
+SSH_KEY_IMPORT_ST2.1:
+    ; nz, discard
+    RECEIVE_DATA
+    dec b
+    jr  nz,SSH_KEY_IMPORT_ST2
+    ; done, no return data other than return code
+    xor a
+    ret
+
+;=========================
+;===    SSH_KEY_INFO    ===
+;=========================
+;Get SSH key information.
+;
+;Input:  A  = 15
+;        DE = Fingerprint buffer address (0 = query only)
+;Output: A  = Error code
+;        B  = Key status flags (bit 0 = key stored)
+SSH_KEY_INFO:
+    ex  de,hl
+    call    SETWORD                 ; Save fingerprint buffer address
+    ex  de,hl
+    ld  a,#8f
+    SEND_DATA                       ; Send the command
+    xor a
+    SEND_DATA                       ; Send the command size msb
+    ld  a,1
+    SEND_DATA                       ; Send the command size lsb
+    ld  a,d
+    or  e
+    jr  z,SSH_KEY_INFO_FLAGS
+    ld  a,1                          ; include fingerprint
+SSH_KEY_INFO_FLAGS:
+    SEND_DATA                       ; Send flags byte
+    ; Now wait up to 180 ticks to get response
+    ld  hl,180
+    call    SETCOUNTER
+SSH_KEY_INFO_ST1:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_ST1.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_ST1
+SSH_KEY_INFO_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8f                        ; Is response of our command?
+    jr  nz,SSH_KEY_INFO_ST1
+    ; now get return code, if return code other than 0, it is finished
+SSH_KEY_INFO_RC:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_RC
+SSH_KEY_INFO_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+    ; next two bytes are response size
+SSH_KEY_INFO_SIZE_A:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_SIZE_A.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_SIZE_A
+SSH_KEY_INFO_SIZE_A.1:
+    RECEIVE_DATA
+    ld  h,a
+SSH_KEY_INFO_SIZE_B:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_SIZE_B.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_SIZE_B
+SSH_KEY_INFO_SIZE_B.1:
+    RECEIVE_DATA
+    ld  l,a                         ; HL = response data size
+    ; Read B flags (key status)
+SSH_KEY_INFO_BFLAGS:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_BFLAGS.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_BFLAGS
+SSH_KEY_INFO_BFLAGS.1:
+    RECEIVE_DATA
+    ld  b,a                         ; B = key status flags
+    ; Determine if there is fingerprint data (HL > 1)
+    dec hl
+    ld  a,h
+    or  l
+    jr  z,SSH_KEY_INFO_DONE         ; no fingerprint data
+    ; Receive fingerprint string into buffer
+    push    hl                      ; push byte count
+    call    GETWORD                 ; HL = fingerprint buffer address
+    pop     de                      ; DE = byte count
+    ; Regular receive loop (non-quick-receive)
+    ld  b,e                         ; B = LSB of count
+    dec de
+    inc d                           ; D = MSB+1
+    if USE_MEM_IO = 0
+    ld  c,IN_DATA_PORT
+    endif
+SSH_KEY_INFO_RCV:
+    CHECK_DATA
+    jr  nz,SSH_KEY_INFO_RCV.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_KEY_INFO_RCV
+SSH_KEY_INFO_RCV.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,SSH_KEY_INFO_RCV
+    dec d
+    jr  nz,SSH_KEY_INFO_RCV
+SSH_KEY_INFO_DONE:
     xor a
     ret
 
@@ -5130,6 +5698,91 @@ SSH_SEND_ST2.1:
     xor a
     ret
 
+;========================
+;=== SSH_AUTH_RESPOND ===
+;========================
+;Respond auth data requested for SSH connection.
+;
+;Input:  A  = 10
+;        B  = Connection number
+;        DE = Address of the data to be sent
+;        HL = Length of the data to be sent
+;Output: A  = Error code
+SSH_AUTH_RESPOND:
+    set 7,a                         ; ESP SSH commands start at #80
+    SEND_DATA                       ; Send the command
+    ; prepare new data size, adding our 1 byte overhead (connection #)
+    inc hl
+    ld  a,h
+    SEND_DATA                       ; Send the command size msb
+    ld  a,l
+    SEND_DATA                       ; Send the command size lsb
+    ld  a,b
+    SEND_DATA                       ; Send the connection #
+    dec hl
+    ex  de,hl
+    ; now oti the data starting at hl, size is in DE
+    ; Grauw Optimized 16 bit loop, handy for us, mostly since we can use outi :-D
+    ld  b,e                         ;Number of loops originaly in DE
+    dec de
+    inc d
+    if USE_MEM_IO = 0
+    ld  c,OUT_TX_PORT
+SSH_AUTH_RESPOND_R:
+    outi
+    jr  nz,SSH_AUTH_RESPOND_R
+    else
+SSH_AUTH_RESPOND_R:
+    ld  a,(hl)
+    ld  (MEM_OUT_TX_PORT),a
+    inc hl
+    djnz SSH_AUTH_RESPOND_R
+    endif
+    dec d
+    jr  nz,SSH_AUTH_RESPOND_R
+
+    ; Now wait up to 600 ticks to get response
+    ld  hl,600
+    call    SETCOUNTER
+SSH_AUTH_RESPOND_ST1:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_RESPOND_R.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_AUTH_RESPOND_ST1
+SSH_AUTH_RESPOND_R.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp  #8A                         ; Is response of our command?
+    jr  nz,SSH_AUTH_RESPOND_ST1
+    ; now get return code, if return code other than 0, it is finished
+SSH_AUTH_RESPOND_RC:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_RESPOND_RC.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_AUTH_RESPOND_RC
+SSH_AUTH_RESPOND_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    or  a                           ; 0?
+    ret nz                          ; if not, done
+
+    ; next two bytes are return code and size bytes, don't care, it is 0
+    ld  b,2
+SSH_AUTH_RESPOND_ST2:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_RESPOND_ST2.1
+    call    TCPIP_GENERIC_CHECK_TIME_OUT
+    jr  SSH_AUTH_RESPOND_ST2
+SSH_AUTH_RESPOND_ST2.1:
+    ; nz, discard
+    RECEIVE_DATA
+    dec b
+    jr  nz,SSH_AUTH_RESPOND_ST2
+
+    ; done, no return data other than return code
+    xor a
+    ret
+
 ;=======================
 ;===  TCPIP_TCP_RCV  ===
 ;=======================
@@ -5513,6 +6166,228 @@ SSH_RCV_R_NSF.1:
     call    BCRESTORE               ; done, restore return data in BC
     ; no urgent data support
     ld  hl,0
+    xor a
+    ret
+
+;==============================
+;=== SSH_AUTH_GET_CHALLENGE ===
+;==============================
+;Receive keyboard interactive challenge data from a SSH connection.
+;
+;Input:   A  = 9
+;         B  = Connection number
+;         DE = Address for the retrieved data
+;         HL = Max Length of the data to be obtained
+;Output:  A  = Error code
+;         BC = Total number of bytes that have been actually retrieved
+;         H  = Number of prompts
+;         L  = Echo flag bitmap
+; Save registers other than AF
+SSH_AUTH_GET_CHALLENGE_RETRY_QRCV:
+    call    GETBYTE
+    or  a
+    jr  z,SSH_AUTH_GET_CHALLENGE_CHECK_TIME_OUT.NORXRETRY
+    ; Ok, so let's ask ESP to re-send the data and retry receiving it
+    dec a
+    call    SETBYTE                 ; we are retrying it
+    ld  a,'r'                       ; retry transmission command
+    SEND_DATA
+    jp  SSH_AUTH_GET_CHALLENGE.RXRETRY             ; and retry it
+SSH_AUTH_GET_CHALLENGE_CHECK_TIME_OUT.NORXRETRY:
+    ld  a,ERR_INV_OPER
+    ret                             ; and return the function itself
+
+SSH_AUTH_GET_CHALLENGE:
+    ex  de,hl
+    call    SETWORD
+    ex  de,hl
+    ld  a,#89
+    SEND_DATA                       ; Send the command
+    xor a
+    SEND_DATA                       ; Send the command size msb
+    ld  a,3
+    SEND_DATA                       ; Send the command size lsb
+    ld  a,b
+    SEND_DATA                       ; Send the connection #
+    ld  a,l
+    SEND_DATA                       ; Send MAX rcv size LSB
+    ld  a,h
+    SEND_DATA                       ; Send MAX rcv size MSB
+    ld  a,3
+    call    SETBYTE                 ; Ok, retry up to three times
+SSH_AUTH_GET_CHALLENGE.RXRETRY:
+    ; Now wait up to 600 ticks to get response
+    ld  hl,600
+    call    SETCOUNTER
+SSH_AUTH_GET_CHALLENGE_ST1:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_ST1.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_ST1
+SSH_AUTH_GET_CHALLENGE_ST1.1:
+    ; nz, check the data
+    RECEIVE_DATA
+    cp #89                          ; Is response of our command?
+    jr  nz,SSH_AUTH_GET_CHALLENGE_ST1
+    ; At this point, all data is being buffered, so 15 ticks, quarter second, is more than enough time-out
+    di
+    ld  hl,30
+    call    SETCOUNTER
+    ei
+    ; now get return code, if return code other than 0, it is finished
+SSH_AUTH_GET_CHALLENGE_RC:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_RC.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_RC
+SSH_AUTH_GET_CHALLENGE_RC.1:
+    ; nz, discard
+    RECEIVE_DATA
+    call    SETBYTE                 ; Save return just in case
+    or  a                           ; 0?
+    jr  z,SSH_AUTH_GET_CHALLENGE_ST2A              ; if not, done
+    sub 13                          ; 13? ERR BUFF will return the desired buffer size
+    jr  z,SSH_AUTH_GET_CHALLENGE_ST2A;
+    add 13                          ; restore error code
+    ld  bc,0                        ; no data received
+    ld  hl,0
+    ret
+    ; next two bytes are response size bytes save it to BC
+SSH_AUTH_GET_CHALLENGE_ST2A:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_ST2A.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_ST2A
+SSH_AUTH_GET_CHALLENGE_ST2A.1:
+    ; nz, high byte count of bytes to receive
+    RECEIVE_DATA
+    ld h,a
+SSH_AUTH_GET_CHALLENGE_ST2B:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_ST2B.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_ST2B
+SSH_AUTH_GET_CHALLENGE_ST2B.1:
+    ; nz, low byte count of bytes to receive
+    RECEIVE_DATA
+    ld  l,a
+    call    GETBYTE                 ; if return was err buff...
+    sub 13
+    jr  nz,SSH_AUTH_GET_CHALLENGE_ST2BB.1
+    ; If here we need to have A as 13, B and C with needed buffer size
+SSH_AUTH_GET_CHALLENGE_BUFERRA:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_BUFERRA.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_BUFERRA
+SSH_AUTH_GET_CHALLENGE_BUFERRA.1:
+    ; nz, low byte count of bytes to receive
+    RECEIVE_DATA
+    ld c,a
+SSH_AUTH_GET_CHALLENGE_BUFERRB:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_BUFERRB.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_BUFERRB
+SSH_AUTH_GET_CHALLENGE_BUFERRB.1:
+    ; nz, high byte count of bytes to receive
+    RECEIVE_DATA
+    ld  b,a
+    ld  a,13                        ; ERR BUFF
+    ret
+    ; If here, should be ok and will get the data
+SSH_AUTH_GET_CHALLENGE_ST2BB.1:
+    ld  a,l
+    or  h
+    ; if it was 0, no data
+    jp  z,TCPIP_TCP_RCV_RET_NODATA  ; not a typo, no need to make the same code again
+    ; Ok, we need to get the flags that will go to HL, we get it in BC and then push to the stack
+SSH_AUTH_GET_CHALLENGE_FLAGSA:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_FLAGSA.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_FLAGSA
+SSH_AUTH_GET_CHALLENGE_FLAGSA.1:
+    ; nz, prompts, B to later go to H
+    RECEIVE_DATA
+    ld b,a
+SSH_AUTH_GET_CHALLENGE_FLAGSB:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_FLAGSB.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_FLAGSB
+SSH_AUTH_GET_CHALLENGE_FLAGSB.1:
+    ; nz, prompts, C to later go to L
+    RECEIVE_DATA
+    ld c,a
+    push    bc                      ; stack has the flags
+    ; Now let's decrease HL as we've read 2 bytes
+    dec hl
+    dec hl
+    ; And loop for the whole remaining response
+    ld  c,l
+    ld  b,h                         ; BC has effective received data size, as well as HL
+    ; put effective data size in de
+    ex  de,hl
+    ; will start moving at address in stack (we've pushed the adress in WORD)
+    call    GETWORD
+    call    BCBACKUP                ; save count (BC)
+
+    ; Grauw Optimized 16 bit loop, handy for us, mostly since we can use ini :-D
+    ld  b,e                         ; Number of loops originaly in DE
+    dec de
+    inc d
+    if USE_MEM_IO = 0
+    ld  c,IN_DATA_PORT
+    CHECK_QUICK_RECEIVE
+    jr  z,SSH_AUTH_GET_CHALLENGE_R_NSF             ; If not, go to the old, slower route
+    ; Otherwise, let's speed it up baby!
+SSH_AUTH_GET_CHALLENGE_R:
+    inir
+    else
+    CHECK_QUICK_RECEIVE
+    jr  z,SSH_AUTH_GET_CHALLENGE_R_NSF       ; If not, go to the old, slower route
+    ; Otherwise, let's speed it up baby!
+SSH_AUTH_GET_CHALLENGE_R:
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    djnz SSH_AUTH_GET_CHALLENGE_R
+    endif
+    dec d
+    jr nz,SSH_AUTH_GET_CHALLENGE_R
+    CHECK_BUFFER_UNDERRUN
+    jp  nz,SSH_AUTH_GET_CHALLENGE_RETRY_QRCV ; If yes, retry
+    ; Otherwise, done
+    call    BCRESTORE               ; done, restore return data in BC
+    inc bc
+    inc bc
+    ; get flags back from stack
+    pop hl
+    xor a
+    ret
+SSH_AUTH_GET_CHALLENGE_R_NSF:
+    CHECK_DATA
+    jr  nz,SSH_AUTH_GET_CHALLENGE_R_NSF.1
+    call    TCPIP_TCP_RCV_CHECK_TIME_OUT
+    jr  SSH_AUTH_GET_CHALLENGE_R_NSF
+SSH_AUTH_GET_CHALLENGE_R_NSF.1:
+    if USE_MEM_IO = 0
+    ini
+    else
+    ld  a,(MEM_IN_DATA_PORT)
+    ld  (hl),a
+    inc hl
+    dec b
+    endif
+    jr  nz,SSH_AUTH_GET_CHALLENGE_R_NSF
+    dec d
+    jr nz,SSH_AUTH_GET_CHALLENGE_R_NSF
+    call    BCRESTORE               ; done, restore return data in BC
+    inc bc
+    inc bc
+    ; get flags back from stack
+    pop hl
     xor a
     ret
 
