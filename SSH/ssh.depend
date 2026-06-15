@@ -1,16 +1,17 @@
 # depslib dependency file v1.0
-1589763333 source:c:\ducasp_git\msx-development\unapi\ssh\src\print.c
+1781220428 source:c:\ducasp_git\msx-development\unapi\ssh\src\print.c
 	"../../fusion-c/header/asm.h"
 	"print.h"
 	"../../fusion-c/header/msx2ansi.h"
+	"../../fusion-c/header/msx_fusion.h"
 
 1615574330 c:\fusion-c\fusion-c\header\asm.h
 
-1589763340 c:\ducasp_git\msx-development\unapi\ssh\src\print.h
+1781220384 c:\ducasp_git\msx-development\unapi\ssh\src\print.h
 
 1615574330 c:\fusion-c\fusion-c\header\msx2ansi.h
 
-1780080825 source:c:\ducasp_git\msx-development\unapi\ssh\src\unapihelper.c
+1781282117 source:c:\ducasp_git\msx-development\unapi\ssh\src\unapihelper.c
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
@@ -21,9 +22,9 @@
 
 1615574330 c:\fusion-c\fusion-c\header\msx_fusion.h
 
-1780078914 c:\ducasp_git\msx-development\unapi\ssh\src\unapihelper.h
+1781221300 c:\ducasp_git\msx-development\unapi\ssh\src\unapihelper.h
 
-1780080907 source:c:\ducasp_git\msx-development\unapi\ssh\src\xymodem.c
+1781096185 source:c:\ducasp_git\msx-development\unapi\ssh\src\xymodem.c
 	"../../fusion-c/header/io.h"
 	"../../fusion-c/header/msx_fusion.h"
 	"UnapiHelper.h"
@@ -38,13 +39,13 @@
 
 1587415685 c:\ducasp_git\msx-development\unapi\ssh\src\xymodem.h
 
-1780081298 source:c:\ducasp_git\msx-development\unapi\ssh\src\ssh.c
+1780680297 source:c:\ducasp_git\msx-development\unapi\ssh\src\ssh.c
 	"ssh.h"
 	"print.h"
 	"UnapiHelper.h"
 	"XYMODEM.h"
 
-1780081433 c:\ducasp_git\msx-development\unapi\ssh\src\ssh.h
+1780686568 c:\ducasp_git\msx-development\unapi\ssh\src\ssh.h
 	<stdio.h>
 	<stdlib.h>
 	<string.h>

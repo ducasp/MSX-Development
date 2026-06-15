@@ -46,7 +46,7 @@ unapi_code_block helperCodeBlock, helperCodeBlockTCP;
 Z80_registers helperRegs; //auxiliary structure for asm function calling
 char chHelperString[128];
 
-unsigned char InitializeUNAPIS ()
+unsigned char InitializeUNAPIS (unsigned char * ucInteractiveAuth, unsigned char * ucFilter, unsigned char * ucHostKeyVerification, unsigned char * ucPubKeyAuth)
 {
     unsigned char uchRet = 0;
     uint uiSpecVersion;
@@ -54,6 +54,7 @@ unsigned char InitializeUNAPIS ()
     byte btVersionMain;
     byte btVersionSec;
     uint uiNameAddress;
+    unsigned char ucCapH;
     int i;
 
 #ifdef UNAPIHELPER_VERBOSE
@@ -69,7 +70,6 @@ unsigned char InitializeUNAPIS ()
     }
     else
     {
-        uchRet = 1;
         UnapiBuildCodeBlock(NULL, 1, &helperCodeBlock);
 #ifdef UNAPIHELPER_VERBOSE
         print("Implementation name: ");
@@ -100,7 +100,7 @@ unsigned char InitializeUNAPIS ()
     print("Looking for TCP/IP UNAPI Implementations...\r\n");
 #endif
 	i = UnapiGetCount("TCP/IP");
-    if(i==0)
+    if((i==0)||(uchRet==1))
     {
 #ifdef UNAPIHELPER_VERBOSE
         print("Error, no TCP/IP UNAPI found...\r\n");
@@ -133,6 +133,56 @@ unsigned char InitializeUNAPIS ()
 #ifdef UNAPIHELPER_VERBOSE
         sprintf(chHelperString," v%u.%u\r\n", btVersionMain, btVersionSec);
         print(chHelperString);
+#endif
+    }
+
+    if (uchRet != 0)
+    {
+        helperRegs.Bytes.B = 1; // block 1
+        UnapiCall(&helperCodeBlock, SSH_GET_CAPAB, &helperRegs, REGS_MAIN, REGS_MAIN);
+        if (helperRegs.Bytes.L&1)
+        {
+            uchRet = 1;
+            // Check keyboard-interactive support
+            if ((helperRegs.Bytes.H&8) == 0)
+            {
+                if (*ucInteractiveAuth)
+                {
+                    print("Keyboard-interactive authentication is not supported by this implementation\r\n");
+                    uchRet = 0;
+                }
+                *ucInteractiveAuth = 0;
+            }
+            ucCapH = helperRegs.Bytes.H;
+            // Check public key auth support
+            if (*ucPubKeyAuth)
+            {
+                if ((ucCapH & 0x04) == 0)
+                {
+                    print("Public key authentication is not supported by this implementation\r\n");
+                    uchRet = 0;
+                }
+                else
+                {
+                    helperRegs.UWords.DE = 0;
+                    UnapiCall(&helperCodeBlock, SSH_KEY_INFO, &helperRegs, REGS_MAIN, REGS_MAIN);
+                    if (helperRegs.Bytes.A != ERR_OK || (helperRegs.Bytes.B & 0x01) == 0)
+                    {
+                        print("No key loaded, use CHKSSH to generate or import a key first\r\n");
+                        uchRet = 0;
+                    }
+                }
+            }
+            if ((ucCapH&16) == 0)
+                *ucFilter = 0;
+            if (ucCapH&32)
+                *ucHostKeyVerification = 1;
+            else
+                *ucHostKeyVerification = 0;
+        }
+#ifdef UNAPIHELPER_VERBOSE
+        else
+            print("Implementation does not support PTY...\r\n");
 #endif
     }
 
@@ -170,12 +220,34 @@ unsigned char IsConnected (unsigned char ucConnNumber, unsigned int *uiSize)
     if ((helperRegs.Bytes.A == ERR_OK) && (helperRegs.Bytes.B == 3))
     {
         ucRet = 1;
-        *uiSize = helperRegs.UWords.BC;
+        *uiSize = helperRegs.UWords.HL;
     }
     else
     {
         ucRet = 0;
         *uiSize = 0;
+    }
+
+    return ucRet;
+}
+
+unsigned char ConnState (unsigned char ucConnNumber, unsigned char *ucState)
+{
+    unsigned char ucRet = 0;
+
+    helperRegs.Bytes.B = ucConnNumber;
+    helperRegs.Words.HL = 0;
+    UnapiCall(&helperCodeBlock, SSH_STATE, &helperRegs, REGS_MAIN, REGS_MAIN);
+
+    if (helperRegs.Bytes.A == ERR_OK)
+    {
+        ucRet = 1;
+        *ucState = helperRegs.Bytes.B;
+    }
+    else
+    {
+        ucRet = 0;
+        *ucState = 4;
     }
 
     return ucRet;
@@ -197,6 +269,17 @@ unsigned char TxData (unsigned char ucConnNumber, unsigned char * lpucData, unsi
         UnapiCall(&helperCodeBlock, SSH_SEND, &helperRegs, REGS_MAIN, REGS_MAIN);
     }
     while (helperRegs.Bytes.A == ERR_BUFFER);
+
+    return helperRegs.Bytes.A;
+}
+
+unsigned char Respond (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize)
+{
+    helperRegs.Words.DE = (int)lpucData;
+    helperRegs.UWords.HL = uiDataSize;
+    helperRegs.Bytes.B = ucConnNumber;
+
+    UnapiCall(&helperCodeBlock, SSH_AUTH_RESPOND, &helperRegs, REGS_MAIN, REGS_MAIN);
 
     return helperRegs.Bytes.A;
 }
@@ -300,8 +383,28 @@ unsigned char ResolveDNS(unsigned char * uchHostString, unsigned char * ucIP)
     return helperRegs.Bytes.A;
 }
 
+unsigned char GetChallenge (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize, unsigned char * ucPrompts, unsigned char * ucEco)
+{
+    unsigned char ucRet = 0;
 
-unsigned char OpenSingleConnection (unsigned char * username, unsigned char * password, unsigned char * uchHost, unsigned char * uchPort, unsigned char * uchConn, unsigned char ucAnonymous)
+    helperRegs.Bytes.B = ucConnNumber;
+    helperRegs.Words.DE = (int)ucBuffer;
+    helperRegs.Words.HL = *uiSize;
+    UnapiCall(&helperCodeBlock, SSH_AUTH_GET_CHALLENGE, &helperRegs, REGS_MAIN, REGS_MAIN);
+
+    if (helperRegs.Bytes.A == ERR_OK)
+    {
+        *uiSize = helperRegs.UWords.BC;
+        *ucPrompts = helperRegs.Bytes.H;
+        *ucEco = helperRegs.Bytes.L;
+    }
+    else
+        *uiSize = 0;
+
+    return helperRegs.Bytes.A;
+}
+
+unsigned char OpenSingleConnection (unsigned char * username, unsigned char * password, unsigned char * uchHost, unsigned char * uchPort, unsigned char * uchConn, unsigned char ucAnonymous, unsigned char ucInteractive, unsigned char ucFilter, unsigned char ucHostKeyVerification, unsigned char ucPubKey)
 {
     unsigned char uchRet;
     unsigned char uchIP[4];
@@ -325,12 +428,24 @@ unsigned char OpenSingleConnection (unsigned char * username, unsigned char * pa
             paramsBlock[8] = 0;
             paramsBlock[9] = 0;
         }
+        else if (ucPubKey)
+        {
+            paramsBlock[7] = 1; //Auth public key
+            strcpy(&paramsBlock[8], username);
+        }
         else
         {
-            paramsBlock[7] = 0; //Auth password
+            if (ucInteractive)
+                paramsBlock[7] = 4; //Auth interactive
+            else
+                paramsBlock[7] = 0; //Auth password
             strcpy(&paramsBlock[8],username);
             strcpy(&paramsBlock[9+strlen(username)],password);
         }
+        if (ucFilter)
+            paramsBlock[7] |= 8;
+        if (ucHostKeyVerification)
+            paramsBlock[7] |= 16;
 #ifdef UNAPIHELPER_VERBOSE
         sprintf(chHelperString,"OK, opening %u.%u.%u.%u:%u\r\n", paramsBlock[0], paramsBlock[1], paramsBlock[2], paramsBlock[3],iPort);
         print(chHelperString);
@@ -340,17 +455,39 @@ unsigned char OpenSingleConnection (unsigned char * username, unsigned char * pa
         uchRet = helperRegs.Bytes.A;
         if (uchRet != ERR_OK)
         {
-#ifdef UNAPIHELPER_VERBOSE
             if(uchRet == ERR_NO_FREE_CONN)
-                print("No free TCP connections available\r\n");
-            else if(uchRet == ERR_CONN_EXISTS)
-                print("There is a resident TCP connection which uses the same IP/Port combination\r\n");
+                print("No free SSH connections available\r\n");
+            else if(uchRet == SSH_ERR_UNKNOWN_HOST)
+            {
+                print("Never connected to this host, SHA 256 fingerprint:\r\n");
+                print(paramsBlock);
+                print("\r\nAdd this host to known host and connect (Y/N)? ");
+                unsigned char ucTmp;
+                do
+                {
+                    ucTmp = Inkey ();
+                }
+                while ((ucTmp != 'y')&&(ucTmp != 'Y')&&(ucTmp != 'n')&&(ucTmp != 'N'));
+                printChar(ucTmp);
+                print("\r\n");
+                if ((ucTmp == 'y')||(ucTmp == 'Y'))
+                {
+                     *uchConn = helperRegs.Bytes.B;
+                    // Ok, connection number already in helperRegs.Bytes.B, just call SSH_ADD_KNOWN_HOST
+                    UnapiCall(&helperCodeBlock, SSH_ADD_KNOWN_HOST, &helperRegs, REGS_MAIN, REGS_MAIN);
+                    uchRet = helperRegs.Bytes.A;
+                    if (uchRet != ERR_OK)
+                    {
+                        sprintf(chHelperString,"Error when opening SSH connection / adding known host (code %i)\r\n", helperRegs.Bytes.A);
+                        print(chHelperString);
+                    }
+                }
+            }
             else
             {
-                sprintf(chHelperString,"Unknown error when opening TCP connection (code %i)\r\n", helperRegs.Bytes.A);
+                sprintf(chHelperString,"Unknown error when opening SSH connection (code %i)\r\n", helperRegs.Bytes.A);
                 print(chHelperString);
             }
-#endif
         }
         else
             *uchConn = helperRegs.Bytes.B;

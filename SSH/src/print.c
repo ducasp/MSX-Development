@@ -1,6 +1,7 @@
 #include "../../fusion-c/header/asm.h"
 #include "print.h"
 #include "../../fusion-c/header/msx2ansi.h"
+#include "../../fusion-c/header/msx_fusion.h"
 
 unsigned char usingAnsiDrv;
 
@@ -70,6 +71,49 @@ void initAnsi(unsigned int uiCallBackFunction)
 
 void endAnsi()
 {
+    print("\r\nHit any key to exit...");
+    while (Inkey() == 0);
     usingAnsiDrv = 0;
     AnsiFinish();
+}
+
+void GetDataFromKeyboard(unsigned char *ucBuffer, unsigned int uiLen, unsigned char ucMask)
+{
+    unsigned char *ucTmp = ucBuffer;
+    unsigned int uiMyLen = 0;
+    do
+    {
+        *ucTmp = Inkey ();
+        if (*ucTmp!=0)
+        {
+            if (*ucTmp == 8)
+            {
+                if (uiMyLen)
+                {
+                    print("\x08\x20\x08");
+                    --uiMyLen;
+                    --ucTmp;
+                }
+            }
+            else
+            {
+                if ((ucMask) && (*ucTmp!=13))
+                    printChar('*');
+                else
+                    printChar(*ucTmp);
+                if (*ucTmp!=13)
+                {
+                    ++ucTmp;
+                    ++uiMyLen;
+                }
+                else
+                {
+                    printChar(0x0a);
+                    break;
+                }
+            }
+        }
+    }
+    while (uiMyLen<uiLen-1);
+    *ucTmp = 0x00;
 }

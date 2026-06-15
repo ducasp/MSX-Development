@@ -54,8 +54,8 @@ void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
     unsigned char uchPositionResponse[12];
     unsigned char uchRow,uchColumn;
 
-    uchColumn = uiCursorPosition & 0xff;
-    uchRow = (uiCursorPosition >> 8) & 0xff;
+    uchColumn = 80;
+    uchRow = 25;
     //return cursor position
     sprintf(uchPositionResponse,"\x1b[%u;%uR",uchRow,uchColumn);
     TxUnsafeData (ucConnNumber, uchPositionResponse, strlen((char*)uchPositionResponse));
@@ -64,7 +64,7 @@ void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall
 // Checks Input Data received from command Line and copy to the variables
 // It is mandatory to have server as first argument
 // All other arguments are optional
-unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption, unsigned char *ucMSX1CustomFont, unsigned char *ucAnonymous)
+unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption, unsigned char *ucMSX1CustomFont, unsigned char *ucAnonymous, unsigned char *ucFilter, unsigned char *ucInteractive, unsigned char *ucPubKeyAuth)
 {
 	unsigned int iRet = 0;
 	unsigned char * ucMySeek = NULL;
@@ -72,6 +72,9 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
 	unsigned char ucTmp;
 
 	//Defaults
+	*ucInteractive = 0;
+	*ucPubKeyAuth = 0;
+	*ucFilter = 1;
     ucStandardDataTransfer = 1;
     *ucAnonymous = 0;
     *ucAnsiOption = 1; //try to render ANSI if possible
@@ -108,8 +111,14 @@ unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsign
                     *ucAnsiOption = 0; //turn off ansi rendering
                 else if ( (ucInput[0]=='c')||(ucInput[0]=='C') )
                     *ucMSX1CustomFont = 0; //turn off custom font for MSX1
+                else if ( (ucInput[0]=='k')||(ucInput[0]=='K') )
+                    *ucInteractive = 1; //try keyboard interactive authentication
                 else if ( (ucInput[0]=='a')||(ucInput[0]=='A') )
                     *ucAnonymous = 1; //no password or username
+                else if ( (ucInput[0]=='n')||(ucInput[0]=='N') )
+                    *ucFilter = 0; //no filtering
+                else if ( (ucInput[0]=='p')||(ucInput[0]=='P') )
+                    *ucPubKeyAuth = 1; //public key authentication
                 else if ( (ucInput[0]=='r')||(ucInput[0]=='R') )
                     ucStandardDataTransfer = 0; //server misbehave and do not double FF on file transfers
             }
@@ -123,11 +132,6 @@ int main(char** argv, int argc)
 {
 	char ucTxData = 0; //where our key inputs go
 	unsigned char ucRet; //return of functions
-	unsigned char ucUser[128]; //will hold the username
-	unsigned char ucPwd[512]; //will hold the password
-	unsigned char ucServer[128]; //will hold the name of the server we will connect
-	unsigned char ucPort[6]; //will hold the port that the server accepts connections
-    char chTextLine[128];
     unsigned char ucCursorSave;
     unsigned char ucFnkBackup[160];
     unsigned char *ucFnkStr = (unsigned char*)0xF87F;
@@ -136,8 +140,9 @@ int main(char** argv, int argc)
     unsigned char ucLockF2 = 0;
     unsigned char ucLockF3 = 0;
     unsigned int uiChrDestRamAddr;
-    unsigned char *ucRcvDataMemoryTmp;
-    unsigned char ucAnonymous;
+    unsigned char ucHostKeyVerification;
+    unsigned char *ucRcvDataMemoryTmp, *ucPromptStringTmp;
+    unsigned char ucAnonymous,ucInteractive, ucPubKey, ucPrompts, ucEcho, ucPrompts2, ucState, ucInteractiveFail, ucFilter, ucPromptResponseEcho;
 
     //we detect if enter was hit to avoid popping up protocol selection if transmit binary command is received in initial negotiations
     ucEnterHit = 0;
@@ -145,6 +150,7 @@ int main(char** argv, int argc)
     uiGetSize = 0;
     //save cursor status
 	ucCursorSave = ucCursorDisplayed;
+	ucState = 0;
 
 	// If server do not negotiate, we will not echo
 	ucEcho = 0;
@@ -152,7 +158,7 @@ int main(char** argv, int argc)
 	initPrint();
 
 	// Validate command line parameters
-    if(!IsValidInput(argv, argc, ucServer, ucPort, &ucAnsi, &ucCP437, &ucAnonymous))
+    if(!IsValidInput(argv, argc, ucServer, ucPort, &ucAnsi, &ucCP437, &ucAnonymous, &ucFilter, &ucInteractive, &ucPubKey))
 	{
 		// If invalid parameters, just show some instructions
 		print(ucSWInfo);
@@ -213,7 +219,7 @@ int main(char** argv, int argc)
         print(ucSWInfoANSI);
 
     // Time to check for SSH availability
-	if (!InitializeUNAPIS())
+	if (!InitializeUNAPIS(&ucInteractive, &ucFilter, &ucHostKeyVerification, &ucPubKey))
     {
         if (ucAnsi) //Using MSX2ANSI?
             endAnsi();
@@ -246,17 +252,20 @@ int main(char** argv, int argc)
     if (!ucAnonymous)
     {
         if (ucAnsi) //Using MSX2ANSI?
-            sprintf(chTextLine,"\x1b[0mWill connect to %s:%s\r\nUsername: ",ucServer, ucPort);
+            sprintf(chTextLine,"\x1b[0mWill connect to %s:%s\r\n",ucServer, ucPort);
         else
-            sprintf(chTextLine,"Will connect to %s:%s\r\nUsername: ",ucServer, ucPort);
+            sprintf(chTextLine,"Will connect to %s:%s\r\n",ucServer, ucPort);
         print (chTextLine);
-        InputString(ucUser,128);
-        if (ucAnsi) //Using MSX2ANSI?
-            sprintf(chTextLine,"\r\nPassword: \x1b[30m",ucServer);
-        else
-            sprintf(chTextLine,"\r\nPassword (will show): ",ucServer);
-        print(chTextLine);
-        InputString(ucPwd,512);
+        print("Username: ");
+        GetDataFromKeyboard(ucUser,128,0);
+
+        if (!ucPubKey && ucInteractive == 0)
+        {
+            print("Password: ");
+            GetDataFromKeyboard(ucPwd,512,1);
+            if (ucAnsi)
+                print("\x1b[37m");
+        }
     }
     else
     {
@@ -264,10 +273,110 @@ int main(char** argv, int argc)
             sprintf(chTextLine,"\x1b[0mWill connect to %s:%s\r\n",ucServer, ucPort);
         else
             sprintf(chTextLine,"Will connect to %s:%s\r\n",ucServer, ucPort);
+        print(chTextLine);
     }
 
     // Open SSH PTY connection to server/port
-    ucRet = OpenSingleConnection (ucUser, ucPwd, ucServer, ucPort, &ucConnNumber, ucAnonymous);
+    ucRet = OpenSingleConnection (ucUser, ucPwd, ucServer, ucPort, &ucConnNumber, ucAnonymous, ucInteractive, ucFilter, ucHostKeyVerification, ucPubKey);
+    if (ucRet == ERR_OK && ucInteractive != 0)
+    {
+        ucInteractiveFail = 0;
+        // Ok, need to figure out what server wants
+        do
+        {
+            uiGetSize = RcvMemorySize;
+            ucRet = GetChallenge (ucConnNumber, ucRcvDataMemory, &uiGetSize, &ucPrompts, &ucEcho);
+            if (ucRet == ERR_OK)
+            {
+                sprintf(chTextLine,"Interactive login, %d prompt(s) left... Echo: %d\r\n",ucPrompts, ucEcho);
+                print(chTextLine);
+                ucRcvDataMemoryTmp = ucRcvDataMemory;
+
+                // Title, if any
+                if (ucRcvDataMemoryTmp[0]!=0)
+                {
+                    print (ucRcvDataMemoryTmp);
+                    do ++ucRcvDataMemoryTmp; while (ucRcvDataMemoryTmp[0]!=0);
+                    print ("\r\n");
+                }
+                ++ucRcvDataMemoryTmp;
+
+                // Instruction, if any
+                if (ucRcvDataMemoryTmp[0]!=0)
+                {
+                    print (ucRcvDataMemoryTmp);
+                    do ++ucRcvDataMemoryTmp; while (ucRcvDataMemoryTmp[0]!=0);
+                    print ("\r\n");
+                }
+                ++ucRcvDataMemoryTmp;
+                ucPromptStringTmp = ucPromptString;
+                uiGetSize = 0;
+                ucPrompts2 = 0;
+                while (ucPrompts)
+                {
+                    switch (ucPrompts2)
+                    {
+                        case 0:
+                            ucPromptResponseEcho = ucEcho & 1 != 0 ? 1:0;
+                            break;
+                        case 1:
+                            ucPromptResponseEcho = ucEcho & 2 != 0 ? 1:0;
+                            break;
+                        case 2:
+                            ucPromptResponseEcho = ucEcho & 4 != 0 ? 1:0;
+                            break;
+                        case 3:
+                            ucPromptResponseEcho = ucEcho & 8 != 0 ? 1:0;
+                            break;
+                        case 4:
+                            ucPromptResponseEcho = ucEcho & 16 != 0 ? 1:0;
+                            break;
+                        case 5:
+                            ucPromptResponseEcho = ucEcho & 32 != 0 ? 1:0;
+                            break;
+                        case 6:
+                            ucPromptResponseEcho = ucEcho & 64 != 0 ? 1:0;
+                            break;
+                        case 7:
+                            ucPromptResponseEcho = ucEcho & 128 != 0 ? 1:0;
+                            break;
+                        default:
+                            ucPromptResponseEcho = 0;
+                            break;
+                    }
+                    // prompt
+                    print (ucRcvDataMemoryTmp);
+                    do ++ucRcvDataMemoryTmp; while (ucRcvDataMemoryTmp[0]!=0);
+                    GetDataFromKeyboard(ucPromptStringTmp,512,ucPromptResponseEcho);
+                    print ("\r\n");
+                    uiGetSize += strlen (ucPromptStringTmp) + 1;
+                    do ++ucPromptStringTmp; while (ucPromptStringTmp[0]!=0);
+                    ucPromptStringTmp+=2;
+                    ucPromptStringTmp[0] = 0;
+                    --ucPrompts;
+                    ++ucPrompts2;
+                }
+                ++uiGetSize;
+            }
+            else
+            {
+                ucInteractiveFail = 1;
+                break;
+            }
+            sprintf(chTextLine,"Interactive login, %d prompt(s) answered...\r\n",ucPrompts2);
+            print(chTextLine);
+
+            ucRcvDataMemory[0] = ucPrompts2;
+            memcpy (&ucRcvDataMemory[1],ucPromptString,uiGetSize);
+            ++uiGetSize;
+            ucRet = Respond(ucConnNumber,ucRcvDataMemory,uiGetSize);
+            if (ucRet != ERR_OK)
+                ConnState(ucConnNumber, &ucState);
+        }
+        while ((ucRet == ERR_OK) && (ucState == 0x05));
+        if (ucRet != ERR_OK)
+            CloseConnection(ucConnNumber);
+    }
 
     if ( ucRet == ERR_OK)
     {
@@ -364,7 +473,7 @@ int main(char** argv, int argc)
                 }
             }
             else
-                    break;
+                break;
         }
         while (1);
 

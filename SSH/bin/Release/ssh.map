@@ -23,197 +23,208 @@ Area                                    Addr        Size        Decimal Bytes (A
      0000000F  l__GSINIT                       
      00000078  l__HEADER0                      
      00000180  s__CODE                         
-     00000236  l__DATA                         
+     000002B7  l__DATA                         
      000002C5  l__HOME                         
-     000060C8  l__CODE                         
-     00006248  s__DATA                         
-     0000647E  s__GSINIT                       
-     0000648D  s__GSFINAL                      
-     0000648E  s__HEAP                         
-     0000648E  s__HOME                         
-     0000648E  s__INITIALIZED                  
-     00006753  s__INITIALIZER                  
-     00006753  s__OVERLAY                      
+     000069D3  l__CODE                         
+     00006B53  s__DATA                         
+     00006E0A  s__GSINIT                       
+     00006E19  s__GSFINAL                      
+     00006E1A  s__HEAP                         
+     00006E1A  s__HOME                         
+     00006E1A  s__INITIALIZED                  
+     000070DF  s__INITIALIZER                  
+     000070DF  s__OVERLAY                      
      00008000  _ucRcvDataMemory                   ssh
      00008500  _RcvPkt                            XYMODEM
      00009000  _ucUnsafeDataTXBuffer              XYMODEM
+     0000C000  _ucPromptString                    ssh
+     0000C500  _ucUser                            ssh
+     0000C600  _ucPwd                             ssh
+     0000C900  _ucServer                          ssh
+     0000CA00  _ucPort                            ssh
      0000F3B0  _ucLinLen                          ssh
      0000FBEB  _ucMT6                             ssh
      0000FBEC  _ucMT7                             ssh
      0000FC9E  _uiJiffy                           ssh
      0000FC9E  _uiTickCount                       XYMODEM
      0000FCA9  _ucCursorDisplayed                 ssh
+
 ASxxxx Linker V03.00 + NoICE + sdld,  page 2.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+_CODE                               00000180    000069D3 =       27091. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
      00000180  _initPrint                         print
-     00000186  _StartPrintBuffer                  print
-     0000018E  _EndPrintBuffer                    print
-     00000196  _print                             print
-     000001B1  _printChar                         print
-     000001C3  _initAnsi                          print
-     000001D2  _endAnsi                           print
-     000001DA  _SendCursorPosition                ssh
-     0000023F  _ucCrLf                            ssh
-     00000242  _ucUsage                           ssh
-     00000360  _ucSWInfo                          ssh
-     000003BB  _ucSWInfoANSI                      ssh
-     0000041D  _ucCursor_Up                       ssh
-     00000421  _ucCursor_Down                     ssh
-     00000425  _ucCursor_Forward                  ssh
-     00000429  _ucCursor_Backward                 ssh
-     0000042D  _ucCP437Font                       ssh
-     00000C36  _IsValidInput                      ssh
-     00000DDC  _main                              ssh
-     00001514  _InitializeUNAPIS                  UnapiHelper
-     00001772  _RXData                            UnapiHelper
-     000017E2  _IsConnected                       UnapiHelper
-     00001848  _TxByte                            UnapiHelper
-     0000185F  _TxData                            UnapiHelper
-     000018A7  _TxUnsafeData                      UnapiHelper
-     00001920  _CloseConnection                   UnapiHelper
-     0000194E  _Breath                            UnapiHelper
-     00001969  _ResolveDNS                        UnapiHelper
-     00001CE0  _OpenSingleConnection              UnapiHelper
-     00001F6E  _SetTermType                       UnapiHelper
-     00001FA1  _SetTermWindow                     UnapiHelper
-     00001FDB  _ultostr                           XYMODEM
-     000021A2  _GetPacket                         XYMODEM
-     00002538  _XYModemPacketReceive              XYMODEM
-     00002A93  _CancelTransfer                    XYMODEM
-     00002B06  _XYModemGet                        XYMODEM
-     00003044  _UnapiGetCount                     unapigetcount
-     00003044  _UnapiGetCount_start               unapigetcount
-     000030AE  _AnsiInit                          
-     000030AE  _UnapiGetCount_end                 unapigetcount
-     000030C0  _AnsiFinish                        
-     000030CC  _AnsiStartBuffer                   
-     000030D9  _AnsiEndBuffer                     
-     000030ED  _AnsiCallBack                      
-     000030F6  _AnsiGetCursorPosition             
-     00003101  _AnsiPutChar                       
-     000031BC  _AnsiPrint                         
-     000048E6  _atoi                              atoi
-     00004977  _atol                              atol
-     00004A74  _strstr                            _strstr
+     000001A6  _StartPrintBuffer                  print
+     000001AE  _EndPrintBuffer                    print
+     000001B6  _print                             print
+     000001D1  _printChar                         print
+     000001E3  _initAnsi                          print
+     000001F2  _endAnsi                           print
+     00000220  _GetDataFromKeyboard               print
+     000002AB  _SendCursorPosition                ssh
+     0000030A  _ucCrLf                            ssh
+     0000030D  _ucUsage                           ssh
+     000004B2  _ucSWInfo                          ssh
+     0000050D  _ucSWInfoANSI                      ssh
+     0000056F  _ucCursor_Up                       ssh
+     00000573  _ucCursor_Down                     ssh
+     00000577  _ucCursor_Forward                  ssh
+     0000057B  _ucCursor_Backward                 ssh
+     0000057F  _ucCP437Font                       ssh
+     00000D88  _IsValidInput                      ssh
+     00000FA1  _main                              ssh
+     00001919  _InitializeUNAPIS                  UnapiHelper
+     00001D24  _RXData                            UnapiHelper
+     00001D94  _IsConnected                       UnapiHelper
+     00001DFC  _ConnState                         UnapiHelper
+     00001E48  _TxByte                            UnapiHelper
+     00001E5F  _TxData                            UnapiHelper
+     00001EA7  _Respond                           UnapiHelper
+     00001EEB  _TxUnsafeData                      UnapiHelper
+     00001F64  _CloseConnection                   UnapiHelper
+     00001F92  _Breath                            UnapiHelper
+     00001FAD  _ResolveDNS                        UnapiHelper
+     00002323  _GetChallenge                      UnapiHelper
+     00002398  _OpenSingleConnection              UnapiHelper
+     00002857  _SetTermType                       UnapiHelper
+     0000288A  _SetTermWindow                     UnapiHelper
+     000028C4  _ultostr                           XYMODEM
+     00002A8B  _GetPacket                         XYMODEM
+     00002E22  _XYModemPacketReceive              XYMODEM
+     0000337D  _CancelTransfer                    XYMODEM
+     000033F0  _XYModemGet                        XYMODEM
+     0000394F  _UnapiGetCount                     unapigetcount
+     0000394F  _UnapiGetCount_start               unapigetcount
+     000039B9  _AnsiInit                          
+     000039B9  _UnapiGetCount_end                 unapigetcount
+     000039CB  _AnsiFinish                        
+     000039D7  _AnsiStartBuffer                   
+     000039E4  _AnsiEndBuffer                     
+     000039F8  _AnsiCallBack                      
+     00003A01  _AnsiGetCursorPosition             
+     00003A0C  _AnsiPutChar                       
 ASxxxx Linker V03.00 + NoICE + sdld,  page 3.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+_CODE                               00000180    000069D3 =       27091. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00004B28  _FCBs                              
-     00004B32  _GetOSVersion                      
-     00004B5E  __os_ver                           
-     00004B5F  __mx_ver                           
-     00004B60  __buf8_fcbs                        
-     00004C90  __io_errno                         
-     00004D19  __setupfcb                         
-     00004D68  _get_fd                            
-     00004D7A  _Open                              
-     00004D95  _OpenAttrib                        
-     00004DB1  _iopen                             
-     00004E79  _Close                             
-     00004E89  _iclose                            
-     00004EBE  _Ensure                            
-     00004EED  _Create                            
-     00004F02  _CreateAttrib                      
-     00004F1F  _Read                              
-     00004F3B  _iread                             
-     00004F7F  _Write                             
-     00004F9B  _iwrite                            
-     00004FCF  _Lseek                             
-     00005069  _Ltell                             
-     00005086  _iltell                            
-     000050C9  _GetCWD                            
-     000050E6  _igetcwd                           
-     00005123  _Remove                            
-     0000513A  _iremove                           
-     00005164  _Rename                            
-     00005181  _irename                           
-     000051C0  _ChangeDir                         
-     000051D7  _ichdir                            
-     000051EB  _MakeDir                           
-     00005202  _imkdir                            
-     0000521E  _RemoveDir                         
-     00005235  _irmdir                            
-     0000524D  _FindFirst                         
-     0000528D  lb_ff1c                            
-     000052C1  lb_ff2c                            
-     000052DC  _FindNext                          
-     0000530A  _SetDisk                           
-     0000531E  _GetDisk                           
-     0000532B  _DiskLoad                          
-     000053D2  _ReadMSXtype                       readmsxtype
-     00005425  _IntDos                            
-     000054B4  __REGs                             
-     000054B8  _IntBios                           
-     000054C0  _UnapiRead                         UnapiRead
-     000054C0  _UnapiRead_start                   UnapiRead
-     00005510  _UnapiCall                         UnapiCall
-     00005510  _UnapiCall_start                   UnapiCall
-     00005510  _UnapiRead_end                     UnapiRead
+     00003AC7  _AnsiPrint                         
+     000051F1  _atoi                              atoi
+     00005282  _atol                              atol
+     0000537F  _strstr                            _strstr
+     00005433  _FCBs                              
+     0000543D  _GetOSVersion                      
+     00005469  __os_ver                           
+     0000546A  __mx_ver                           
+     0000546B  __buf8_fcbs                        
+     0000559B  __io_errno                         
+     00005624  __setupfcb                         
+     00005673  _get_fd                            
+     00005685  _Open                              
+     000056A0  _OpenAttrib                        
+     000056BC  _iopen                             
+     00005784  _Close                             
+     00005794  _iclose                            
+     000057C9  _Ensure                            
+     000057F8  _Create                            
+     0000580D  _CreateAttrib                      
+     0000582A  _Read                              
+     00005846  _iread                             
+     0000588A  _Write                             
+     000058A6  _iwrite                            
+     000058DA  _Lseek                             
+     00005974  _Ltell                             
+     00005991  _iltell                            
+     000059D4  _GetCWD                            
+     000059F1  _igetcwd                           
+     00005A2E  _Remove                            
+     00005A45  _iremove                           
+     00005A6F  _Rename                            
+     00005A8C  _irename                           
+     00005ACB  _ChangeDir                         
+     00005AE2  _ichdir                            
+     00005AF6  _MakeDir                           
+     00005B0D  _imkdir                            
+     00005B29  _RemoveDir                         
+     00005B40  _irmdir                            
+     00005B58  _FindFirst                         
+     00005B98  lb_ff1c                            
+     00005BCC  lb_ff2c                            
+     00005BE7  _FindNext                          
+     00005C15  _SetDisk                           
+     00005C29  _GetDisk                           
+     00005C36  _DiskLoad                          
+     00005CDD  _ReadMSXtype                       readmsxtype
+     00005D30  _IntDos                            
+     00005DBF  __REGs                             
+     00005DC3  _IntBios                           
+     00005DCB  _UnapiRead                         UnapiRead
 ASxxxx Linker V03.00 + NoICE + sdld,  page 4.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_CODE                               00000180    000060C8 =       24776. bytes (REL,CON)
+_CODE                               00000180    000069D3 =       27091. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00005557  _Inkey                             
-     00005557  _UnapiCall_end                     UnapiCall
-     0000557D  _Width                             width
-     000055D2  _printf                            printf
-     000055EA  _sprintf                           printf
-     00005A22  _InputString                       
-     00005A9B  _memcpy                            _memcpy
-     00005AE8  __uitoa                            _itoa
-     00005BAD  __itoa                             _itoa
-     00005BFC  _InputChar                         
-     00005C12  __ultoa                            _ltoa
-     00005CDA  __ltoa                             _ltoa
-     00005D42  _putchar                           
-     00005D42  _putchar_rr_s                      
-     00005D47  _putchar_rr_dbs                    
-     00005D4C  _UnapiBuildCodeBlock               unapibuildcodeblock
-     00005D4C  _UnapiBuildCodeBlock_start         unapibuildcodeblock
-     00005F58  _GetVramSize                       
-     00005F58  _UnapiBuildCodeBlock_end           unapibuildcodeblock
-     00005F6C  _CopyRamToVram                     
-     00005F9F  _CopyVramToRam                     
-     00006012  _strlen                            
-     00006021  _UnapiGetRamHelper                 UnapiGetRamHelper
-     00006021  _UnapiGetRamHelper_start           UnapiGetRamHelper
-     000060B2  _AsmCall                           AsmCall
-     000060B2  _UnapiGetRamHelper_end             UnapiGetRamHelper
-     00006155  __modschar                         
-     00006162  __modsint                          
-     0000616E  __moduchar                         
-     0000617A  __moduint                          
-     00006185  _Screen                            
-     000061A5  __divuint                          
-     000061AD  __divuchar                         
-     000061B4  __divu8                            
-     000061B7  __divu16                           
-     000061E6  __divsint                          
-     000061EF  __divschar                         
-     000061F6  __div8                             
-     000061FA  __div_signexte                     
-     000061FE  __div16                            
-     00006224  __get_remainder                    
-     0000622E  __mulint                           
-     00006234  __mul16                            
+     00005DCB  _UnapiRead_start                   UnapiRead
+     00005E1B  _UnapiCall                         UnapiCall
+     00005E1B  _UnapiCall_start                   UnapiCall
+     00005E1B  _UnapiRead_end                     UnapiRead
+     00005E62  _UnapiCall_end                     UnapiCall
+     00005E62  _Width                             width
+     00005EB7  _Inkey                             
+     00005EDD  _printf                            printf
+     00005EF5  _sprintf                           printf
+     0000632D  _InputString                       
+     000063A6  _memcpy                            _memcpy
+     000063F3  __uitoa                            _itoa
+     000064B8  __itoa                             _itoa
+     00006507  _InputChar                         
+     0000651D  __ultoa                            _ltoa
+     000065E5  __ltoa                             _ltoa
+     0000664D  _putchar                           
+     0000664D  _putchar_rr_s                      
+     00006652  _putchar_rr_dbs                    
+     00006657  _UnapiBuildCodeBlock               unapibuildcodeblock
+     00006657  _UnapiBuildCodeBlock_start         unapibuildcodeblock
+     00006863  _GetVramSize                       
+     00006863  _UnapiBuildCodeBlock_end           unapibuildcodeblock
+     00006877  _CopyRamToVram                     
+     000068AA  _CopyVramToRam                     
+     0000691D  _strlen                            
+     0000692C  _UnapiGetRamHelper                 UnapiGetRamHelper
+     0000692C  _UnapiGetRamHelper_start           UnapiGetRamHelper
+     000069BD  _AsmCall                           AsmCall
+     000069BD  _UnapiGetRamHelper_end             UnapiGetRamHelper
+     00006A60  __modschar                         
+     00006A6D  __modsint                          
+     00006A79  __moduchar                         
+     00006A85  __moduint                          
+     00006A90  _Screen                            
+     00006AB0  __divuint                          
+     00006AB8  __divuchar                         
+     00006ABF  __divu8                            
+     00006AC2  __divu16                           
+     00006AF1  __divsint                          
+     00006AFA  __divschar                         
+     00006B01  __div8                             
+     00006B05  __div_signexte                     
+     00006B09  __div16                            
+     00006B2F  __get_remainder                    
+     00006B39  __mulint                           
+     00006B3F  __mul16                            
+
 ASxxxx Linker V03.00 + NoICE + sdld,  page 5.
 Hexadecimal  [32-Bits]
 
@@ -228,40 +239,43 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_DATA                               00006248    00000236 =         566. bytes (REL,CON)
+_DATA                               00006B53    000002B7 =         695. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     00006248  _heap_top                          
-     0000624A  _usingAnsiDrv                      print
-     0000624B  _ucEcho                            ssh
-     0000624C  _ucAnsi                            ssh
-     0000624D  _ucCP437                           ssh
-     0000624E  _ucEnterHit                        ssh
-     0000624F  _ucWidth40                         ssh
-     00006250  _ucStandardDataTransfer            ssh
-     00006251  _ucConnNumber                      ssh
-     00006252  _ucRcvData                         ssh
-     000062D2  _uiGetSize                         ssh
-     000062D4  _regs                              ssh
-     000062E0  _helperCodeBlock                   UnapiHelper
-     000062F8  _helperCodeBlockTCP                UnapiHelper
-     00006310  _helperRegs                        UnapiHelper
-     0000631C  _chHelperString                    UnapiHelper
-     0000639C  _filename                          XYMODEM
-     000063B0  _G                                 XYMODEM
-     000063B1  _TestTransfer                      XYMODEM
-     000063B2  _SentFileSize                      XYMODEM
-     000063B6  _chFileSize                        XYMODEM
-     000063D4  _chTransferConn                    XYMODEM
-     000063D5  _chDoubleFF                        XYMODEM
-     000063D6  _chProtocolString                  XYMODEM
+     00006B53  _heap_top                          
+     00006B55  _usingAnsiDrv                      print
+     00006B56  _chTextLine                        ssh
+     00006BD6  _ucEcho                            ssh
+     00006BD7  _ucStandardDataTransfer            ssh
+     00006BD8  _ucPubKey                          ssh
+     00006BD9  _ucAnsi                            ssh
+     00006BDA  _ucCP437                           ssh
+     00006BDB  _ucEnterHit                        ssh
+     00006BDC  _ucWidth40                         ssh
+     00006BDD  _ucConnNumber                      ssh
+     00006BDE  _ucRcvData                         ssh
+     00006C5E  _uiGetSize                         ssh
+     00006C60  _regs                              ssh
+     00006C6C  _helperCodeBlock                   UnapiHelper
+     00006C84  _helperCodeBlockTCP                UnapiHelper
+     00006C9C  _helperRegs                        UnapiHelper
+     00006CA8  _chHelperString                    UnapiHelper
+     00006D28  _filename                          XYMODEM
+     00006D3C  _G                                 XYMODEM
+     00006D3D  _TestTransfer                      XYMODEM
+     00006D3E  _SentFileSize                      XYMODEM
+     00006D42  _chFileSize                        XYMODEM
+     00006D60  _chTransferConn                    XYMODEM
+     00006D61  _chDoubleFF                        XYMODEM
+     00006D62  _chProtocolString                  XYMODEM
+
 ASxxxx Linker V03.00 + NoICE + sdld,  page 7.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_GSINIT                             0000647E    0000000F =          15. bytes (REL,CON)
+_GSINIT                             00006E0A    0000000F =          15. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -270,7 +284,7 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_GSFINAL                            0000648D    00000001 =           1. bytes (REL,CON)
+_GSFINAL                            00006E19    00000001 =           1. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
@@ -279,24 +293,24 @@ Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_HEAP                               0000648E    00000000 =           0. bytes (REL,CON)
+_HEAP                               00006E1A    00000000 =           0. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     0000648E  _HEAP_start                        
+     00006E1A  _HEAP_start                        
 
 ASxxxx Linker V03.00 + NoICE + sdld,  page 10.
 Hexadecimal  [32-Bits]
 
 Area                                    Addr        Size        Decimal Bytes (Attributes)
 --------------------------------        ----        ----        ------- ----- ------------
-_HOME                               0000648E    000002C5 =         709. bytes (REL,CON)
+_HOME                               00006E1A    000002C5 =         709. bytes (REL,CON)
 
       Value  Global                              Global Defined In Module
       -----  --------------------------------   ------------------------
-     0000648E  __divulong                         _divulong
-     00006520  __mullong                          _mullong
-     0000669D  __modulong                         _modulong
+     00006E1A  __divulong                         _divulong
+     00006EAC  __mullong                          _mullong
+     00007029  __modulong                         _modulong
 ASxxxx Linker V03.00 + NoICE + sdld,  page 11.
 
 Files Linked                              [ module(s) ]
@@ -324,12 +338,12 @@ c:\fusion-c\fusion-c\lib\fusion.lib       [ readmsxtype.rel ]
 c:\fusion-c\fusion-c\lib\fusion.lib       [ intdosbios.rel ]
 c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiRead ]
 c:\fusion-c\fusion-c\lib\asm.lib          [ UnapiCall ]
-c:\fusion-c\fusion-c\lib\fusion.lib       [ inkey.rel ]
 c:\fusion-c\fusion-c\lib\fusion.lib       [ width.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ inkey.rel ]
 c:\fusion-c\fusion-c\lib\fusion.lib       [ printf.rel ]
+c:\fusion-c\fusion-c\lib\fusion.lib       [ inputstring.rel ]
 C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
                                           [ _divulong.rel ]
-c:\fusion-c\fusion-c\lib\fusion.lib       [ inputstring.rel ]
 C:\Program Files\SDCC\bin\..\lib\z80/z80.lib
                                           [ _memcpy.rel ]
 C:\Program Files\SDCC\bin\..\lib\z80/z80.lib

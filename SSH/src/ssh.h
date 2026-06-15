@@ -43,12 +43,15 @@
 const unsigned char ucCrLf[3]="\r\n"; //auxiliary
 
 //Instructions
-const char ucUsage[] = "Usage: ssh <server[:port]> [r] [o] [c]\r\n\r\n"
+const char ucUsage[] = "Usage: ssh <server[:port]> [a] [k] [n] [p] [o] [r] [c]\r\n\r\n"
                        "<server[:port]>: 192.168.0.1:22\r\n\r\n"
                        "a: anonymous connection\r\n"
+                       "k: keyboard interactive authentication\r\n"
+                       "n: do not use non-ansi filter of implementation\r\n"
+                       "p: public key authentication\r\n"
                        "o: turns off ANSI rendering and use MSX-DOS text rendering\r\n"
-                       "c: turns off custom CP437 font on MSX1\r\n"
-                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n\r\n";
+                       "r: if file transfer fails try using this, some BBSs misbehave on file transfers\r\n"
+                       "c: turns off custom CP437 font on MSX1\r\n\r\n";
 
 const char ucSWInfo[] = "> MSX UNAPI SSH PTY Client v1.00 <\r\n (c) 2026 Oduvaldo Pavan Junior - ducasp@gmail.com\r\n\r\n";
 const char ucSWInfoANSI[] = "\x1b[31m> MSX UNAPI SSH PTY Client v1.00 <\r\n (c) 2026 Oduvaldo Pavan Junior - ducasp@gmail.com\x1b[0m\r\n";
@@ -62,14 +65,20 @@ const char ucCursor_Backward[] = "\x1b[D";
 //UNAPI requires memory buffer @ 0x8000 or higher... Adjust as needed if code grows
 #define RcvMemorySize 1024
 __at 0x8000 unsigned char ucRcvDataMemory[]; //area to hold data sent to UNAPI, need to be in the 3rd 16K block
-
+__at 0xC000 unsigned char ucPromptString[1024];
+__at 0xC500 unsigned char ucUser[128]; //will hold the username
+__at 0xC600 unsigned char ucPwd[512]; //will hold the password
+__at 0xC900 unsigned char ucServer[128]; //will hold the name of the server we will connect
+__at 0xCA00 unsigned char ucPort[6]; //will hold the port that the server accepts connections
+char chTextLine[128];
 //Our Flags
 unsigned char ucEcho; //Echo On?
+unsigned char ucStandardDataTransfer;
+unsigned char ucPubKey; //Using public key authentication?
 unsigned char ucAnsi; //Using ANSI rendering?
 unsigned char ucCP437; //Using custom CP437 if MSX1?
 unsigned char ucEnterHit; //user has input enter?
 unsigned char ucWidth40; //Detected 40 Columns or less?
-unsigned char ucStandardDataTransfer; //Is this telnet server proper and transmitting files using telnet double FF?
 unsigned char ucConnNumber; //hold the connection number received by UnapiHelper
 
 //For data receive parsing
@@ -215,8 +224,6 @@ const char ucCP437Font[] = {
 };
 
 unsigned int uiGetSize;
-
 Z80_registers regs; //auxiliary structure for asm function calling
-
-unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption, unsigned char *ucMSX1CustomFont, unsigned char *ucAnonymous);
+unsigned int IsValidInput (char**argv, int argc, unsigned char *ucServer, unsigned char *ucPort, unsigned char *ucAnsiOption, unsigned char *ucMSX1CustomFont, unsigned char *ucAnonymous, unsigned char *ucFilter, unsigned char *ucInteractive, unsigned char *ucPubKeyAuth);
 void SendCursorPosition(unsigned int uiCursorPosition) __z88dk_fastcall;

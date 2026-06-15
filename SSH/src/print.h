@@ -7,3 +7,4 @@ void EndPrintBuffer();
 void initPrint();
 void initAnsi(unsigned int uiCallBackFunction);
 void endAnsi();
+void GetDataFromKeyboard(unsigned char *ucBuffer, unsigned int uiLen, unsigned char ucMask);

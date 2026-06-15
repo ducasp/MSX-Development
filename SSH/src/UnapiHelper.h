@@ -48,7 +48,11 @@ enum SSHUnapiFunctions {
     SSH_SEND = 5,
     SSH_RCV = 6,
     SSH_TERM_TYPE = 7,
-    SSH_WIN_SIZE = 8
+    SSH_WIN_SIZE = 8,
+    SSH_AUTH_GET_CHALLENGE = 9,
+    SSH_AUTH_RESPOND = 10,
+    SSH_ADD_KNOWN_HOST = 11,
+    SSH_KEY_INFO = 15
 };
 
 enum TcpipUnapiFunctions {
@@ -85,7 +89,9 @@ enum CommonErrorCodes {
     SSH_ERR_NO_RSS = 127,
     SSH_ERR_INV_KEY,
     SSH_ERR_PWD,
-    SSH_ERR_PTY_REQ
+    SSH_ERR_PTY_REQ,
+    SSH_ERR_AUTH_TRY_OTHER,
+    SSH_ERR_UNKNOWN_HOST
 };
 
 __at 0x9000 unsigned char ucUnsafeDataTXBuffer[];
@@ -99,7 +105,7 @@ void Breath();
 //
 // Return 0 if no SSH Unapi or TCP/IP implementation found
 // Return 1 if SSH AND TCP/IP Unapi implementation has been found
-unsigned char InitializeUNAPIS ();
+unsigned char InitializeUNAPIS (unsigned char * ucInteractiveAuth, unsigned char * ucFilter, unsigned char * ucHostKeyVerification, unsigned char * ucPubKeyAuth);
 
 // OpenSingleConnection
 //
@@ -108,7 +114,7 @@ unsigned char InitializeUNAPIS ();
 //
 // If connection is successful will return connection number in uchConn and
 // return ERR_OK
-unsigned char OpenSingleConnection (unsigned char * username, unsigned char * password, unsigned char * uchHost, unsigned char * uchPort, unsigned char * uchConn, unsigned char ucAnonymous);
+unsigned char OpenSingleConnection (unsigned char * username, unsigned char * password, unsigned char * uchHost, unsigned char * uchPort, unsigned char * uchConn, unsigned char ucAnonymous, unsigned char ucInteractive, unsigned char ucFilter, unsigned char ucHostKeyVerification, unsigned char ucPubKey);
 
 // CloseConnection
 //
@@ -172,5 +178,11 @@ unsigned char SetTermType (unsigned char ucTermType);
 // Return 1 ok
 // Return 0 otherwise
 unsigned char SetTermWindow (unsigned char Rows, unsigned char Columns);
+
+unsigned char GetChallenge (unsigned char ucConnNumber, unsigned char * ucBuffer, unsigned int * uiSize, unsigned char * ucPrompts, unsigned char * ucEco);
+
+unsigned char ConnState (unsigned char ucConnNumber, unsigned char *ucState);
+
+unsigned char Respond (unsigned char ucConnNumber, unsigned char * lpucData, unsigned int uiDataSize);
 
 #endif //#ifndef _UNAPIHELPER_HEADER_INCLUDED

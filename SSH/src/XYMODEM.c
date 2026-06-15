@@ -233,6 +233,8 @@ int GetPacket(unsigned char ** ucPacket, unsigned char * ucIs1K)
 
         }
 
+        Breath();
+
         if (TimeLeap == 0)
         {
             if (uiTickCount>TimeOut)
@@ -742,4 +744,6 @@ void XYModemGet (unsigned char chConn, unsigned char chTelnetTransfer)
     {
         CancelTransfer();
     }
+    print("\r\nPress any key to continue...");
+    while (Inkey() == 0);
 }
