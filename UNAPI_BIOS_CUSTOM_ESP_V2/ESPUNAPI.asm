@@ -66,7 +66,7 @@
 ; 0000 - 0004   : EXTBIO hook backup
 ; 0005 - 0006   : HIMEM Allocated area (starts with 00 xx, once allocated goes
 ;                 to Fxxx or Exxx so checking 0005 if 00 is enough)
-; 007           : ESP32 if 1, ESP8266 if 0
+; 007           : Flags: bit 0 ESP32, bit 1 SSH supported, bit 7 probed
 ;
 ; Current HIMEM mapping offset related to the address stored in the 6th and 7th
 ; bytes of our slot work area:
@@ -257,7 +257,7 @@ PORT_F2:                equ #F2
   ENDM
 
   MACRO CHECK_QUICK_RECEIVE
-    ld  a,(IN_STS_PORT)
+    in  a,(IN_STS_PORT)
     bit 3,a                         ; Quick Receive Supported?
   ENDM
 
@@ -297,6 +297,11 @@ MEMORY_DEBACKUP_OFFSET  equ #0F
 MEMORY_HLBACKUP_OFFSET  equ #11
 MEMORY_ESP32_OFFSET     equ #13
 
+;--- Flags stored on our slot work area byte 7:
+ESPFLAG_ESP32:          equ %00000001    ; ESP32 detected
+ESPFLAG_SSH:            equ %00000010    ; ESP supports SSH commands
+ESPFLAG_SSH_PROBED:     equ %10000000    ; SSH support already probed
+
 ;--- Scan Page Size
 SCAN_MAX_PAGE_SIZE      equ 8
 
@@ -305,7 +310,7 @@ SCAN_MAX_PAGE_SIZE      equ 8
 ;--- TCP-IP Functions
 MAX_FN:                 equ 29
 ;--- SSH Functions
-MAX_FN_S:               equ 15
+MAX_FN_S:               equ 11
 
 ;--- TCP/IP UNAPI error codes:
 ERR_OK:                 equ 0
@@ -432,9 +437,11 @@ BOOT_FROM_POWER_OFF:
     bit 5,a                         ; Test [F1]
     jp  z,ENTERING_ESPSETUP         ; If F1 is pressed, let's execute our setup menu
     ; F1 is not pressed, continue
+    call    CHECK_ESP_TYPE          ; Always detect ESP type and SSH support
     if  NON_VERBOSE_ROM = 0
+    call    GETESPFLAGS
+    and ESPFLAG_SSH
     ld  hl,WELCOME
-    call    CHECK_ESP_TYPE
     jr  z,NOT32_1
     ld  hl,WELCOME32
 NOT32_1:
@@ -621,8 +628,7 @@ PATCH2:
     set 0,(hl)                      ; And set HOKVLD properly to indicate an EXTBIOS is installed
 INIT_OK:
     if  NON_VERBOSE_ROM = 0
-    ld  hl,OK_S                     ; All done and set, nice exit message
-    call    PRINTHL
+    call    PRINT_INSTALLED_MSG     ; All done and set, nice exit message
     endif
     ld  a,#F0                       ; Set #F0, UNAPI driver has been loaded at least once
     WRITE_F2
@@ -693,8 +699,10 @@ ESPSETUP:
     or  a
     jp  nz,ESP_NOT_FOUND            ; Not well, ESP was not found
     ; Well, if reset successful, continue
+    call    CHECK_ESP_TYPE          ; Detect ESP type and SSH support
+    call    GETESPFLAGS
+    and ESPFLAG_SSH
     ld  hl,WELCOME
-    call    CHECK_ESP_TYPE
     jr  z,NOT32_2
     ld  hl,WELCOME32
 NOT32_2:
@@ -2303,11 +2311,6 @@ DO_EXTBIO3:                         ; A=A-1 already done
     ret
 
 SSH_CHECK:
-    call    GETESPTYPE
-    jr  nz,SSH_CHECK1
-    call    CHECK_ESP_TYPE
-    jr  z,JUMP_OLD2
-SSH_CHECK1:
     ; Check API ID SSH
     ld  hl,UNAPI_ID2
     ld  de,ARG
@@ -2320,6 +2323,11 @@ LOOPSSH:
     inc de
     or  a
     jr  nz,LOOPSSH
+
+    ; API ID matched, offer only if SSH support was determined at boot
+    call    GETESPFLAGS
+    and ESPFLAG_SSH
+    jr  z,JUMP_OLD2
 
     ; A=255: Jump to old hook
 
@@ -2510,10 +2518,6 @@ FN_8_S:                 dw  SSH_WIN_SIZE
 FN_9_S:                 dw  SSH_AUTH_GET_CHALLENGE
 FN_10_S:                dw  SSH_AUTH_RESPOND
 FN_11_S:                dw  SSH_ADD_KNOWN_HOST
-FN_12_S:                dw  SSH_KEY_GEN
-FN_13_S:                dw  SSH_KEY_EXPORT
-FN_14_S:                dw  SSH_KEY_IMPORT
-FN_15_S:                dw  SSH_KEY_INFO
 
 ;========================
 ;===  Functions code  ===
@@ -4508,403 +4512,6 @@ SSH_ADD_KNOWN_HOST_ST2.1:
     jr  nz,SSH_ADD_KNOWN_HOST_ST2
 
     ; done, no return data other than return code
-    xor a
-    ret
-
-;=========================
-;===    SSH_KEY_GEN     ===
-;=========================
-;Generate a new SSH key pair.
-;
-;Input:  A  = 12
-;Output: A  = Error code
-SSH_KEY_GEN:
-    set 7,a                         ; ESP SSH commands start at #80
-    SEND_DATA                       ; Send the command
-    xor a
-    SEND_DATA                       ; Send the command size msb
-    SEND_DATA                       ; Send the command size lsb (0)
-    ; Now wait up to 600 ticks to get response
-    ld  hl,600
-    call    SETCOUNTER
-SSH_KEY_GEN_ST1:
-    CHECK_DATA
-    jr  nz,SSH_KEY_GEN_ST1.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_GEN_ST1
-SSH_KEY_GEN_ST1.1:
-    ; nz, check the data
-    RECEIVE_DATA
-    cp  #8c                         ; Is response of our command?
-    jr  nz,SSH_KEY_GEN_ST1
-    ; now get return code, if return code other than 0, it is finished
-SSH_KEY_GEN_RC:
-    CHECK_DATA
-    jr  nz,SSH_KEY_GEN_RC.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_GEN_RC
-SSH_KEY_GEN_RC.1:
-    ; nz, discard
-    RECEIVE_DATA
-    or  a                           ; 0?
-    ret nz                          ; if not, done
-    ; next two bytes are size bytes, don't care, it is 0
-    ld  b,2
-SSH_KEY_GEN_ST2:
-    CHECK_DATA
-    jr  nz,SSH_KEY_GEN_ST2.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_GEN_ST2
-SSH_KEY_GEN_ST2.1:
-    ; nz, discard
-    RECEIVE_DATA
-    dec b
-    jr  nz,SSH_KEY_GEN_ST2
-    ; done, no return data other than return code
-    xor a
-    ret
-
-;=========================
-;===   SSH_KEY_EXPORT   ===
-;=========================
-;Export SSH key data.
-;
-;Input:  A  = 13
-;        B  = What to export (0/1/2)
-;        DE = Output buffer address
-;        HL = Max data per chunk
-;Output: A  = Error code
-;        BC = Number of bytes written
-;        H  = Status flags (bit 0 = last block)
-SSH_KEY_EXPORT:
-    ex  de,hl
-    call    SETWORD                 ; Save output buffer address
-    ex  de,hl
-    ld  a,#8d
-    SEND_DATA                       ; Send the command
-    xor a
-    SEND_DATA                       ; Send the command size msb
-    ld  a,3
-    SEND_DATA                       ; Send the command size lsb
-    ld  a,b
-    SEND_DATA                       ; Send B (what to export)
-    ld  a,l
-    SEND_DATA                       ; Send max data LSB
-    ld  a,h
-    SEND_DATA                       ; Send max data MSB
-    ; Now wait up to 600 ticks to get response
-    ld  hl,600
-    call    SETCOUNTER
-SSH_KEY_EXPORT_ST1:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_ST1.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_ST1
-SSH_KEY_EXPORT_ST1.1:
-    ; nz, check the data
-    RECEIVE_DATA
-    cp  #8d                        ; Is response of our command?
-    jr  nz,SSH_KEY_EXPORT_ST1
-    ; At this point, all data is being buffered in ESP
-    di
-    ld  hl,30
-    call    SETCOUNTER
-    ei
-    ; now get return code, if return code other than 0, it is finished
-SSH_KEY_EXPORT_RC:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_RC.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_RC
-SSH_KEY_EXPORT_RC.1:
-    ; nz, discard
-    RECEIVE_DATA
-    or  a                           ; 0?
-    ret nz                          ; if not, done
-    ; next two bytes are response size, save to HL
-SSH_KEY_EXPORT_SIZE_A:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_SIZE_A.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_SIZE_A
-SSH_KEY_EXPORT_SIZE_A.1:
-    RECEIVE_DATA
-    ld  h,a
-SSH_KEY_EXPORT_SIZE_B:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_SIZE_B.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_SIZE_B
-SSH_KEY_EXPORT_SIZE_B.1:
-    RECEIVE_DATA
-    ld  l,a                         ; HL = response size (unused)
-    ; Read BC bytes written (LSB then MSB)
-SSH_KEY_EXPORT_BC_L:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_BC_L.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_BC_L
-SSH_KEY_EXPORT_BC_L.1:
-    RECEIVE_DATA
-    ld  c,a
-SSH_KEY_EXPORT_BC_H:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_BC_H.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_BC_H
-SSH_KEY_EXPORT_BC_H.1:
-    RECEIVE_DATA
-    ld  b,a                         ; BC = bytes written
-    ; Read H flags
-SSH_KEY_EXPORT_HF:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_HF.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_HF
-SSH_KEY_EXPORT_HF.1:
-    RECEIVE_DATA
-    push    af                      ; Save H flags on stack
-    ; Now receive BC bytes of data into buffer
-    call    BCBACKUP                ; save BC (bytes written count)
-    ld  a,b
-    or  c
-    jr  z,SSH_KEY_EXPORT_NODATA    ; if 0 bytes, skip receive
-    push    bc                      ; push BC for loop counter
-    call    GETWORD                 ; HL = output buffer address
-    pop     de                      ; DE = bytes to receive
-    ; Grauw Optimized 16 bit loop, regular receive only
-    ld  b,e                         ; B = LSB of count
-    dec de
-    inc d                           ; D = MSB+1
-    if USE_MEM_IO = 0
-    ld  c,IN_DATA_PORT
-    endif
-SSH_KEY_EXPORT_RCV:
-    CHECK_DATA
-    jr  nz,SSH_KEY_EXPORT_RCV.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_EXPORT_RCV
-SSH_KEY_EXPORT_RCV.1:
-    if USE_MEM_IO = 0
-    ini
-    else
-    ld  a,(MEM_IN_DATA_PORT)
-    ld  (hl),a
-    inc hl
-    dec b
-    endif
-    jr  nz,SSH_KEY_EXPORT_RCV
-    dec d
-    jr  nz,SSH_KEY_EXPORT_RCV
-SSH_KEY_EXPORT_NODATA:
-    call    BCRESTORE               ; restore BC = bytes written
-    pop     hl                      ; H = status flags, L = don't care
-    xor a                           ; A = 0 (OK)
-    ret
-
-;=========================
-;===   SSH_KEY_IMPORT   ===
-;=========================
-;Import SSH key data.
-;
-;Input:  A  = 14
-;        C  = Control flags (bit 0 = last block)
-;        DE = Address of input data
-;        HL = Data length
-;Output: A  = Error code
-SSH_KEY_IMPORT:
-    push    hl                      ; save original data length
-    ld  a,#8e
-    SEND_DATA                       ; Send the command
-    ; total size = 3 (C + HL overhead) + HL (data)
-    pop     hl                      ; restore data length
-    push    hl                      ; save again
-    ld  a,3
-    add a,l
-    ld  l,a
-    jr  nc,SSH_KEY_IMPORT_SIZE
-    inc h
-SSH_KEY_IMPORT_SIZE:
-    ld  a,h
-    SEND_DATA                       ; Send total size msb
-    ld  a,l
-    SEND_DATA                       ; Send total size lsb
-    pop     hl                      ; restore data length
-    ld  a,c
-    SEND_DATA                       ; Send C flags
-    ld  a,l
-    SEND_DATA                       ; Send data length LSB
-    ld  a,h
-    SEND_DATA                       ; Send data length MSB
-    ex  de,hl                       ; HL = data address, DE = data length
-    ; now outi the data starting at hl, size is in DE
-    ; Grauw Optimized 16 bit loop
-    ld  b,e                         ; Number of loops originaly in DE
-    dec de
-    inc d
-    if USE_MEM_IO = 0
-    ld  c,OUT_TX_PORT
-SSH_KEY_IMPORT_SEND:
-    outi
-    jr  nz,SSH_KEY_IMPORT_SEND
-    else
-SSH_KEY_IMPORT_SEND:
-    ld  a,(hl)
-    ld  (MEM_OUT_TX_PORT),a
-    inc hl
-    djnz SSH_KEY_IMPORT_SEND
-    endif
-    dec d
-    jr  nz,SSH_KEY_IMPORT_SEND
-    ; Now wait up to 600 ticks to get response
-    ld  hl,600
-    call    SETCOUNTER
-SSH_KEY_IMPORT_ST1:
-    CHECK_DATA
-    jr  nz,SSH_KEY_IMPORT_ST1.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_IMPORT_ST1
-SSH_KEY_IMPORT_ST1.1:
-    ; nz, check the data
-    RECEIVE_DATA
-    cp  #8e                        ; Is response of our command?
-    jr  nz,SSH_KEY_IMPORT_ST1
-    ; now get return code, if return code other than 0, it is finished
-SSH_KEY_IMPORT_RC:
-    CHECK_DATA
-    jr  nz,SSH_KEY_IMPORT_RC.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_IMPORT_RC
-SSH_KEY_IMPORT_RC.1:
-    ; nz, discard
-    RECEIVE_DATA
-    or  a                           ; 0?
-    ret nz                          ; if not, done
-    ; next two bytes are size bytes, don't care, it is 0
-    ld  b,2
-SSH_KEY_IMPORT_ST2:
-    CHECK_DATA
-    jr  nz,SSH_KEY_IMPORT_ST2.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_IMPORT_ST2
-SSH_KEY_IMPORT_ST2.1:
-    ; nz, discard
-    RECEIVE_DATA
-    dec b
-    jr  nz,SSH_KEY_IMPORT_ST2
-    ; done, no return data other than return code
-    xor a
-    ret
-
-;=========================
-;===    SSH_KEY_INFO    ===
-;=========================
-;Get SSH key information.
-;
-;Input:  A  = 15
-;        DE = Fingerprint buffer address (0 = query only)
-;Output: A  = Error code
-;        B  = Key status flags (bit 0 = key stored)
-SSH_KEY_INFO:
-    ex  de,hl
-    call    SETWORD                 ; Save fingerprint buffer address
-    ex  de,hl
-    ld  a,#8f
-    SEND_DATA                       ; Send the command
-    xor a
-    SEND_DATA                       ; Send the command size msb
-    ld  a,1
-    SEND_DATA                       ; Send the command size lsb
-    ld  a,d
-    or  e
-    jr  z,SSH_KEY_INFO_FLAGS
-    ld  a,1                          ; include fingerprint
-SSH_KEY_INFO_FLAGS:
-    SEND_DATA                       ; Send flags byte
-    ; Now wait up to 180 ticks to get response
-    ld  hl,180
-    call    SETCOUNTER
-SSH_KEY_INFO_ST1:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_ST1.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_ST1
-SSH_KEY_INFO_ST1.1:
-    ; nz, check the data
-    RECEIVE_DATA
-    cp  #8f                        ; Is response of our command?
-    jr  nz,SSH_KEY_INFO_ST1
-    ; now get return code, if return code other than 0, it is finished
-SSH_KEY_INFO_RC:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_RC.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_RC
-SSH_KEY_INFO_RC.1:
-    ; nz, discard
-    RECEIVE_DATA
-    or  a                           ; 0?
-    ret nz                          ; if not, done
-    ; next two bytes are response size
-SSH_KEY_INFO_SIZE_A:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_SIZE_A.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_SIZE_A
-SSH_KEY_INFO_SIZE_A.1:
-    RECEIVE_DATA
-    ld  h,a
-SSH_KEY_INFO_SIZE_B:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_SIZE_B.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_SIZE_B
-SSH_KEY_INFO_SIZE_B.1:
-    RECEIVE_DATA
-    ld  l,a                         ; HL = response data size
-    ; Read B flags (key status)
-SSH_KEY_INFO_BFLAGS:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_BFLAGS.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_BFLAGS
-SSH_KEY_INFO_BFLAGS.1:
-    RECEIVE_DATA
-    ld  b,a                         ; B = key status flags
-    ; Determine if there is fingerprint data (HL > 1)
-    dec hl
-    ld  a,h
-    or  l
-    jr  z,SSH_KEY_INFO_DONE         ; no fingerprint data
-    ; Receive fingerprint string into buffer
-    push    hl                      ; push byte count
-    call    GETWORD                 ; HL = fingerprint buffer address
-    pop     de                      ; DE = byte count
-    ; Regular receive loop (non-quick-receive)
-    ld  b,e                         ; B = LSB of count
-    dec de
-    inc d                           ; D = MSB+1
-    if USE_MEM_IO = 0
-    ld  c,IN_DATA_PORT
-    endif
-SSH_KEY_INFO_RCV:
-    CHECK_DATA
-    jr  nz,SSH_KEY_INFO_RCV.1
-    call    TCPIP_GENERIC_CHECK_TIME_OUT
-    jr  SSH_KEY_INFO_RCV
-SSH_KEY_INFO_RCV.1:
-    if USE_MEM_IO = 0
-    ini
-    else
-    ld  a,(MEM_IN_DATA_PORT)
-    ld  (hl),a
-    inc hl
-    dec b
-    endif
-    jr  nz,SSH_KEY_INFO_RCV
-    dec d
-    jr  nz,SSH_KEY_INFO_RCV
-SSH_KEY_INFO_DONE:
     xor a
     ret
 
@@ -7037,15 +6644,34 @@ GETESPTYPE:
     call    GETSLT
     call    GETMEMPOINTERADDR       ; This is where we are going to store our memory area address
     ; GETSLT and GETMEMPOINTER do not change DE, so it still has the our memory area address
-    ld  de,7
+    ld  de,2
     add hl,de
     ld  a,(hl)
-    or  a
+    and ESPFLAG_ESP32               ; NZ only if ESP32
     pop iy
     pop ix
     pop hl
     pop bc
     pop de
+    ret
+
+;--- Return our ESP flags byte (work area offset 7)
+;    Input:  none
+;    Output: A = flags
+;    Modifies: AF
+
+GETESPFLAGS:
+    push    bc
+    push    de
+    push    hl
+    call    GETSLT
+    call    GETMEMPOINTERADDR
+    ld  de,2
+    add hl,de                       ; Our flags byte
+    ld  a,(hl)
+    pop hl
+    pop de
+    pop bc
     ret
 
 ;--- Obtain if DNS is ready saved in high memory
@@ -7247,6 +6873,9 @@ WRFE_RET_ERROR:
 
 ;*********************************************
 ;***            CHECK_ESP_TYPE             ***
+;*** Always flags the SSH check as done.   ***
+;*** If ESP32, flags it and probes if SSH  ***
+;*** commands are supported.               ***
 ;*** If ESP32, NZ will be set and A = 1, if***
 ;*** not NZ will be reset and A=0          ***
 ;*********************************************
@@ -7263,18 +6892,149 @@ CHECK_ESP_TYPE:
     ld  ixl,e
     ld  ixh,d                       ; Address in IX
     call    WAIT_MENU_CMD_RESPONSE
-    push    af
+    push    af                      ; Keep result (1 = ESP32, 0 = not)
     call    GETSLT
     call    GETMEMPOINTERADDR       ; This is where we are going to store our memory area address
-    ld  de,7
-    add hl,de
+    ld  de,2
+    add hl,de                       ; HL = our flags byte
     pop af
-    ld  (hl),a
-    or  a
+    jr  z,CHECK_ESP_TYPE_NO32
+    ; ESP32 found: probed + ESP32, then check SSH support
+    ld  (hl),ESPFLAG_SSH_PROBED+ESPFLAG_ESP32
+    call    PROBE_ESP_SSH           ; Sets/clears ESPFLAG_SSH
+    ld  a,1
+    or  a                           ; NZ = ESP32, as before
+    jr  CHECK_ESP_TYPE_END
+CHECK_ESP_TYPE_NO32:
+    ; No ESP32 means no SSH support either, and SSH was probed
+    ld  (hl),ESPFLAG_SSH_PROBED
+    xor a                           ; Z = not ESP32, as before
+CHECK_ESP_TYPE_END:
     pop ix
     pop iy
     pop de
     pop hl
+    ret
+
+;*********************************************
+;***             PROBE_ESP_SSH             ***
+;*** Sends an SSH GET_CAPAB request for    ***
+;*** block 1 (81h 00h 01h 01h) and accepts ***
+;*** 81h 00h or 81h 04h as SSH support.    ***
+;*** Sets/clears ESPFLAG_SSH and marks the ***
+;*** check as done. Called from boot only. ***
+;*** Output: NZ if SSH is supported        ***
+;*********************************************
+PROBE_ESP_SSH:
+    push    bc
+    push    de
+    push    hl
+    call    GETSLT
+    call    GETMEMPOINTERADDR
+    ld  de,2
+    add hl,de                       ; Our flags byte
+    push    hl                      ; Keep its address
+    set 7,(hl)                      ; SSH check is done
+    res 1,(hl)                      ; Assume SSH is not supported
+    CLEAR_UART                      ; Clear UART
+    ld  a,#81                       ; SSH GET_CAPAB command
+    SEND_DATA
+    xor a
+    SEND_DATA                       ; Command size MSB
+    inc a
+    SEND_DATA                       ; Command size LSB
+    SEND_DATA                       ; Block index (1)
+    ld  hl,2                        ; Wait up to 2 frames
+PROBE_ESP_SSH_ST1:
+    CHECK_DATA
+    jr  nz,PROBE_ESP_SSH_ST1.1
+    call    HLTIMEOUT
+    jr  nz,PROBE_ESP_SSH_ST1
+    jr  PROBE_ESP_SSH_END           ; Time-out, not supported
+PROBE_ESP_SSH_ST1.1:
+    RECEIVE_DATA
+    cp  #81                         ; Is response of our command?
+    jr  nz,PROBE_ESP_SSH_ST1
+PROBE_ESP_SSH_ST2:
+    CHECK_DATA
+    jr  nz,PROBE_ESP_SSH_ST2.1
+    call    HLTIMEOUT
+    jr  nz,PROBE_ESP_SSH_ST2
+    jr  PROBE_ESP_SSH_END           ; Time-out, not supported
+PROBE_ESP_SSH_ST2.1:
+    RECEIVE_DATA
+    or  a                           ; Error code 0?
+    jr  z,PROBE_ESP_SSH_OK
+    cp  4                           ; Error code 4?
+    jr  nz,PROBE_ESP_SSH_END        ; Anything else, not supported
+PROBE_ESP_SSH_OK:
+    pop hl
+    set 1,(hl)                      ; SSH is supported
+    push    hl
+PROBE_ESP_SSH_END:
+    CLEAR_UART                      ; Consume/discard remaining response
+    pop hl
+    ld  a,(hl)
+    and ESPFLAG_SSH
+    pop hl
+    pop de
+    pop bc
+    ret
+
+;*********************************************
+;***         PRINT_INSTALLED_MSG           ***
+;*** ESP8266: prints installed message.    ***
+;*** ESP32: uses the 'b' (Get Board)       ***
+;*** command to print the board ID.        ***
+;*********************************************
+PRINT_INSTALLED_MSG:
+    push    bc
+    push    de
+    push    iy
+    push    ix
+    call    GETESPTYPE
+    jr  z,PRINT_INST_8266           ; Not an ESP32, no need to ask
+    ; ESP32, let's get the board identification string
+    CLEAR_UART                      ; Clear UART
+    ld  a,CMD_GET_FW_TYPE           ; 'b' Get Board, ESP32 only
+    SEND_DATA
+    ld  hl,6                        ; Wait up to 100ms
+    ld  de,(TXTTAB)                 ; Borrow Basic program area for now....
+    ld  ixl,e
+    ld  ixh,d                       ; Address in IX
+    call    WAIT_MENU_CMD_RESPONSE
+    jr  z,PRINT_INST_32             ; No answer, just tell it is an ESP32
+    ; Response size is in BC, board ID copied at (TXTTAB)
+    ld  a,b
+    or  a                           ; Size above 255?
+    jr  nz,PRINT_INST_32            ; Then just tell it is an ESP32
+    ld  a,c
+    or  a                           ; Size zero?
+    jr  z,PRINT_INST_32             ; Then just tell it is an ESP32
+    cp  24                          ; More than 23 chars?
+    jr  nc,PRINT_INST_32            ; Then just tell it is an ESP32
+    ld  hl,(TXTTAB)
+    add hl,bc
+    ld  (hl),0                      ; Ensure the string is terminated
+    ld  hl,OK_INST_PRE              ; "Installed "
+    call    PRINTHL
+    ld  hl,(TXTTAB)
+    call    PRINTHL                 ; Board identification string
+    ld  hl,OK_INST_SUF              ; " successfully!"
+    call    PRINTHL
+    jr  PRINT_INST_END
+PRINT_INST_32:
+    ld  hl,OK_ESP32                 ; Installed ESP32 successfully!
+    call    PRINTHL
+    jr  PRINT_INST_END
+PRINT_INST_8266:
+    ld  hl,OK_ESP8266               ; Installed ESP8266 successfully!
+    call    PRINTHL
+PRINT_INST_END:
+    pop ix
+    pop iy
+    pop de
+    pop bc
     ret
 
 ;*********************************************
@@ -7640,7 +7400,7 @@ SET_VDP_WRITE:
 ;*********************************************
 ; Cold reset of ESP firmware
 CMD_RESET_ESP           equ 'R'
-; ESP32 only, return the firmware type on the device
+; ESP32 only, Get Board, returns board identification string
 CMD_GET_FW_TYPE         equ 'b'
 ; Warm reset of ESP firmware
 CMD_WRESET_ESP          equ 'W'
@@ -7993,6 +7753,18 @@ STR_CLKUPDT_FAIL:
     
 OK_S:   
     db  "Installed successfully!"           ,CR,LF,LF,STTERMINATOR
+;---
+OK_ESP8266:
+    db  "Installed ESP8266 successfully!"   ,CR,LF,LF,STTERMINATOR
+;---
+OK_ESP32:
+    db  "Installed ESP32 successfully!"     ,CR,LF,LF,STTERMINATOR
+;---
+OK_INST_PRE:
+    db  "Installed "                        ,STTERMINATOR
+;---
+OK_INST_SUF:
+    db  " successfully!"                    ,CR,LF,LF,STTERMINATOR
 ;---    
     
 FAIL_S: 
@@ -8157,7 +7929,7 @@ BUILD_NAME:             db  "[ ESPUNAPI.ROM ]"
 ;--- Build date to be viewed via Hex Editor (16 bytes)
 BUILD_TYPE:
     db  "BUILD "
-BUILD_DATE:             db  "2026/05/23"
+BUILD_DATE:             db  "2026/09/24"
 
 SEG_CODE_END:
 ; Final size must be 16384 bytes
