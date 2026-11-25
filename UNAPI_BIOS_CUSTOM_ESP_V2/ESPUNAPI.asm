@@ -1,4 +1,4 @@
-; ESPUNAPI TCP/IP SSH UNAPI BIOS v.1.0
+; ESPUNAPI TCP/IP SSH UNAPI BIOS v.1.4
 ; Oduvaldo Pavan Junior
 ; ducasp@gmail.com
 ;    This code implements TCP/IP and SSH UNAPI SpecificationM
@@ -279,7 +279,7 @@ PORT_F2:                equ #F2
 API_V_P:                equ 1
 API_V_S:                equ 2
 ROM_V_P:                equ 1
-ROM_V_S:                equ 3
+ROM_V_S:                equ 4
 
 ;--- Size of memory to reserve in upper TPA:
 HIMEM_RESERVED_SIZE     equ 30
@@ -588,7 +588,13 @@ INIT_NOCLOCKUPDAT2:
     ld  a,(HOKVLD)
     bit 0,a
     jr  nz,SAVE_HOOK2               ; HOKVLD tells us if there is an extended BIOS already or not, if yes, save it
-    ; If here, no extended BIOS
+    ; If here, no extended BIOS, initialize EXTBIO, H.BGFD and H.ENFD
+    ld  hl,EXTBIO
+    ld  de,EXTBIO+1
+    ld  bc,15-1
+    ld  (hl),#C9
+    ldir
+    ; No previous hook, work area byte 0 = RET
     call    GETSLT
     call    GETWRK                  ; Our ROM work area address is at HL (we can use up to 8 bytes)
     ld  a,#c9                       ; RET, as we are the first extended BIOS
@@ -617,12 +623,8 @@ PATCH:
     ld  hl,DO_EXTBIO                ; Our EXTBIO routine address
     ld  (EXTBIO+2),hl               ; Goes to the following two bytes in the hook
 
-    ld  hl,EXTBIO+5                 ; Must patch DISINT and ENAINT as well
-    ld  b,5*2
-PATCH2:
-    ld  (hl),#C9
-    inc hl
-    djnz    PATCH2                  ; So patch all 10 bytes with return
+    ld  a,#C9                       ; EXTBIO hook 5th byte must be RET
+    ld  (EXTBIO+4),a                ; (H.BGFD/H.ENFD follow at +5, keep them)
 
     ld  hl,HOKVLD
     set 0,(hl)                      ; And set HOKVLD properly to indicate an EXTBIOS is installed
@@ -7462,14 +7464,14 @@ ENTERING_WIFI_SETUP:
 
 WELCOME:
     db  CLS
-    db  "ESP TCP/IP UNAPI 1.0"              ,CR,LF
+    db  "ESP TCP/IP UNAPI 1.4"              ,CR,LF
     db  1,92," 2026 Oduvaldo Pavan Junior"  ,CR,LF
     db  "ducasp@gmail.com"                  ,CR,LF,LF,STTERMINATOR
 ;---
 
 WELCOME32:
     db  CLS
-    db  "ESP TCP/IP SSH UNAPI 1.0"          ,CR,LF
+    db  "ESP TCP/IP SSH UNAPI 1.4"          ,CR,LF
     db  1,92," 2026 Oduvaldo Pavan Junior"  ,CR,LF
     db  "ducasp@gmail.com"                  ,CR,LF,LF,STTERMINATOR
 ;---

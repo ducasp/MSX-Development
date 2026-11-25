@@ -2,6 +2,10 @@
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/R6R2BRGX6)
 
+NOTE: If you are using this with openMSX, make sure your smxwifi.xml file
+has the SHA-1 hash for this rom. An example smxwifi.xml that prioritizes the
+latest version published here is available in this repository.
+
 This BIOS will offer the SM-X, MSX PICO, etc., users the following TCP-IP UNAPI functionality:
 
 	- Up to four consecutive connections (except when using TLS/SSL)
